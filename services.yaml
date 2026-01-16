@@ -1,0 +1,40 @@
+fade_lights:
+  name: Fade lights
+  description: Fades lights to a desired level over a specified transition period.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Entity ID of a light or light group.
+      required: true
+      example: "light.bedroom"
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    brightness_pct:
+      name: Brightness percentage
+      description: Integer value from 0 to 100 representing the desired final brightness level as a percentage.
+      required: false
+      default: 40
+      example: 75
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: slider
+          unit_of_measurement: "%"
+    transition:
+      name: Transition
+      description: Transition time for fading indicated in HH:MM:SS, MM:SS, or SS format (e.g., 00:05:30 or 5).
+      required: false
+      default: 3
+      example: "00:00:05"
+      selector:
+        text:
+    force:
+      name: Force
+      description: Set to true to force changing the brightness even if it has been changed manually.
+      required: false
+      default: false
+      selector:
+        boolean:
