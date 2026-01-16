@@ -24,11 +24,11 @@ fade_lights:
           mode: slider
           unit_of_measurement: "%"
     transition:
-      name: Transition
-      description: Transition time for fading indicated in HH:MM:SS, MM:SS, or SS format (e.g., 00:05:30 or 5).
+      name: Transition time
+      description: Transition time for fading indicated in seconds.
       required: false
       default: 3
-      example: "00:00:05"
+      example: "3"
       selector:
         text:
     force:
