@@ -11,7 +11,6 @@ ATTR_TRANSITION = "transition"
 
 # Storage
 STORAGE_KEY = f"{DOMAIN}.last_brightness"
-STORAGE_VERSION = 2
 
 # Storage keys
 KEY_ORIG_BRIGHTNESS = "orig"
