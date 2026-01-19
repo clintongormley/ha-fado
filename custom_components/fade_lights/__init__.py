@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import math
 import time
@@ -331,13 +330,7 @@ async def _fade_light(
     - Cleaning up tracking state when done (success, cancel, or error)
     """
     # Cancel any existing fade for this entity - only one fade per light at a time
-    if entity_id in ACTIVE_FADES:
-        if entity_id in FADE_CANCEL_EVENTS:
-            FADE_CANCEL_EVENTS[entity_id].set()
-        ACTIVE_FADES[entity_id].cancel()
-        # Wait for the old fade to actually stop before starting the new one
-        with contextlib.suppress(asyncio.CancelledError):
-            await ACTIVE_FADES[entity_id]
+    await _cancel_and_wait_for_fade(entity_id)
 
     # Create cancellation event for this fade. We use an Event rather than just
     # Task.cancel() because we need to check for cancellation at specific points
