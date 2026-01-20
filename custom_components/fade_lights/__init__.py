@@ -232,7 +232,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 new_brightness,
             )
             FADE_INTERRUPTED[entity_id] = True
-            hass.async_create_task(_handle_state_change(hass, entity_id, old_state, new_state))
+            # Cancel and wait for any active fade to fully clean up
+
+            hass.async_create_task(_restore_manual_state(hass, entity_id, old_state, new_state))
             return
 
         # =====================================================================
@@ -604,25 +606,34 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
     removed from ACTIVE_FADES. Since asyncio.sleep is interruptible, the
     cleanup happens quickly after cancellation.
     """
+    _LOGGER.debug("(%s) -> Cancelling fade", entity_id)
     if entity_id not in ACTIVE_FADES:
+        _LOGGER.debug("  -> Fade not in ACTIVE_FADES")
         return
 
     task = ACTIVE_FADES[entity_id]
 
     # Signal cancellation via the cancel event if available
     if entity_id in FADE_CANCEL_EVENTS:
+        _LOGGER.debug("  -> Cancelling event")
         FADE_CANCEL_EVENTS[entity_id].set()
 
     # Cancel the task
-    if not task.done():
+    if task.done():
+        _LOGGER.debug("  -> Task done")
+    else:
+        _LOGGER.debug("  -> Cancelling task")
         task.cancel()
 
     # Wait for task to complete (with timeout to avoid infinite wait)
     max_wait = 50  # 50 * 0.01 = 0.5 seconds max wait
     for _ in range(max_wait):
+        _LOGGER.debug("  -> Waiting for task to disappear (%s)", _)
         if entity_id not in ACTIVE_FADES:
+            _LOGGER.debug("  -> Task disappeared")
             return
         if task.done():
+            _LOGGER.debug("  -> Task done, cleaning up")
             # Task is done but cleanup hasn't happened yet - do it manually
             ACTIVE_FADES.pop(entity_id, None)
             FADE_CANCEL_EVENTS.pop(entity_id, None)
@@ -630,78 +641,110 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
             return
         await asyncio.sleep(0.01)
 
+    if entity_id not in ACTIVE_FADES:
+        _LOGGER.debug("(%s) -> Timed out waiting for fade task to be cancelled", entity_id)
+    return
 
-async def _handle_state_change(
+
+def _get_intended_brightness(
+    hass: HomeAssistant,
+    entity_id: str,
+    old_state,
+    new_state,
+) -> int | None:
+    """Determine the intended brightness from a manual intervention.
+
+    Returns:
+        0: Light should be OFF
+        >0: Light should be ON at this brightness
+        None: Could not determine (integration unloaded)
+    """
+    if DOMAIN not in hass.data:
+        return None
+
+    if new_state.state == STATE_OFF:
+        return 0
+
+    new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
+
+    if old_state and old_state.state == STATE_OFF:
+        # OFF -> ON: restore to original brightness
+        orig = _get_orig_brightness(hass, entity_id)
+        return orig if orig > 0 else new_brightness
+
+    # ON -> ON: use the brightness from the event
+    return new_brightness
+
+
+async def _restore_manual_state(
     hass: HomeAssistant,
     entity_id: str,
     old_state,
     new_state,
 ) -> None:
-    """Handle state change after fade cleanup.
+    """Restore intended state after manual intervention during fade.
 
-    This async handler is spawned from the synchronous callback when manual
-    intervention is detected. It:
-    1. Cancels any active fade and waits for cleanup
-    2. Determines the intended state based on the transition
-    3. Stores the intended brightness as original
-    4. Applies the intended state if different from current
+    When manual intervention is detected during a fade, late fade events may
+    overwrite the user's intended state. This function:
+    1. Cancels the fade and waits for cleanup
+    2. Compares current state to intended state
+    3. Restores intended state if they differ
+
+    The intended brightness encodes both state and brightness:
+    - 0 means OFF
+    - >0 means ON at that brightness
     """
-    # Cancel and wait for any active fade to fully clean up
+    _LOGGER.debug("(%s) -> in _restore_manual_state", entity_id)
     await _cancel_and_wait_for_fade(entity_id)
 
-    # Clear the interrupted flag now that cleanup is complete
-    FADE_INTERRUPTED.pop(entity_id, None)
-
-    # Check if integration is still loaded (may have been unloaded during cleanup)
-    if DOMAIN not in hass.data:
+    intended = _get_intended_brightness(hass, entity_id, old_state, new_state)
+    _LOGGER.debug("(%s) -> got intended brightness (%s)", entity_id, intended)
+    if intended is None:
+        _clear_fade_interrupted(entity_id)
         return
 
-    # Determine intended state based on transition
-    new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
+    # Store as new original brightness (for future OFF->ON restore)
+    if intended > 0:
+        _LOGGER.debug("(%s) -> storing original brightness (%s)", entity_id, intended)
+        _store_orig_brightness(hass, entity_id, intended)
 
-    if new_state.state == STATE_OFF:
-        # User turned off - intended state is OFF
-        intended_on = False
-        intended_brightness = None
-    elif old_state and old_state.state == STATE_OFF and new_state.state == STATE_ON:
-        # OFF -> ON: restore to original brightness
-        orig = _get_orig_brightness(hass, entity_id)
-        intended_on = True
-        intended_brightness = orig if orig > 0 else new_brightness
-    else:
-        # ON -> ON or other: use current brightness
-        intended_on = True
-        intended_brightness = new_brightness
-
-    # Store as original if we have a value
-    if intended_brightness:
-        _store_orig_brightness(hass, entity_id, intended_brightness)
-
-    # Get current state to check if we need to apply changes
+    # Get current state after fade cleanup
     current_state = hass.states.get(entity_id)
     if not current_state:
+        _LOGGER.debug("(%s) -> no current state found, exiting", entity_id)
+        _clear_fade_interrupted(entity_id)
         return
 
-    current_on = current_state.state == STATE_ON
-    current_brightness = current_state.attributes.get(ATTR_BRIGHTNESS)
+    current = current_state.attributes.get(ATTR_BRIGHTNESS) or 0
+    if current_state.state == STATE_OFF:
+        current = 0
+        _LOGGER.debug("(%s) -> got current brightness (%s)", entity_id, current)
 
-    # Apply intended state if different from current
-    if intended_on:
-        # We want the light ON
-        if not current_on or (intended_brightness and current_brightness != intended_brightness):
-            await hass.services.async_call(
-                LIGHT_DOMAIN,
-                SERVICE_TURN_ON,
-                {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: intended_brightness},
-            )
-    else:
-        # We want the light OFF
-        if current_on:
-            await hass.services.async_call(
-                LIGHT_DOMAIN,
-                SERVICE_TURN_OFF,
-                {ATTR_ENTITY_ID: entity_id},
-            )
+    # Restore if current differs from intended
+    if intended == 0 and current != 0:
+        _LOGGER.debug("(%s) -> turning light off as intended", entity_id)
+        await hass.services.async_call(
+            LIGHT_DOMAIN,
+            SERVICE_TURN_OFF,
+            {ATTR_ENTITY_ID: entity_id},
+            blocking=True,
+        )
+    elif intended > 0 and current != intended:
+        _LOGGER.debug("(%s) -> setting light brightness (%s) as intended", entity_id, intended)
+        await hass.services.async_call(
+            LIGHT_DOMAIN,
+            SERVICE_TURN_ON,
+            {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: intended},
+            blocking=True,
+        )
+
+    _clear_fade_interrupted(entity_id)
+
+
+def _clear_fade_interrupted(entity_id: str) -> None:
+    # Clear the interrupted flag now that cleanup is complete
+    _LOGGER.debug("(%s) -> Clearing FADE_INTERRUPTED", entity_id)
+    FADE_INTERRUPTED.pop(entity_id, None)
 
 
 # =============================================================================
