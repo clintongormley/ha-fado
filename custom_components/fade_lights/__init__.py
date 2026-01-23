@@ -631,7 +631,7 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
         task.cancel()
 
     # Wait for task to complete (with timeout to avoid infinite wait)
-    max_wait = 50  # 50 * 0.01 = 0.5 seconds max wait
+    max_wait = 100  # 100 * 0.01 = 1 second max wait
     for _ in range(max_wait):
         _LOGGER.debug("  -> Waiting for task to disappear (%s)", _)
         if entity_id not in ACTIVE_FADES:
