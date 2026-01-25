@@ -166,6 +166,11 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event) -> None:
 
     _log_state_change(entity_id, new_state)
 
+    # Check if this is an expected state change (from our service calls)
+    if _match_and_remove_expected(entity_id, new_state):
+        _LOGGER.debug("(%s) -> State matches expected, removed from tracking", entity_id)
+        return
+
     # During fade: check if this is our fade or manual intervention
     if entity_id in ACTIVE_FADES and entity_id in FADE_EXPECTED_BRIGHTNESS:
         if _is_expected_fade_state(entity_id, new_state):
