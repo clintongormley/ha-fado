@@ -314,7 +314,8 @@ async def _fade_light(
         # Clean up tracking state regardless of how the fade ended
         ACTIVE_FADES.pop(entity_id, None)
         FADE_CANCEL_EVENTS.pop(entity_id, None)
-        FADE_EXPECTED_BRIGHTNESS.pop(entity_id, None)
+        # Note: FADE_EXPECTED_BRIGHTNESS is NOT cleared here - values persist
+        # for event matching and are pruned when next fade starts
 
         # Notify any waiters that cleanup is complete
         condition = FADE_COMPLETE_CONDITIONS.pop(entity_id, None)
