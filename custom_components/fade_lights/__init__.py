@@ -826,6 +826,81 @@ def _clear_fade_interrupted(entity_id: str) -> None:
     FADE_INTERRUPTED.pop(entity_id, None)
 
 
+def _add_expected_brightness(entity_id: str, brightness: int) -> None:
+    """Register an expected brightness value before making a service call.
+
+    Args:
+        entity_id: The light entity
+        brightness: Expected brightness (0 = OFF, >0 = ON at that level)
+    """
+    if entity_id not in FADE_EXPECTED_BRIGHTNESS:
+        FADE_EXPECTED_BRIGHTNESS[entity_id] = ExpectedState()
+
+    FADE_EXPECTED_BRIGHTNESS[entity_id].values[brightness] = time.monotonic()
+
+
+async def _notify_condition(condition: asyncio.Condition) -> None:
+    """Notify a condition that expected values have been cleared."""
+    async with condition:
+        condition.notify_all()
+
+
+async def _wait_until_stale_events_flushed(
+    entity_id: str,
+    timeout: float = 5.0,
+) -> None:
+    """Wait until all expected brightness values have been confirmed via state changes.
+
+    Creates condition lazily if needed. Logs warning if timeout reached.
+    """
+    expected_state = FADE_EXPECTED_BRIGHTNESS.get(entity_id)
+    if not expected_state or not expected_state.values:
+        return  # Nothing to wait for
+
+    if expected_state.condition is None:
+        expected_state.condition = asyncio.Condition()
+
+    try:
+        async with expected_state.condition:
+            await asyncio.wait_for(
+                expected_state.condition.wait_for(lambda: not expected_state.values),
+                timeout=timeout,
+            )
+    except TimeoutError:
+        _LOGGER.warning(
+            "(%s) Timed out waiting for state events to flush (remaining: %s)",
+            entity_id,
+            list(expected_state.values.keys()),
+        )
+
+
+def _prune_expected_brightness(entity_id: str) -> None:
+    """Remove stale expected values when starting a new fade.
+
+    Values older than 5 seconds are considered stale. Clears the entire
+    entry if no values remain.
+    """
+    expected_state = FADE_EXPECTED_BRIGHTNESS.get(entity_id)
+    if not expected_state:
+        return
+
+    now = time.monotonic()
+    stale_threshold = 5.0
+
+    # Remove values older than threshold
+    stale_keys = [
+        brightness
+        for brightness, timestamp in expected_state.values.items()
+        if now - timestamp > stale_threshold
+    ]
+    for key in stale_keys:
+        del expected_state.values[key]
+
+    # Clean up entire entry if empty
+    if not expected_state.values:
+        FADE_EXPECTED_BRIGHTNESS.pop(entity_id, None)
+
+
 # =============================================================================
 # Entity Expansion
 # =============================================================================
