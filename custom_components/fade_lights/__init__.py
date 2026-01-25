@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
 import logging
 import math
 import time
+from dataclasses import dataclass, field
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
