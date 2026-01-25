@@ -685,6 +685,22 @@ def _is_brightness_change(old_state: State | None, new_state: State) -> bool:
 # --- State Transition Handlers ---
 
 
+async def _restore_original_brightness(
+    hass: HomeAssistant,
+    entity_id: str,
+    brightness: int,
+) -> None:
+    """Restore original brightness and wait for confirmation."""
+    _add_expected_brightness(entity_id, brightness)
+    await hass.services.async_call(
+        LIGHT_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: brightness},
+        blocking=True,
+    )
+    await _wait_until_stale_events_flushed(entity_id)
+
+
 def _handle_off_to_on(hass: HomeAssistant, entity_id: str, new_state: State) -> None:
     """Handle OFF -> ON transition by restoring original brightness."""
     if DOMAIN not in hass.data:
@@ -708,12 +724,7 @@ def _handle_off_to_on(hass: HomeAssistant, entity_id: str, new_state: State) -> 
     if orig_brightness > 0 and current_brightness != orig_brightness:
         _LOGGER.debug("(%s) -> Restoring to brightness %s", entity_id, orig_brightness)
         hass.async_create_task(
-            hass.services.async_call(
-                LIGHT_DOMAIN,
-                SERVICE_TURN_ON,
-                {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: orig_brightness},
-                blocking=True,
-            )
+            _restore_original_brightness(hass, entity_id, orig_brightness)
         )
 
 
