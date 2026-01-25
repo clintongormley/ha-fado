@@ -605,9 +605,11 @@ def _log_state_change(entity_id: str, new_state: State) -> None:
 
 def _is_expected_fade_state(entity_id: str, new_state: State) -> bool:
     """Check if state matches expected fade values (within tolerance)."""
-    expected_values = FADE_EXPECTED_BRIGHTNESS.get(entity_id)
-    if expected_values is None:
+    expected_state = FADE_EXPECTED_BRIGHTNESS.get(entity_id)
+    if expected_state is None:
         return False
+
+    expected_values = expected_state.values
     new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
 
     if new_state.state == STATE_OFF and 0 in expected_values:
