@@ -43,7 +43,6 @@ from .const import (
     DEFAULT_TRANSITION,
     DOMAIN,
     FADE_CANCEL_TIMEOUT_S,
-    FADE_CLEANUP_DELAY_S,
     OPTION_DEFAULT_BRIGHTNESS_PCT,
     OPTION_DEFAULT_TRANSITION,
     OPTION_MIN_STEP_DELAY_MS,
@@ -843,22 +842,24 @@ async def _restore_manual_state(
     # Restore if current differs from intended
     if intended == 0 and current != 0:
         _LOGGER.debug("(%s) -> turning light off as intended", entity_id)
+        _add_expected_brightness(entity_id, 0)
         await hass.services.async_call(
             LIGHT_DOMAIN,
             SERVICE_TURN_OFF,
             {ATTR_ENTITY_ID: entity_id},
             blocking=True,
         )
-        await asyncio.sleep(FADE_CLEANUP_DELAY_S)
+        await _wait_until_stale_events_flushed(entity_id)
     elif intended > 0 and current != intended:
         _LOGGER.debug("(%s) -> setting light brightness (%s) as intended", entity_id, intended)
+        _add_expected_brightness(entity_id, intended)
         await hass.services.async_call(
             LIGHT_DOMAIN,
             SERVICE_TURN_ON,
             {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: intended},
             blocking=True,
         )
-        await asyncio.sleep(FADE_CLEANUP_DELAY_S)
+        await _wait_until_stale_events_flushed(entity_id)
 
     _clear_fade_interrupted(entity_id)
 
