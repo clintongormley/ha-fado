@@ -623,6 +623,50 @@ def _is_expected_fade_state(entity_id: str, new_state: State) -> bool:
     return False
 
 
+def _match_and_remove_expected(entity_id: str, new_state: State) -> bool:
+    """Check if state matches expected, remove if found, notify if empty.
+
+    Returns True if this was an expected state change (caller should ignore it).
+    """
+    expected_state = FADE_EXPECTED_BRIGHTNESS.get(entity_id)
+    if not expected_state or not expected_state.values:
+        return False
+
+    new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
+    matched_value: int | None = None
+
+    # Check for OFF match
+    if new_state.state == STATE_OFF and 0 in expected_state.values:
+        matched_value = 0
+    # Check for brightness match with tolerance
+    elif new_state.state == STATE_ON and new_brightness is not None:
+        for expected in expected_state.values:
+            if expected > 0 and abs(new_brightness - expected) <= BRIGHTNESS_TOLERANCE:
+                matched_value = expected
+                break
+
+    if matched_value is None:
+        return False
+
+    # Remove matched value
+    del expected_state.values[matched_value]
+    _LOGGER.debug(
+        "(%s) -> Matched expected brightness %s, remaining: %s",
+        entity_id,
+        matched_value,
+        list(expected_state.values.keys()),
+    )
+
+    # Notify condition if set is now empty
+    if not expected_state.values and expected_state.condition is not None:
+        # Schedule notification (can't await in callback)
+        asyncio.get_event_loop().call_soon(
+            lambda c=expected_state.condition: asyncio.create_task(_notify_condition(c))
+        )
+
+    return True
+
+
 # --- State Transition Predicates ---
 
 
