@@ -17,7 +17,6 @@ from custom_components.fade_lights import (
     ExpectedState,
     _add_expected_brightness,
     _match_and_remove_expected,
-    _prune_expected_brightness,
     _wait_until_stale_events_flushed,
 )
 
@@ -184,41 +183,54 @@ async def test_match_and_remove_expected_notifies_condition(
     FADE_EXPECTED_BRIGHTNESS.pop(entity_id, None)
 
 
-async def test_prune_expected_brightness_removes_stale(
+async def test_get_condition_prunes_stale_values(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
 ) -> None:
-    """Test _prune_expected_brightness removes old values."""
-    entity_id = "light.test_prune"
-
-    # Create entry with old timestamp (6 seconds ago)
+    """Test get_condition prunes stale values before returning."""
+    # Create entry with old timestamp (6 seconds ago) and fresh timestamp
     old_timestamp = time.monotonic() - 6.0
-    FADE_EXPECTED_BRIGHTNESS[entity_id] = ExpectedState(values={100: old_timestamp})
+    fresh_timestamp = time.monotonic()
+    expected_state = ExpectedState(values={100: old_timestamp, 200: fresh_timestamp})
 
-    _prune_expected_brightness(entity_id)
+    # get_condition should prune stale values
+    expected_state.get_condition()
 
-    # Entry should be completely removed since it's now empty
-    assert entity_id not in FADE_EXPECTED_BRIGHTNESS
+    # Stale value should be removed, fresh value should remain
+    assert 100 not in expected_state.values
+    assert 200 in expected_state.values
 
 
-async def test_prune_expected_brightness_keeps_fresh(
+async def test_get_condition_prunes_all_stale_values(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
 ) -> None:
-    """Test _prune_expected_brightness keeps fresh values."""
-    entity_id = "light.test_prune_fresh"
+    """Test get_condition prunes all stale values."""
+    # Create entry with only old timestamps
+    old_timestamp = time.monotonic() - 6.0
+    expected_state = ExpectedState(values={100: old_timestamp, 150: old_timestamp})
 
-    # Create entry with fresh timestamp
-    FADE_EXPECTED_BRIGHTNESS[entity_id] = ExpectedState(values={100: time.monotonic()})
+    # get_condition should prune all stale values
+    expected_state.get_condition()
 
-    _prune_expected_brightness(entity_id)
+    # All values should be removed
+    assert expected_state.is_empty
 
-    # Entry should still exist
-    assert entity_id in FADE_EXPECTED_BRIGHTNESS
-    assert 100 in FADE_EXPECTED_BRIGHTNESS[entity_id].values
 
-    # Clean up
-    FADE_EXPECTED_BRIGHTNESS.pop(entity_id, None)
+async def test_get_condition_keeps_fresh_values(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+) -> None:
+    """Test get_condition keeps fresh values."""
+    # Create entry with fresh timestamps
+    expected_state = ExpectedState(values={100: time.monotonic(), 200: time.monotonic()})
+
+    # get_condition should not remove fresh values
+    expected_state.get_condition()
+
+    # Both values should remain
+    assert 100 in expected_state.values
+    assert 200 in expected_state.values
 
 
 async def test_wait_until_stale_events_flushed_returns_immediately_when_empty(
