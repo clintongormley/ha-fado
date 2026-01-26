@@ -85,12 +85,33 @@ class ExpectedState:
         _LOGGER.debug("ExpectedState.add(%s) -> values=%s", brightness, list(self.values.keys()))
 
     def get_condition(self) -> asyncio.Condition:
-        """Get or create the condition for waiting."""
+        """Get or create the condition for waiting, pruning stale values first."""
         _LOGGER.debug("ExpectedState.get_condition() values=%s", list(self.values.keys()))
-        self._prune()
+
+        # Prune stale values
+        now = time.monotonic()
+        stale_keys = [
+            brightness
+            for brightness, timestamp in self.values.items()
+            if now - timestamp > self.STALE_THRESHOLD
+        ]
+        if stale_keys:
+            _LOGGER.debug("ExpectedState.get_condition() removing stale keys: %s", stale_keys)
+        for key in stale_keys:
+            del self.values[key]
+
         _LOGGER.debug("ExpectedState.get_condition() after prune=%s", list(self.values.keys()))
+
         if self._condition is None:
             self._condition = asyncio.Condition()
+
+        # Notify if all values were pruned
+        if not self.values:
+            _LOGGER.debug("ExpectedState.get_condition -> values empty, notifying condition")
+            asyncio.get_event_loop().call_soon(
+                lambda c=self._condition: asyncio.create_task(self._notify(c))
+            )
+
         return self._condition
 
     def match_and_remove(self, brightness: int) -> int | None:
@@ -136,26 +157,6 @@ class ExpectedState:
             )
 
         return matched_value
-
-    def _prune(self) -> None:
-        """Remove values older than stale_threshold seconds."""
-        now = time.monotonic()
-        stale_keys = [
-            brightness
-            for brightness, timestamp in self.values.items()
-            if now - timestamp > self.STALE_THRESHOLD
-        ]
-        if stale_keys:
-            _LOGGER.debug("ExpectedState._prune() removing stale keys: %s", stale_keys)
-        for key in stale_keys:
-            del self.values[key]
-
-        # Notify condition if all values were pruned
-        if not self.values and self._condition is not None:
-            _LOGGER.debug("ExpectedState._prune -> values empty, notifying condition")
-            asyncio.get_event_loop().call_soon(
-                lambda c=self._condition: asyncio.create_task(self._notify(c))
-            )
 
     @property
     def is_empty(self) -> bool:
