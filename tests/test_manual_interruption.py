@@ -746,12 +746,12 @@ async def test_stale_event_suppressed_during_fade_cleanup(
         FADE_INTERRUPTED.pop(entity_id, None)
 
 
-async def test_restore_manual_state_turn_off_when_current_is_on(
+async def test_restore_intended_state_turn_off_when_current_is_on(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
     service_calls: list[ServiceCall],
 ) -> None:
-    """Test _restore_manual_state turns light off when intended is OFF but current is ON.
+    """Test _restore_intended_state turns light off when intended is OFF but current is ON.
 
     This tests the branch at lines 734-742 where intended=0 and current!=0.
     The scenario: user turns light OFF, but a late fade event turns it back ON,
@@ -759,7 +759,7 @@ async def test_restore_manual_state_turn_off_when_current_is_on(
     """
     from unittest.mock import MagicMock
 
-    from custom_components.fade_lights import _restore_manual_state
+    from custom_components.fade_lights import _restore_intended_state
 
     entity_id = "light.test_restore_off"
 
@@ -789,9 +789,9 @@ async def test_restore_manual_state_turn_off_when_current_is_on(
     new_state.attributes = {ATTR_BRIGHTNESS: None}
 
     try:
-        # Call _restore_manual_state directly
+        # Call _restore_intended_state directly
         # intended will be 0 (OFF), current will be 150 (ON) - should trigger turn_off
-        await _restore_manual_state(hass, entity_id, old_state, new_state)
+        await _restore_intended_state(hass, entity_id, old_state, new_state)
         await hass.async_block_till_done()
         await asyncio.sleep(0.2)
         await hass.async_block_till_done()
@@ -805,12 +805,12 @@ async def test_restore_manual_state_turn_off_when_current_is_on(
         FADE_INTERRUPTED.pop(entity_id, None)
 
 
-async def test_restore_manual_state_turn_on_when_brightness_differs(
+async def test_restore_intended_state_turn_on_when_brightness_differs(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
     service_calls: list[ServiceCall],
 ) -> None:
-    """Test _restore_manual_state restores brightness when intended differs from current.
+    """Test _restore_intended_state restores brightness when intended differs from current.
 
     This tests the branch at lines 744-751 where intended>0 and current!=intended.
     """
@@ -857,7 +857,7 @@ async def test_restore_manual_state_turn_on_when_brightness_differs(
         )
         await hass.async_block_till_done()
 
-        # Allow time for manual intervention detection and _restore_manual_state
+        # Allow time for manual intervention detection and _restore_intended_state
         await asyncio.sleep(0.2)
 
         # Allow fake fade to complete so cleanup happens
@@ -880,12 +880,12 @@ async def test_restore_manual_state_turn_on_when_brightness_differs(
             await fake_task
 
 
-async def test_restore_manual_state_off_to_on_uses_original_brightness(
+async def test_restore_intended_state_off_to_on_uses_original_brightness(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
     service_calls: list[ServiceCall],
 ) -> None:
-    """Test _restore_manual_state uses original brightness for OFF->ON transition.
+    """Test _restore_intended_state uses original brightness for OFF->ON transition.
 
     This tests the _get_intended_brightness OFF->ON path at lines 680-683.
     When user turns light ON from OFF during a fade, we restore to original brightness.
@@ -1043,10 +1043,10 @@ async def test_get_intended_brightness_returns_none_when_integration_unloaded(
     assert result is None
 
 
-async def test_restore_manual_state_exits_early_when_intended_none(
+async def test_restore_intended_state_exits_early_when_intended_none(
     hass: HomeAssistant,
 ) -> None:
-    """Test _restore_manual_state exits early when intended brightness is None.
+    """Test _restore_intended_state exits early when intended brightness is None.
 
     This tests lines 713-714 where intended is None (integration unloaded).
     """
@@ -1054,7 +1054,7 @@ async def test_restore_manual_state_exits_early_when_intended_none(
 
     from custom_components.fade_lights import (
         FADE_INTERRUPTED,
-        _restore_manual_state,
+        _restore_intended_state,
     )
 
     entity_id = "light.test_restore"
@@ -1070,17 +1070,17 @@ async def test_restore_manual_state_exits_early_when_intended_none(
         new_state.state = STATE_ON
         new_state.attributes = {ATTR_BRIGHTNESS: 150}
 
-        await _restore_manual_state(hass, entity_id, old_state, new_state)
+        await _restore_intended_state(hass, entity_id, old_state, new_state)
 
     # FADE_INTERRUPTED should be cleared even when exiting early
     assert entity_id not in FADE_INTERRUPTED
 
 
-async def test_restore_manual_state_exits_when_entity_removed(
+async def test_restore_intended_state_exits_when_entity_removed(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,
 ) -> None:
-    """Test _restore_manual_state exits when entity is removed after fade cleanup.
+    """Test _restore_intended_state exits when entity is removed after fade cleanup.
 
     This tests lines 724-726 where current_state is None.
     """
@@ -1088,7 +1088,7 @@ async def test_restore_manual_state_exits_when_entity_removed(
 
     from custom_components.fade_lights import (
         FADE_INTERRUPTED,
-        _restore_manual_state,
+        _restore_intended_state,
     )
 
     entity_id = "light.removed_during_restore"
@@ -1106,7 +1106,7 @@ async def test_restore_manual_state_exits_when_entity_removed(
     new_state.attributes = {ATTR_BRIGHTNESS: 150}
 
     # Call with a non-existent entity - should exit after getting no current_state
-    await _restore_manual_state(hass, entity_id, old_state, new_state)
+    await _restore_intended_state(hass, entity_id, old_state, new_state)
 
     # FADE_INTERRUPTED should be cleared even when entity doesn't exist
     assert entity_id not in FADE_INTERRUPTED

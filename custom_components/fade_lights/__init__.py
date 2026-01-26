@@ -252,7 +252,7 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event) -> None:
             new_state.attributes.get(ATTR_BRIGHTNESS),
         )
         FADE_INTERRUPTED[entity_id] = True
-        hass.async_create_task(_restore_manual_state(hass, entity_id, old_state, new_state))
+        hass.async_create_task(_restore_intended_state(hass, entity_id, old_state, new_state))
         return
 
     # Normal state handling (no active fade)
@@ -812,7 +812,7 @@ def _get_intended_brightness(
     return new_brightness
 
 
-async def _restore_manual_state(
+async def _restore_intended_state(
     hass: HomeAssistant,
     entity_id: str,
     old_state,
@@ -833,7 +833,7 @@ async def _restore_manual_state(
     if DOMAIN not in hass.data:
         _clear_fade_interrupted(entity_id)
         return
-    _LOGGER.debug("(%s) -> in _restore_manual_state", entity_id)
+    _LOGGER.debug("(%s) -> in _restore_intended_state", entity_id)
     await _cancel_and_wait_for_fade(entity_id)
 
     intended = _get_intended_brightness(hass, entity_id, old_state, new_state)
