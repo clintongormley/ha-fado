@@ -90,29 +90,23 @@ class ExpectedState:
             self._condition = asyncio.Condition()
         return self._condition
 
-    def match_and_remove(
-        self,
-        state: str,
-        brightness: int | None,
-    ) -> int | None:
-        """Match state against expected values, remove if found, notify if empty.
+    def match_and_remove(self, brightness: int) -> int | None:
+        """Match brightness against expected values, remove if found, notify if empty.
 
         Args:
-            state: The light state (STATE_ON or STATE_OFF)
-            brightness: The brightness value from the state (None if off)
+            brightness: The brightness value to match (0 for off)
 
         Returns:
             The matched brightness value, or None if no match.
         """
         matched_value: int | None = None
 
-        # Check for OFF match
-        if state == STATE_OFF and 0 in self.values:
-            matched_value = 0
-        # Check for brightness match with tolerance
-        elif state == STATE_ON and brightness is not None:
+        if brightness == 0:
+            if 0 in self.values:
+                matched_value = 0
+        else:
             for expected in self.values:
-                if expected > 0 and abs(brightness - expected) <= self.BRIGHTNESS_TOLERANCE:
+                if abs(brightness - expected) <= self.BRIGHTNESS_TOLERANCE:
                     matched_value = expected
                     break
 
@@ -674,8 +668,15 @@ def _match_and_remove_expected(entity_id: str, new_state: State) -> bool:
     if not expected_state or expected_state.is_empty:
         return False
 
-    new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
-    matched = expected_state.match_and_remove(new_state.state, new_brightness)
+    # Normalize state to brightness: OFF -> 0, ON -> actual brightness
+    if new_state.state == STATE_OFF:
+        brightness = 0
+    else:
+        brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
+        if brightness is None:
+            return False
+
+    matched = expected_state.match_and_remove(brightness)
 
     if matched is not None:
         _LOGGER.debug(
