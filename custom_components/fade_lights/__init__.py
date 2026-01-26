@@ -150,6 +150,13 @@ class ExpectedState:
         for key in stale_keys:
             del self.values[key]
 
+        # Notify condition if all values were pruned
+        if not self.values and self._condition is not None:
+            _LOGGER.debug("ExpectedState._prune -> values empty, notifying condition")
+            asyncio.get_event_loop().call_soon(
+                lambda c=self._condition: asyncio.create_task(self._notify(c))
+            )
+
     @property
     def is_empty(self) -> bool:
         """Check if there are no expected values."""
