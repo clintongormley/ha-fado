@@ -170,12 +170,8 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event) -> None:
         _LOGGER.debug("(%s) -> State matches expected, removed from tracking", entity_id)
         return
 
-    # During fade: check if this is our fade or manual intervention
+    # During fade: if we get here, state didn't match expected - manual intervention
     if entity_id in ACTIVE_FADES and entity_id in FADE_EXPECTED_BRIGHTNESS:
-        if _is_expected_fade_state(entity_id, new_state):
-            _LOGGER.debug("(%s) -> State matches expected during fade, ignoring", entity_id)
-            return
-
         # Manual intervention detected
         _LOGGER.debug(
             "(%s) -> Manual intervention during fade: got=%s/%s",
@@ -600,27 +596,7 @@ def _log_state_change(entity_id: str, new_state: State) -> None:
     )
 
 
-# --- Fade State Detection ---
-
-
-def _is_expected_fade_state(entity_id: str, new_state: State) -> bool:
-    """Check if state matches expected fade values (within tolerance)."""
-    expected_state = FADE_EXPECTED_BRIGHTNESS.get(entity_id)
-    if expected_state is None:
-        return False
-
-    expected_values = expected_state.values
-    new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
-
-    if new_state.state == STATE_OFF and 0 in expected_values:
-        return True
-
-    if new_state.state == STATE_ON and new_brightness is not None:
-        for expected in expected_values:
-            if expected > 0 and abs(new_brightness - expected) <= BRIGHTNESS_TOLERANCE:
-                return True
-
-    return False
+# --- Expected State Matching ---
 
 
 def _match_and_remove_expected(entity_id: str, new_state: State) -> bool:
