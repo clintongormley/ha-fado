@@ -7,7 +7,6 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -38,6 +37,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     ATTR_BRIGHTNESS_PCT,
     ATTR_TRANSITION,
+    BRIGHTNESS_TOLERANCE,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_MIN_STEP_DELAY_MS,
     DEFAULT_TRANSITION,
@@ -47,6 +47,7 @@ from .const import (
     OPTION_DEFAULT_TRANSITION,
     OPTION_MIN_STEP_DELAY_MS,
     SERVICE_FADE_LIGHTS,
+    STALE_THRESHOLD,
     STORAGE_KEY,
 )
 
@@ -73,9 +74,6 @@ FADE_CANCEL_EVENTS: dict[str, asyncio.Event] = {}
 class ExpectedState:
     """Track expected brightness values and provide synchronization for waiting."""
 
-    STALE_THRESHOLD: ClassVar[float] = 5.0  # seconds before a value is considered stale
-    BRIGHTNESS_TOLERANCE: ClassVar[int] = 3  # tolerance for brightness matching
-
     values: dict[int, float] = field(default_factory=dict)  # brightness -> timestamp
     _condition: asyncio.Condition | None = field(default=None, repr=False)
 
@@ -93,7 +91,7 @@ class ExpectedState:
         stale_keys = [
             brightness
             for brightness, timestamp in self.values.items()
-            if now - timestamp > self.STALE_THRESHOLD
+            if now - timestamp > STALE_THRESHOLD
         ]
         if stale_keys:
             _LOGGER.debug("ExpectedState.get_condition() removing stale keys: %s", stale_keys)
@@ -133,7 +131,7 @@ class ExpectedState:
                 matched_value = 0
         else:
             for expected in self.values:
-                if abs(brightness - expected) <= self.BRIGHTNESS_TOLERANCE:
+                if abs(brightness - expected) <= BRIGHTNESS_TOLERANCE:
                     matched_value = expected
                     break
 
