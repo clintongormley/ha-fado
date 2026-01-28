@@ -36,8 +36,16 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     ATTR_BRIGHTNESS_PCT,
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_FROM,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_RGBW_COLOR,
+    ATTR_RGBWW_COLOR,
     ATTR_TRANSITION,
+    ATTR_XY_COLOR,
     BRIGHTNESS_TOLERANCE,
+    COLOR_PARAMS,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_MIN_STEP_DELAY_MS,
     DEFAULT_TRANSITION,
@@ -229,6 +237,19 @@ class FadeParams:
     from_color_temp_mireds: int | None = None
 
 
+def _validate_color_params(data: dict) -> None:
+    """Validate that at most one color parameter is specified.
+
+    Raises:
+        ServiceValidationError: If multiple color parameters are provided.
+    """
+    specified = [param for param in COLOR_PARAMS if param in data]
+    if len(specified) > 1:
+        raise ServiceValidationError(
+            f"Only one color parameter allowed, got: {', '.join(sorted(specified))}"
+        )
+
+
 # =============================================================================
 # Integration Setup
 # =============================================================================
@@ -318,6 +339,9 @@ async def _handle_fade_lights(hass: HomeAssistant, call: ServiceCall) -> None:
     default_brightness = domain_data.get("default_brightness", DEFAULT_BRIGHTNESS_PCT)
     default_transition = domain_data.get("default_transition", DEFAULT_TRANSITION)
     min_step_delay_ms = domain_data.get("min_step_delay_ms", DEFAULT_MIN_STEP_DELAY_MS)
+
+    # Validate color parameters
+    _validate_color_params(call.data)
 
     brightness_pct = int(call.data.get(ATTR_BRIGHTNESS_PCT, default_brightness))
     transition_ms = int(1000 * float(call.data.get(ATTR_TRANSITION, default_transition)))
