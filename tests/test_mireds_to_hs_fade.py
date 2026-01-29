@@ -45,9 +45,7 @@ class TestMiredsToHsFade:
     """Integration tests for mireds-to-HS transitions."""
 
     @pytest.mark.asyncio
-    async def test_color_temp_to_hs_uses_hybrid_fade(
-        self, mock_hass, color_temp_light_state
-    ):
+    async def test_color_temp_to_hs_uses_hybrid_fade(self, mock_hass, color_temp_light_state):
         """Test that COLOR_TEMP mode light fading to HS uses hybrid transition."""
         mock_hass.states.get = MagicMock(return_value=color_temp_light_state)
 
@@ -58,10 +56,9 @@ class TestMiredsToHsFade:
             hs_color=(0.0, 100.0),  # Red
         )
 
-        with patch(
-            "custom_components.fade_lights._build_mireds_to_hs_steps"
-        ) as mock_builder, patch(
-            "custom_components.fade_lights._save_storage", new_callable=AsyncMock
+        with (
+            patch("custom_components.fade_lights._build_mireds_to_hs_steps") as mock_builder,
+            patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock),
         ):
             mock_builder.return_value = [
                 FadeStep(color_temp_mireds=300),
@@ -104,12 +101,10 @@ class TestMiredsToHsFade:
             hs_color=(0.0, 100.0),
         )
 
-        with patch(
-            "custom_components.fade_lights._build_mireds_to_hs_steps"
-        ) as mock_hybrid, patch(
-            "custom_components.fade_lights._build_fade_steps"
-        ) as mock_standard, patch(
-            "custom_components.fade_lights._save_storage", new_callable=AsyncMock
+        with (
+            patch("custom_components.fade_lights._build_mireds_to_hs_steps") as mock_hybrid,
+            patch("custom_components.fade_lights._build_fade_steps") as mock_standard,
+            patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock),
         ):
             mock_standard.return_value = [FadeStep(hs_color=(0.0, 100.0))]
 
@@ -126,9 +121,7 @@ class TestMiredsToHsFade:
             mock_hybrid.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_color_temp_to_mireds_uses_standard_fade(
-        self, mock_hass, color_temp_light_state
-    ):
+    async def test_color_temp_to_mireds_uses_standard_fade(self, mock_hass, color_temp_light_state):
         """Test that COLOR_TEMP to mireds uses standard fade (no mode switch needed)."""
         mock_hass.states.get = MagicMock(return_value=color_temp_light_state)
 
@@ -139,10 +132,9 @@ class TestMiredsToHsFade:
             color_temp_mireds=200,  # Target is mireds, not HS
         )
 
-        with patch(
-            "custom_components.fade_lights._build_mireds_to_hs_steps"
-        ) as mock_hybrid, patch(
-            "custom_components.fade_lights._save_storage", new_callable=AsyncMock
+        with (
+            patch("custom_components.fade_lights._build_mireds_to_hs_steps") as mock_hybrid,
+            patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock),
         ):
             await _execute_fade(
                 mock_hass,
