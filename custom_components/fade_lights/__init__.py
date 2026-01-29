@@ -987,8 +987,6 @@ def _build_hs_to_mireds_steps(
     Returns:
         List of FadeStep objects transitioning from HS to mireds
     """
-    max_steps = max(1, transition_ms // min_step_delay_ms)
-
     # If already on locus, just do mireds-based fading
     if _is_on_planckian_locus(start_hs):
         start_mireds = _hs_to_mireds(start_hs)
@@ -1007,10 +1005,29 @@ def _build_hs_to_mireds_steps(
     # Get the target HS on the locus (what the end_mireds looks like in HS)
     target_locus_hs = _mireds_to_hs(end_mireds)
 
-    # Calculate how much of the transition is HS->locus vs locus->mireds
+    # Calculate changes for HS phase
+    hue_diff = abs(start_hs[0] - target_locus_hs[0])
+    if hue_diff > 180:
+        hue_diff = 360 - hue_diff
+    sat_diff = abs(start_hs[1] - target_locus_hs[1])
+
+    # Calculate changes for mireds phase
+    locus_mireds = _hs_to_mireds(target_locus_hs)
+    mireds_diff = abs(end_mireds - locus_mireds)
+
+    # Calculate total step count based on all changes
+    total_steps = _calculate_step_count(
+        brightness_change=None,
+        hue_change=hue_diff,
+        sat_change=sat_diff,
+        mireds_change=mireds_diff,
+        transition_ms=transition_ms,
+        min_step_delay_ms=min_step_delay_ms,
+    )
+
     # Use 70% of steps for HS transition, 30% for final mireds adjustment
-    hs_steps_count = max(1, int(max_steps * 0.7))
-    mireds_steps_count = max(1, max_steps - hs_steps_count)
+    hs_steps_count = max(1, int(total_steps * 0.7))
+    mireds_steps_count = max(1, total_steps - hs_steps_count)
 
     steps = []
 
@@ -1022,7 +1039,6 @@ def _build_hs_to_mireds_steps(
         steps.append(FadeStep(hs_color=(round(hue, 2), round(sat, 2))))
 
     # Phase 2: Mireds from locus point to target
-    locus_mireds = _hs_to_mireds(target_locus_hs)
     for i in range(1, mireds_steps_count + 1):
         t = i / mireds_steps_count
         mireds = round(locus_mireds + (end_mireds - locus_mireds) * t)
