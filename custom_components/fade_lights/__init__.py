@@ -842,6 +842,66 @@ def _get_current_color_state(state: State) -> tuple[tuple[float, float] | None, 
     return hs_color, color_temp_mireds
 
 
+def _resolve_start_brightness(params: FadeParams, state: dict) -> int | None:
+    """Resolve starting brightness from params.from_brightness_pct or current state.
+
+    Args:
+        params: FadeParams with optional from_brightness_pct
+        state: Light attributes dict from state.attributes
+
+    Returns:
+        Starting brightness (0-255 scale), or None if not available
+    """
+    if params.from_brightness_pct is not None:
+        return int(params.from_brightness_pct * 255 / 100)
+    return state.get(ATTR_BRIGHTNESS)
+
+
+def _resolve_end_brightness(params: FadeParams, state: dict) -> int | None:
+    """Resolve ending brightness from params.brightness_pct.
+
+    Args:
+        params: FadeParams with optional brightness_pct
+        state: Light attributes dict (unused, kept for API consistency)
+
+    Returns:
+        Ending brightness (0-255 scale), or None if not specified
+    """
+    if params.brightness_pct is not None:
+        return int(params.brightness_pct * 255 / 100)
+    return None
+
+
+def _resolve_start_hs(params: FadeParams, state: dict) -> tuple[float, float] | None:
+    """Resolve starting HS from params.from_hs_color or current state.
+
+    Args:
+        params: FadeParams with optional from_hs_color
+        state: Light attributes dict from state.attributes
+
+    Returns:
+        Starting HS color (hue 0-360, saturation 0-100), or None if not available
+    """
+    if params.from_hs_color is not None:
+        return params.from_hs_color
+    return state.get(HA_ATTR_HS_COLOR)
+
+
+def _resolve_start_mireds(params: FadeParams, state: dict) -> int | None:
+    """Resolve starting mireds from params.from_color_temp_mireds or current state.
+
+    Args:
+        params: FadeParams with optional from_color_temp_mireds
+        state: Light attributes dict from state.attributes
+
+    Returns:
+        Starting color temperature in mireds, or None if not available
+    """
+    if params.from_color_temp_mireds is not None:
+        return params.from_color_temp_mireds
+    return state.get("color_temp")
+
+
 async def _sleep_remaining_step_time(step_start: float, delay_ms: float) -> None:
     """Sleep for the remaining time in a fade step.
 
