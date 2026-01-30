@@ -197,10 +197,15 @@ class FadeChange:
 
         Returns:
             Interpolated brightness, or None if brightness not set.
+            Skips brightness level 1 (many lights behave oddly at this level).
         """
         if self.start_brightness is None or self.end_brightness is None:
             return None
-        return round(self.start_brightness + (self.end_brightness - self.start_brightness) * t)
+        brightness = round(self.start_brightness + (self.end_brightness - self.start_brightness) * t)
+        # Skip brightness level 1 (many lights behave oddly at this level)
+        if brightness == 1:
+            brightness = 0 if self.end_brightness < self.start_brightness else 2
+        return brightness
 
     def _interpolate_hs(self, t: float) -> tuple[float, float] | None:
         """Interpolate HS color at factor t, handling hue wraparound.
