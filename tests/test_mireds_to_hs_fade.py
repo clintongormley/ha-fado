@@ -48,8 +48,7 @@ class TestMiredsToHsFade:
     async def test_color_temp_to_hs_uses_hybrid_fade(self, mock_hass, color_temp_light_state):
         """Test that COLOR_TEMP mode light fading to HS uses hybrid transition.
 
-        The new implementation uses _calculate_changes which returns FadeChange
-        phases directly, rather than calling _build_mireds_to_hs_steps.
+        Uses _calculate_changes which returns FadeChange phases directly.
         """
         mock_hass.states.get = MagicMock(return_value=color_temp_light_state)
 
