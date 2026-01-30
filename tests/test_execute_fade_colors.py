@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.fade_lights import _execute_fade
-from custom_components.fade_lights.models import FadeParams
+from custom_components.fade_lights.fade_params import FadeParams
 
 
 @pytest.fixture

@@ -20,7 +20,7 @@ from custom_components.fade_lights.const import (
     DOMAIN,
     SERVICE_FADE_LIGHTS,
 )
-from custom_components.fade_lights.models import FadeParams
+from custom_components.fade_lights.fade_params import FadeParams
 
 
 class TestCanFadeColor:
