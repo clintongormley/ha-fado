@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.components.light import ATTR_BRIGHTNESS
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN as HA_ATTR_COLOR_TEMP_KELVIN
 from homeassistant.components.light import ATTR_HS_COLOR as HA_ATTR_HS_COLOR
 from homeassistant.const import STATE_ON
 
@@ -30,15 +31,15 @@ def mock_state_on_with_color():
 
 
 @pytest.fixture
-def mock_state_on_with_mireds():
-    """Create a mock state that is ON with brightness and color temp."""
+def mock_state_on_with_kelvin():
+    """Create a mock state that is ON with brightness and color temp kelvin."""
     state = MagicMock()
     state.state = STATE_ON
     state.entity_id = "light.test"
     state.domain = "light"
     state.attributes = {
         ATTR_BRIGHTNESS: 200,
-        "color_temp": 333,  # mireds
+        HA_ATTR_COLOR_TEMP_KELVIN: 3003,  # ~333 mireds equivalent
     }
     return state
 
@@ -73,27 +74,27 @@ class TestManualInterventionColors:
         result = _match_and_remove_expected(entity_id, mock_state_on_with_color)
         assert result is False  # Unexpected - should trigger intervention
 
-    def test_state_matches_expected_brightness_and_mireds(self, mock_state_on_with_mireds):
-        """Test state change matches when both brightness and mireds match."""
+    def test_state_matches_expected_brightness_and_kelvin(self, mock_state_on_with_kelvin):
+        """Test state change matches when both brightness and kelvin match."""
         entity_id = "light.test"
         FADE_EXPECTED_STATE[entity_id] = ExpectedState(entity_id=entity_id)
         FADE_EXPECTED_STATE[entity_id].add(
-            ExpectedValues(brightness=200, color_temp_mireds=333)
+            ExpectedValues(brightness=200, color_temp_kelvin=3003)
         )
 
-        result = _match_and_remove_expected(entity_id, mock_state_on_with_mireds)
+        result = _match_and_remove_expected(entity_id, mock_state_on_with_kelvin)
         assert result is True  # Expected
 
-    def test_state_mismatch_wrong_mireds_triggers_intervention(self, mock_state_on_with_mireds):
-        """Test state mismatch when mireds is wrong triggers intervention."""
+    def test_state_mismatch_wrong_kelvin_triggers_intervention(self, mock_state_on_with_kelvin):
+        """Test state mismatch when kelvin is wrong triggers intervention."""
         entity_id = "light.test"
         FADE_EXPECTED_STATE[entity_id] = ExpectedState(entity_id=entity_id)
-        # Expecting different mireds (250 vs actual 333 - outside tolerance)
+        # Expecting different kelvin (4000 vs actual 3003 - outside tolerance of 100)
         FADE_EXPECTED_STATE[entity_id].add(
-            ExpectedValues(brightness=200, color_temp_mireds=250)
+            ExpectedValues(brightness=200, color_temp_kelvin=4000)
         )
 
-        result = _match_and_remove_expected(entity_id, mock_state_on_with_mireds)
+        result = _match_and_remove_expected(entity_id, mock_state_on_with_kelvin)
         assert result is False  # Unexpected - should trigger intervention
 
     def test_brightness_only_fade_ignores_color_changes(self, mock_state_on_with_color):

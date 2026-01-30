@@ -62,10 +62,9 @@ class TestApplyStep:
         )
 
     @pytest.mark.asyncio
-    async def test_color_temp_converts_mireds_to_kelvin(self, mock_hass: MagicMock) -> None:
-        """Test applying color temp converts mireds to kelvin."""
-        # 250 mireds = 4000K
-        step = FadeStep(color_temp_mireds=250)
+    async def test_color_temp_kelvin_passed_directly(self, mock_hass: MagicMock) -> None:
+        """Test applying color temp passes kelvin directly."""
+        step = FadeStep(color_temp_kelvin=4000)
         await _apply_step(mock_hass, "light.test", step)
 
         mock_hass.services.async_call.assert_called_once_with(
@@ -91,8 +90,7 @@ class TestApplyStep:
     @pytest.mark.asyncio
     async def test_brightness_and_color_temp(self, mock_hass: MagicMock) -> None:
         """Test applying a step with brightness and color temp."""
-        # 400 mireds = 2500K
-        step = FadeStep(brightness=150, color_temp_mireds=400)
+        step = FadeStep(brightness=150, color_temp_kelvin=2500)
         await _apply_step(mock_hass, "light.test", step)
 
         mock_hass.services.async_call.assert_called_once_with(

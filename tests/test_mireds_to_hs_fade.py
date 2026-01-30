@@ -64,11 +64,9 @@ class TestColorTempToHsFade:
 
         with patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock):
             # Use resolve_fade to verify it returns hybrid FadeChange
-            supported_modes = {ColorMode.COLOR_TEMP, ColorMode.HS}
             change = resolve_fade(
                 fade_params,
                 color_temp_light_state.attributes,
-                supported_modes,
                 min_step_delay_ms=100,
             )
 
@@ -115,11 +113,9 @@ class TestColorTempToHsFade:
 
         with patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock):
             # Use resolve_fade to verify it returns non-hybrid FadeChange
-            supported_modes = {ColorMode.COLOR_TEMP, ColorMode.HS}
             change = resolve_fade(
                 fade_params,
                 hs_state.attributes,
-                supported_modes,
                 min_step_delay_ms=100,
             )
 
@@ -152,11 +148,9 @@ class TestColorTempToHsFade:
 
         with patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock):
             # Use resolve_fade to verify it returns non-hybrid FadeChange
-            supported_modes = {ColorMode.COLOR_TEMP, ColorMode.HS}
             change = resolve_fade(
                 fade_params,
                 color_temp_light_state.attributes,
-                supported_modes,
                 min_step_delay_ms=100,
             )
 
@@ -185,11 +179,9 @@ class TestColorTempToHsFade:
             transition_ms=3000,
         )
 
-        supported_modes = {ColorMode.COLOR_TEMP, ColorMode.HS}
         change = resolve_fade(
             fade_params,
             color_temp_light_state.attributes,
-            supported_modes,
             min_step_delay_ms=100,
         )
 
@@ -237,11 +229,9 @@ class TestHsToColorTempFade:
         )
 
         with patch("custom_components.fade_lights._save_storage", new_callable=AsyncMock):
-            supported_modes = {ColorMode.COLOR_TEMP, ColorMode.HS}
             change = resolve_fade(
                 fade_params,
                 hs_state.attributes,
-                supported_modes,
                 min_step_delay_ms=100,
             )
 
@@ -279,11 +269,9 @@ class TestHsToColorTempFade:
             transition_ms=3000,
         )
 
-        supported_modes = {ColorMode.COLOR_TEMP, ColorMode.HS}
         change = resolve_fade(
             fade_params,
             hs_state.attributes,
-            supported_modes,
             min_step_delay_ms=100,
         )
 

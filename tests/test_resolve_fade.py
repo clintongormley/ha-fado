@@ -23,29 +23,32 @@ class TestResolveFadeBasicStructure:
             ATTR_BRIGHTNESS: 100,
             ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
         }
-        supported_modes = {ColorMode.BRIGHTNESS}
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert isinstance(change, FadeChange)
 
     def test_returns_none_when_nothing_to_fade(self) -> None:
         """Test that None is returned when there's nothing to change."""
         params = FadeParams(transition_ms=1000)  # No target values
-        state = {ATTR_BRIGHTNESS: 100}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 100,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is None
 
     def test_returns_none_when_target_equals_current(self) -> None:
         """Test that None is returned when target equals current state."""
         params = FadeParams(brightness_pct=50, transition_ms=1000)  # 50% = 127
-        state = {ATTR_BRIGHTNESS: 127}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 127,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is None
 
@@ -56,10 +59,12 @@ class TestResolveFadeSimpleBrightnessFade:
     def test_brightness_fade_values(self) -> None:
         """Test that brightness values are correctly resolved."""
         params = FadeParams(brightness_pct=75, transition_ms=1000)
-        state = {ATTR_BRIGHTNESS: 100}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 100,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_brightness == 100
@@ -73,10 +78,12 @@ class TestResolveFadeSimpleBrightnessFade:
             from_brightness_pct=25,
             transition_ms=1000,
         )
-        state = {ATTR_BRIGHTNESS: 200}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 200,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # 25% of 255 = 63
@@ -86,10 +93,12 @@ class TestResolveFadeSimpleBrightnessFade:
     def test_brightness_fade_no_color_attributes(self) -> None:
         """Test that brightness-only fade has no color attributes."""
         params = FadeParams(brightness_pct=50, transition_ms=1000)
-        state = {ATTR_BRIGHTNESS: 100}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 100,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_hs is None
@@ -107,10 +116,12 @@ class TestResolveFadeSimpleHsFade:
             hs_color=(120.0, 80.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (60.0, 50.0)}
-        supported_modes = {ColorMode.HS}
+        state = {
+            HA_ATTR_HS_COLOR: (60.0, 50.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_hs == (60.0, 50.0)
@@ -123,10 +134,12 @@ class TestResolveFadeSimpleHsFade:
             from_hs_color=(0.0, 100.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (180.0, 50.0)}
-        supported_modes = {ColorMode.HS}
+        state = {
+            HA_ATTR_HS_COLOR: (180.0, 50.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_hs == (0.0, 100.0)
@@ -138,10 +151,12 @@ class TestResolveFadeSimpleHsFade:
             hs_color=(120.0, 80.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (60.0, 50.0)}
-        supported_modes = {ColorMode.HS}
+        state = {
+            HA_ATTR_HS_COLOR: (60.0, 50.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_mireds is None
@@ -157,10 +172,12 @@ class TestResolveFadeSimpleColorTempFade:
             color_temp_kelvin=2500,  # 400 mireds
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 5000}  # 200 mireds
-        supported_modes = {ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 5000,  # 200 mireds
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_mireds == 200
@@ -173,10 +190,12 @@ class TestResolveFadeSimpleColorTempFade:
             from_color_temp_kelvin=6500,  # 153 mireds (int(1_000_000/6500))
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3000}  # ~333 mireds
-        supported_modes = {ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 3000,  # ~333 mireds
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_mireds == 153
@@ -188,10 +207,12 @@ class TestResolveFadeSimpleColorTempFade:
             color_temp_kelvin=3000,  # ~333 mireds
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 4000}  # ~250 mireds
-        supported_modes = {ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 4000,  # ~250 mireds
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.start_hs is None
@@ -208,10 +229,12 @@ class TestResolveFadeHybridTransitions:
             transition_ms=1000,
         )
         # High saturation HS (off Planckian locus)
-        state = {HA_ATTR_HS_COLOR: (120.0, 80.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 80.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should be hybrid - has _hybrid_direction set
@@ -226,10 +249,12 @@ class TestResolveFadeHybridTransitions:
             hs_color=(120.0, 80.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3000}  # ~333 mireds
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 3000,  # ~333 mireds
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should be hybrid - has _hybrid_direction set
@@ -245,10 +270,12 @@ class TestResolveFadeHybridTransitions:
             transition_ms=1000,
         )
         # Low saturation HS (on Planckian locus)
-        state = {HA_ATTR_HS_COLOR: (35.0, 10.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (35.0, 10.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should NOT be hybrid
@@ -260,10 +287,12 @@ class TestResolveFadeHybridTransitions:
             hs_color=(240.0, 100.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (120.0, 80.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 80.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change._hybrid_direction is None
@@ -275,10 +304,12 @@ class TestResolveFadeHybridTransitions:
             color_temp_kelvin=3000,  # And also color temp target
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (120.0, 80.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 80.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change._hybrid_direction is None
@@ -293,10 +324,12 @@ class TestResolveFadeHybridStepGeneration:
             color_temp_kelvin=3000,
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (120.0, 80.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 80.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change._hybrid_direction == "hs_to_mireds"
@@ -312,10 +345,12 @@ class TestResolveFadeHybridStepGeneration:
             color_temp_kelvin=3000,
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (120.0, 80.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 80.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         crossover = change._crossover_step or 0
@@ -340,10 +375,12 @@ class TestResolveFadeHybridStepGeneration:
             hs_color=(120.0, 80.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3000}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 3000,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change._hybrid_direction == "mireds_to_hs"
@@ -359,10 +396,12 @@ class TestResolveFadeHybridStepGeneration:
             hs_color=(120.0, 80.0),
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3000}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 3000,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
 
@@ -387,10 +426,12 @@ class TestResolveFadeNonDimmableLights:
     def test_non_dimmable_light_returns_single_step(self) -> None:
         """Test that non-dimmable light gets single step FadeChange."""
         params = FadeParams(brightness_pct=100, transition_ms=1000)
-        state = {ATTR_BRIGHTNESS: 0}
-        supported_modes = {ColorMode.ONOFF}  # On/off only
+        state = {
+            ATTR_BRIGHTNESS: 0,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.ONOFF],  # On/off only
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.end_brightness == 255
@@ -400,10 +441,12 @@ class TestResolveFadeNonDimmableLights:
     def test_non_dimmable_light_turns_off(self) -> None:
         """Test that non-dimmable light can be turned off."""
         params = FadeParams(brightness_pct=0, transition_ms=1000)
-        state = {ATTR_BRIGHTNESS: 255}
-        supported_modes = {ColorMode.ONOFF}
+        state = {
+            ATTR_BRIGHTNESS: 255,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.ONOFF],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.end_brightness == 0
@@ -415,10 +458,11 @@ class TestResolveFadeNonDimmableLights:
             hs_color=(120.0, 80.0),  # This should be ignored
             transition_ms=1000,
         )
-        state = {}
-        supported_modes = {ColorMode.ONOFF}
+        state = {
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.ONOFF],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.end_hs is None
@@ -434,10 +478,12 @@ class TestResolveFadeCapabilityFiltering:
             color_temp_kelvin=3000,  # Target color temp
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (120.0, 50.0)}
-        supported_modes = {ColorMode.HS}  # Only HS, no COLOR_TEMP
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 50.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS],  # Only HS, no COLOR_TEMP
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should have converted to HS
@@ -450,10 +496,12 @@ class TestResolveFadeCapabilityFiltering:
             hs_color=(120.0, 80.0),  # High saturation - can't convert
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3000}
-        supported_modes = {ColorMode.COLOR_TEMP}  # Only color temp, no HS
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 3000,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],  # Only color temp, no HS
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         # Should return None since HS can't be applied
         assert change is None
@@ -464,10 +512,12 @@ class TestResolveFadeCapabilityFiltering:
             hs_color=(35.0, 10.0),  # On locus - can convert
             transition_ms=1000,
         )
-        state = {HA_ATTR_COLOR_TEMP_KELVIN: 5000}
-        supported_modes = {ColorMode.COLOR_TEMP}  # Only color temp
+        state = {
+            HA_ATTR_COLOR_TEMP_KELVIN: 5000,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],  # Only color temp
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should have converted to mireds
@@ -481,10 +531,12 @@ class TestResolveFadeTimingParameters:
     def test_transition_ms_passed_to_change(self) -> None:
         """Test that transition_ms is passed to FadeChange."""
         params = FadeParams(brightness_pct=50, transition_ms=2000)
-        state = {ATTR_BRIGHTNESS: 100}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 100,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.transition_ms == 2000
@@ -492,10 +544,12 @@ class TestResolveFadeTimingParameters:
     def test_min_step_delay_ms_passed_to_change(self) -> None:
         """Test that min_step_delay_ms is passed to FadeChange."""
         params = FadeParams(brightness_pct=50, transition_ms=1000)
-        state = {ATTR_BRIGHTNESS: 100}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 100,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=75)
+        change = resolve_fade(params, state, min_step_delay_ms=75)
 
         assert change is not None
         assert change.min_step_delay_ms == 75
@@ -507,10 +561,11 @@ class TestResolveFadeEdgeCases:
     def test_empty_state(self) -> None:
         """Test with empty state dictionary (light off)."""
         params = FadeParams(brightness_pct=50, transition_ms=1000)
-        state = {}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # When light is off (no brightness in state), start_brightness is 0
@@ -524,10 +579,12 @@ class TestResolveFadeEdgeCases:
             transition_ms=1000,
         )
         # Saturation at threshold (15) - should be on locus
-        state = {HA_ATTR_HS_COLOR: (35.0, 15.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (35.0, 15.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # On locus means NOT hybrid
@@ -540,10 +597,12 @@ class TestResolveFadeEdgeCases:
             transition_ms=1000,
         )
         # Saturation just above threshold (16) - should be off locus
-        state = {HA_ATTR_HS_COLOR: (35.0, 16.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (35.0, 16.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Off locus means hybrid
@@ -556,10 +615,12 @@ class TestResolveFadeFadeChangeIterator:
     def test_simple_change_generates_steps(self) -> None:
         """Test that simple FadeChange can generate steps."""
         params = FadeParams(brightness_pct=50, transition_ms=1000)
-        state = {ATTR_BRIGHTNESS: 200}
-        supported_modes = {ColorMode.BRIGHTNESS}
+        state = {
+            ATTR_BRIGHTNESS: 200,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         assert change.step_count() >= 1
@@ -578,10 +639,12 @@ class TestResolveFadeFadeChangeIterator:
             color_temp_kelvin=3000,
             transition_ms=1000,
         )
-        state = {HA_ATTR_HS_COLOR: (120.0, 80.0)}
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
+        state = {
+            HA_ATTR_HS_COLOR: (120.0, 80.0),
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
+        }
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
 

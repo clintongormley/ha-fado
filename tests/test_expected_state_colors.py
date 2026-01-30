@@ -94,35 +94,35 @@ class TestExpectedStateColorMatching:
         assert result.hs_color == (358.0, 50.0)
         assert state.is_empty
 
-    def test_match_mireds_only(self) -> None:
-        """Test matching when only mireds is tracked."""
+    def test_match_kelvin_only(self) -> None:
+        """Test matching when only kelvin is tracked."""
         state = ExpectedState(entity_id="light.test")
-        state.add(ExpectedValues(color_temp_mireds=300))
+        state.add(ExpectedValues(color_temp_kelvin=3333))
 
         # Exact match
-        result = state.match_and_remove(ExpectedValues(color_temp_mireds=300))
+        result = state.match_and_remove(ExpectedValues(color_temp_kelvin=3333))
         assert result is not None
-        assert result.color_temp_mireds == 300
+        assert result.color_temp_kelvin == 3333
         assert state.is_empty
 
-    def test_match_mireds_with_tolerance(self) -> None:
-        """Test mireds within +/-10 tolerance matches."""
+    def test_match_kelvin_with_tolerance(self) -> None:
+        """Test kelvin within +/-100 tolerance matches."""
         state = ExpectedState(entity_id="light.test")
-        state.add(ExpectedValues(color_temp_mireds=300))
+        state.add(ExpectedValues(color_temp_kelvin=3333))
 
-        # Within tolerance (+10)
-        result = state.match_and_remove(ExpectedValues(color_temp_mireds=310))
+        # Within tolerance (+100)
+        result = state.match_and_remove(ExpectedValues(color_temp_kelvin=3433))
         assert result is not None
-        assert result.color_temp_mireds == 300
+        assert result.color_temp_kelvin == 3333
         assert state.is_empty
 
-    def test_no_match_mireds_outside_tolerance(self) -> None:
-        """Test mireds outside tolerance doesn't match."""
+    def test_no_match_kelvin_outside_tolerance(self) -> None:
+        """Test kelvin outside tolerance doesn't match."""
         state = ExpectedState(entity_id="light.test")
-        state.add(ExpectedValues(color_temp_mireds=300))
+        state.add(ExpectedValues(color_temp_kelvin=3333))
 
-        # Outside tolerance (+11)
-        result = state.match_and_remove(ExpectedValues(color_temp_mireds=311))
+        # Outside tolerance (+101)
+        result = state.match_and_remove(ExpectedValues(color_temp_kelvin=3434))
         assert result is None
         assert not state.is_empty
 

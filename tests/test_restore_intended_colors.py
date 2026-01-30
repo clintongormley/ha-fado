@@ -78,18 +78,18 @@ class TestRestoreIntendedColors:
         # Old state
         old_state = MagicMock()
         old_state.state = STATE_ON
-        old_state.attributes = {ATTR_BRIGHTNESS: 100, "color_temp": 300}
+        old_state.attributes = {ATTR_BRIGHTNESS: 100, HA_ATTR_COLOR_TEMP_KELVIN: 3333}
 
-        # New state (the manual intervention)
+        # New state (the manual intervention) - user set to 2500K
         new_state = MagicMock()
         new_state.state = STATE_ON
         new_state.entity_id = entity_id
-        new_state.attributes = {ATTR_BRIGHTNESS: 150, "color_temp": 400}
+        new_state.attributes = {ATTR_BRIGHTNESS: 150, HA_ATTR_COLOR_TEMP_KELVIN: 2500}
 
-        # Current state after fade cleanup (different from intended)
+        # Current state after fade cleanup (different from intended) - at 4000K
         current_state = MagicMock()
         current_state.state = STATE_ON
-        current_state.attributes = {ATTR_BRIGHTNESS: 80, "color_temp": 250}
+        current_state.attributes = {ATTR_BRIGHTNESS: 80, HA_ATTR_COLOR_TEMP_KELVIN: 4000}
         mock_hass.states.get.return_value = current_state
 
         with (
@@ -104,13 +104,12 @@ class TestRestoreIntendedColors:
         ):
             await _restore_intended_state(mock_hass, entity_id, old_state, new_state)
 
-        # Verify service call includes color temp (converted to kelvin)
+        # Verify service call includes color temp in kelvin
         mock_hass.services.async_call.assert_called()
         call_args = mock_hass.services.async_call.call_args
         service_data = call_args[0][2]
 
         assert service_data.get(ATTR_BRIGHTNESS) == 150
-        # 400 mireds = 2500K
         assert service_data.get(HA_ATTR_COLOR_TEMP_KELVIN) == 2500
 
     @pytest.mark.asyncio
