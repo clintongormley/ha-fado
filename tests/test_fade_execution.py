@@ -408,10 +408,10 @@ async def test_fade_stores_orig_brightness(
     )
     await hass.async_block_till_done()
 
-    # Check that the original brightness was stored (flat map: entity_id -> brightness)
+    # Check that the original brightness was stored (nested: entity_id -> {orig_brightness: ...})
     storage_data = hass.data[DOMAIN]["data"]
     assert entity_id in storage_data
-    assert storage_data[entity_id] == 153  # 60% of 255
+    assert storage_data[entity_id]["orig_brightness"] == 153  # 60% of 255
 
 
 async def test_fade_from_off_turns_on(

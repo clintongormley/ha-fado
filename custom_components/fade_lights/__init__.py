@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import asyncio
 import logging
 import time
@@ -986,17 +988,31 @@ async def _wait_until_stale_events_flushed(
 # =============================================================================
 
 
+def _get_light_config(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
+    """Get per-light configuration.
+
+    Returns the config dict for the light, or empty dict if not configured.
+    """
+    return hass.data.get(DOMAIN, {}).get("data", {}).get(entity_id, {})
+
+
 def _get_orig_brightness(hass: HomeAssistant, entity_id: str) -> int:
     """Get stored original brightness for an entity."""
-    storage_data = hass.data.get(DOMAIN, {}).get("data", {})
-    return storage_data.get(entity_id, 0)
+    config = _get_light_config(hass, entity_id)
+    if isinstance(config, dict):
+        return config.get("orig_brightness", 0)
+    # Legacy format: direct int value (shouldn't happen with new storage)
+    return config if isinstance(config, int) else 0
 
 
 def _store_orig_brightness(hass: HomeAssistant, entity_id: str, level: int) -> None:
     """Store original brightness for an entity."""
     if DOMAIN not in hass.data:
         return
-    hass.data[DOMAIN]["data"][entity_id] = level
+    data = hass.data[DOMAIN]["data"]
+    if entity_id not in data:
+        data[entity_id] = {}
+    data[entity_id]["orig_brightness"] = level
 
 
 async def _save_storage(hass: HomeAssistant) -> None:

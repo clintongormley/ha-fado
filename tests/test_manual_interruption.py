@@ -238,7 +238,7 @@ async def test_manual_turn_off_preserves_orig_brightness(
     assert entity_id in ACTIVE_FADES
     storage_data = hass.data[DOMAIN]["data"]
     assert entity_id in storage_data
-    assert storage_data[entity_id] == initial_brightness
+    assert storage_data[entity_id]["orig_brightness"] == initial_brightness
 
     # Simulate turning off the light manually (interrupting fade)
     hass.states.async_set(
@@ -256,7 +256,7 @@ async def test_manual_turn_off_preserves_orig_brightness(
     assert entity_id not in ACTIVE_FADES
 
     # Original brightness should still be the pre-fade value
-    assert storage_data[entity_id] == initial_brightness
+    assert storage_data[entity_id]["orig_brightness"] == initial_brightness
 
     # Clean up
     fade_task.cancel()
@@ -368,7 +368,7 @@ async def test_manual_change_during_fade_updates_orig(
     # Verify orig brightness was stored at fade start
     storage_data = hass.data[DOMAIN]["data"]
     assert entity_id in storage_data
-    assert storage_data[entity_id] == 200
+    assert storage_data[entity_id]["orig_brightness"] == 200
 
     # Simulate a manual brightness change to 150 (interrupting the fade)
     hass.states.async_set(
@@ -386,7 +386,7 @@ async def test_manual_change_during_fade_updates_orig(
 
     # Original brightness should now be 150 (the manual change), not 200
     # This is the user's new intended brightness level
-    assert storage_data[entity_id] == 150
+    assert storage_data[entity_id]["orig_brightness"] == 150
 
     # Clean up
     fade_task.cancel()
@@ -425,7 +425,7 @@ async def test_manual_change_without_fade_stores_new_orig(
     # Check that the new brightness was stored as original (since no fade was active)
     storage_data = hass.data[DOMAIN]["data"]
     assert entity_id in storage_data
-    assert storage_data[entity_id] == 150
+    assert storage_data[entity_id]["orig_brightness"] == 150
 
 
 async def test_group_changes_ignored(
@@ -465,9 +465,9 @@ async def test_group_changes_ignored(
     # trigger any storage updates or actions that would affect member lights
     # (Groups are detected by having entity_id attribute and are ignored)
 
-    # First, set up storage data for the regular light (flat map: entity_id -> brightness)
-    hass.data[DOMAIN]["data"][regular_light] = 200
-    original_value = hass.data[DOMAIN]["data"][regular_light]
+    # First, set up storage data for the regular light (nested format)
+    hass.data[DOMAIN]["data"][regular_light] = {"orig_brightness": 200}
+    original_value = hass.data[DOMAIN]["data"][regular_light]["orig_brightness"]
 
     # Now simulate a brightness change on the group light
     hass.states.async_set(
@@ -485,7 +485,7 @@ async def test_group_changes_ignored(
     assert group_light not in hass.data[DOMAIN]["data"]
 
     # The regular light's stored brightness should be unchanged
-    assert hass.data[DOMAIN]["data"][regular_light] == original_value
+    assert hass.data[DOMAIN]["data"][regular_light]["orig_brightness"] == original_value
 
 
 async def test_brightness_tolerance_allows_rounding(
@@ -731,8 +731,8 @@ async def test_restore_intended_state_turn_off_when_current_is_on(
         },
     )
 
-    # Store original brightness
-    hass.data[DOMAIN]["data"][entity_id] = 200
+    # Store original brightness (nested format)
+    hass.data[DOMAIN]["data"][entity_id] = {"orig_brightness": 200}
 
     # Create mock old_state (was ON) and new_state (user turned OFF)
     old_state = MagicMock()
@@ -784,8 +784,8 @@ async def test_restore_intended_state_turn_on_when_brightness_differs(
         },
     )
 
-    # Store original brightness
-    hass.data[DOMAIN]["data"][entity_id] = initial_brightness
+    # Store original brightness (nested format)
+    hass.data[DOMAIN]["data"][entity_id] = {"orig_brightness": initial_brightness}
 
     # Simulate that we're expecting brightness 100 (mid-fade) but user set 150
     FADE_EXPECTED_STATE[entity_id] = ExpectedState(
@@ -825,7 +825,7 @@ async def test_restore_intended_state_turn_on_when_brightness_differs(
         await hass.async_block_till_done()
 
         # The original brightness should be updated to the user's intended brightness
-        assert hass.data[DOMAIN]["data"][entity_id] == intended_brightness
+        assert hass.data[DOMAIN]["data"][entity_id]["orig_brightness"] == intended_brightness
 
     finally:
         # Clean up
@@ -861,8 +861,8 @@ async def test_restore_intended_state_off_to_on_uses_original_brightness(
         },
     )
 
-    # Store original brightness (from before the fade started)
-    hass.data[DOMAIN]["data"][entity_id] = original_brightness
+    # Store original brightness (from before the fade started, nested format)
+    hass.data[DOMAIN]["data"][entity_id] = {"orig_brightness": original_brightness}
 
     # Simulate that we're expecting brightness 50 (near end of fade to 0%)
     FADE_EXPECTED_STATE[entity_id] = ExpectedState(
@@ -903,7 +903,7 @@ async def test_restore_intended_state_off_to_on_uses_original_brightness(
         await hass.async_block_till_done()
 
         # The original brightness should be preserved
-        assert hass.data[DOMAIN]["data"][entity_id] == original_brightness
+        assert hass.data[DOMAIN]["data"][entity_id]["orig_brightness"] == original_brightness
 
     finally:
         # Clean up
@@ -1151,8 +1151,8 @@ async def test_restore_intended_state_when_entity_removed(
     hass.states.async_remove(entity_id)
     await hass.async_block_till_done()
 
-    # Store original brightness
-    hass.data[DOMAIN]["data"][entity_id] = 200
+    # Store original brightness (nested format)
+    hass.data[DOMAIN]["data"][entity_id] = {"orig_brightness": 200}
 
     old_state = MagicMock()
     old_state.state = STATE_ON
@@ -1206,8 +1206,8 @@ async def test_second_manual_event_during_restore_appends_to_queue(
     )
     await hass.async_block_till_done()
 
-    # Store original brightness
-    hass.data[DOMAIN]["data"][entity_id] = 200
+    # Store original brightness (nested format)
+    hass.data[DOMAIN]["data"][entity_id] = {"orig_brightness": 200}
 
     # Create a mock task to simulate a running restore task
     # Using MagicMock avoids async timing issues
