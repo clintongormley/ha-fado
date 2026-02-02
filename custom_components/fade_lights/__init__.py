@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import asyncio
@@ -9,6 +10,8 @@ import logging
 import time
 
 import voluptuous as vol
+from homeassistant.components import panel_custom
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_SUPPORTED_COLOR_MODES,
@@ -150,6 +153,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register WebSocket API
     async_register_websocket_api(hass)
+
+    # Register panel (only if HTTP component is available - won't be in tests)
+    if hass.http is not None:
+        # Register static path for frontend files
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(
+                "/fade_lights_panel",
+                str(Path(__file__).parent / "frontend"),
+                cache_headers=False,  # Disable caching during development
+            )]
+        )
+
+        # Register the panel
+        await panel_custom.async_register_panel(
+            hass,
+            frontend_url_path="fade-lights",
+            webcomponent_name="fade-lights-panel",
+            sidebar_title="Fade Lights",
+            sidebar_icon="mdi:lightbulb-variant",
+            module_url="/fade_lights_panel/panel.js",
+            require_admin=False,
+        )
 
     return True
 
