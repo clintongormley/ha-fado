@@ -556,6 +556,10 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event[EventStateChang
 
     entity_id = new_state.entity_id
 
+    # Skip excluded lights entirely
+    if _get_light_config(hass, entity_id).get("exclude", False):
+        return
+
     # Check if this is an expected state change (from our service calls)
     if _match_and_remove_expected(entity_id, new_state):
         return
