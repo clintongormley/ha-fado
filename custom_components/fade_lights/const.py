@@ -123,3 +123,8 @@ MIN_MIREDS_DELTA = 5  # mireds (~150-500 typical range)
 # For hs_to_mireds: 70% of steps in HS phase, 30% in mireds phase
 # For mireds_to_hs: inverted (30% mireds, 70% HS)
 HYBRID_HS_PHASE_RATIO = 0.7
+
+# Autoconfigure feature settings (for measuring optimal min_delay_ms)
+AUTOCONFIGURE_ITERATIONS = 10  # Number of times to test each light
+AUTOCONFIGURE_TIMEOUT_S = 5  # Timeout for each state change wait (seconds)
+AUTOCONFIGURE_MAX_PARALLEL = 5  # Maximum lights to test in parallel
