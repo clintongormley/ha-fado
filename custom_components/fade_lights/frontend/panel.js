@@ -214,6 +214,18 @@ class FadeLightsPanel extends LitElement {
       .with-floor .no-lights {
         margin-left: 16px;
       }
+
+      .testing-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .test-error {
+        color: var(--error-color, #db4437);
+        font-size: 12px;
+        margin-top: 4px;
+      }
     `;
   }
 
@@ -645,6 +657,8 @@ class FadeLightsPanel extends LitElement {
     const lightIcon = light.icon || "mdi:lightbulb";
     const state = this.hass.states[light.entity_id];
     const isOn = state && state.state === "on";
+    const isTesting = this._testing.has(light.entity_id);
+    const errorMessage = this._testErrors.get(light.entity_id);
 
     return html`
       <tr>
@@ -658,15 +672,21 @@ class FadeLightsPanel extends LitElement {
           </div>
         </td>
         <td class="col-delay">
-          <input
-            type="number"
-            min="50"
-            max="1000"
-            step="10"
-            placeholder="default"
-            .value=${light.min_delay_ms || ""}
-            @change=${(e) => this._handleDelayChange(light.entity_id, e)}
-          />
+          ${isTesting
+            ? html`<div class="testing-spinner"><ha-circular-progress active size="small"></ha-circular-progress></div>`
+            : html`
+                <input
+                  type="number"
+                  min="50"
+                  max="1000"
+                  step="10"
+                  placeholder="default"
+                  .value=${light.min_delay_ms || ""}
+                  @change=${(e) => this._handleDelayChange(light.entity_id, e)}
+                />
+                ${errorMessage ? html`<div class="test-error">${errorMessage}</div>` : ""}
+              `
+          }
         </td>
         <td class="col-exclude">
           <input
@@ -678,6 +698,7 @@ class FadeLightsPanel extends LitElement {
         <td class="col-configure">
           <input
             type="checkbox"
+            ?disabled=${isTesting}
             .checked=${this._configureChecked.has(light.entity_id)}
             @change=${(e) => this._handleConfigureChange(light.entity_id, e)}
           />
