@@ -237,6 +237,10 @@ class FadeLightsPanel extends LitElement {
     if (this._fetchTimeout) {
       clearTimeout(this._fetchTimeout);
     }
+    if (this._autoconfigureUnsub) {
+      this._autoconfigureUnsub();
+      this._autoconfigureUnsub = null;
+    }
   }
 
   updated(changedProperties) {
@@ -428,8 +432,9 @@ class FadeLightsPanel extends LitElement {
     const checkedCount = this._configureChecked.size;
 
     if (testingCount > 0) {
-      const completed = checkedCount - testingCount;
-      return `Testing... (${completed}/${checkedCount})`;
+      // Use _totalToTest as denominator for accurate progress
+      const completed = this._totalToTest - testingCount;
+      return `Testing... (${completed}/${this._totalToTest})`;
     }
     if (checkedCount > 0) {
       return `Autoconfigure (${checkedCount})`;
@@ -502,7 +507,10 @@ class FadeLightsPanel extends LitElement {
     // Check if testing is complete (all done)
     if (this._testing.size === 0 && this._configureChecked.size === 0) {
       // All done, clean up
-      this._autoconfigureUnsub = null;
+      if (this._autoconfigureUnsub) {
+        this._autoconfigureUnsub();
+        this._autoconfigureUnsub = null;
+      }
     }
   }
 
