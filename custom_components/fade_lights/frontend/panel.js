@@ -441,12 +441,94 @@ class FadeLightsPanel extends LitElement {
     return this._configureChecked.size === 0 || this._testing.size > 0;
   }
 
+  async _runAutoconfigure() {
+    const entityIds = Array.from(this._configureChecked);
+    if (entityIds.length === 0) {
+      return;
+    }
+
+    this._testErrors = new Map();
+    this._totalToTest = entityIds.length;
+
+    try {
+      const unsub = await this.hass.connection.subscribeMessage(
+        (event) => this._handleAutoconfigureEvent(event),
+        { type: "fade_lights/autoconfigure", entity_ids: entityIds }
+      );
+      // Store unsub function if we need to cancel later
+      this._autoconfigureUnsub = unsub;
+    } catch (err) {
+      console.error("Failed to start autoconfigure:", err);
+      this._testing = new Set();
+    }
+  }
+
+  _handleAutoconfigureEvent(event) {
+    if (event.type === "started") {
+      // Add to testing set
+      const newTesting = new Set(this._testing);
+      newTesting.add(event.entity_id);
+      this._testing = newTesting;
+    } else if (event.type === "result") {
+      // Remove from testing
+      const newTesting = new Set(this._testing);
+      newTesting.delete(event.entity_id);
+      this._testing = newTesting;
+
+      // Update local data with new min_delay_ms
+      this._updateLightDelay(event.entity_id, event.min_delay_ms);
+
+      // Uncheck from configure
+      const newChecked = new Set(this._configureChecked);
+      newChecked.delete(event.entity_id);
+      this._configureChecked = newChecked;
+    } else if (event.type === "error") {
+      // Remove from testing
+      const newTesting = new Set(this._testing);
+      newTesting.delete(event.entity_id);
+      this._testing = newTesting;
+
+      // Add to errors
+      const newErrors = new Map(this._testErrors);
+      newErrors.set(event.entity_id, event.message);
+      this._testErrors = newErrors;
+
+      // Uncheck from configure (even on error)
+      const newChecked = new Set(this._configureChecked);
+      newChecked.delete(event.entity_id);
+      this._configureChecked = newChecked;
+    }
+
+    // Check if testing is complete (all done)
+    if (this._testing.size === 0 && this._configureChecked.size === 0) {
+      // All done, clean up
+      this._autoconfigureUnsub = null;
+    }
+  }
+
+  _updateLightDelay(entityId, minDelayMs) {
+    // Find and update the light in _data
+    if (!this._data?.floors) return;
+
+    for (const floor of this._data.floors) {
+      for (const area of floor.areas) {
+        const light = area.lights.find((l) => l.entity_id === entityId);
+        if (light) {
+          light.min_delay_ms = minDelayMs;
+          this.requestUpdate(); // Trigger re-render
+          return;
+        }
+      }
+    }
+  }
+
   _renderHeader() {
     return html`
       <div class="header">
         <h1>Fade Lights</h1>
         <mwc-button
           ?disabled=${this._isButtonDisabled()}
+          @click=${this._runAutoconfigure}
         >${this._getButtonText()}</mwc-button>
       </div>
     `;
