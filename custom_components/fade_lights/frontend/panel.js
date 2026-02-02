@@ -14,6 +14,8 @@ class FadeLightsPanel extends LitElement {
       _loading: { type: Boolean },
       _collapsed: { type: Object },
       _configureChecked: { type: Object },
+      _testing: { type: Object },
+      _testErrors: { type: Object },
     };
   }
 
@@ -27,9 +29,28 @@ class FadeLightsPanel extends LitElement {
       }
 
       h1 {
-        margin: 0 0 16px 0;
+        margin: 0;
         font-size: 24px;
         font-weight: 400;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .header h1 {
+        margin: 0;
+      }
+
+      mwc-button {
+        --mdc-theme-primary: var(--primary-color);
+      }
+
+      mwc-button[disabled] {
+        --mdc-theme-primary: var(--disabled-text-color);
       }
 
       .floor-section {
@@ -202,6 +223,8 @@ class FadeLightsPanel extends LitElement {
     this._loading = true;
     this._collapsed = this._loadCollapsedState();
     this._configureChecked = new Set();
+    this._testing = new Set();
+    this._testErrors = new Map();
   }
 
   connectedCallback() {
@@ -400,19 +423,48 @@ class FadeLightsPanel extends LitElement {
     return this._data.floors.some((floor) => floor.floor_id !== null);
   }
 
+  _getButtonText() {
+    const testingCount = this._testing.size;
+    const checkedCount = this._configureChecked.size;
+
+    if (testingCount > 0) {
+      const completed = checkedCount - testingCount;
+      return `Testing... (${completed}/${checkedCount})`;
+    }
+    if (checkedCount > 0) {
+      return `Autoconfigure (${checkedCount})`;
+    }
+    return "Autoconfigure";
+  }
+
+  _isButtonDisabled() {
+    return this._configureChecked.size === 0 || this._testing.size > 0;
+  }
+
+  _renderHeader() {
+    return html`
+      <div class="header">
+        <h1>Fade Lights</h1>
+        <mwc-button
+          ?disabled=${this._isButtonDisabled()}
+        >${this._getButtonText()}</mwc-button>
+      </div>
+    `;
+  }
+
   render() {
     if (this._loading) {
-      return html`<h1>Fade Lights</h1><p>Loading...</p>`;
+      return html`${this._renderHeader()}<p>Loading...</p>`;
     }
 
     if (!this._data || !this._data.floors) {
-      return html`<h1>Fade Lights</h1><p>No lights found.</p>`;
+      return html`${this._renderHeader()}<p>No lights found.</p>`;
     }
 
     const hasRealFloors = this._hasRealFloors();
 
     return html`
-      <h1>Fade Lights</h1>
+      ${this._renderHeader()}
       ${hasRealFloors
         ? this._data.floors.map((floor) => this._renderFloor(floor))
         : this._renderAreasOnly()}
