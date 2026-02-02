@@ -372,3 +372,359 @@ class TestLightDelayCalculation:
         for average, expected in test_cases:
             result = math.ceil(average / 10) * 10
             assert result == expected, f"Expected {expected} for average {average}, got {result}"
+
+
+class TestWsAutoconfigure:
+    """Tests for ws_autoconfigure WebSocket handler."""
+
+    @pytest.fixture
+    def mock_multiple_lights(self, hass: HomeAssistant) -> list[str]:
+        """Create multiple mock lights for testing."""
+        entity_ids = []
+        for i in range(10):
+            entity_id = f"light.test_ws_{i}"
+            hass.states.async_set(
+                entity_id,
+                STATE_ON,
+                {
+                    ATTR_BRIGHTNESS: 200,
+                    ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+                },
+            )
+            entity_ids.append(entity_id)
+        return entity_ids
+
+    @pytest.fixture
+    def mock_light_group_for_ws(
+        self, hass: HomeAssistant, mock_multiple_lights: list[str]
+    ) -> str:
+        """Create a mock light group containing lights 0-2."""
+        entity_id = "light.ws_group"
+        hass.states.async_set(
+            entity_id,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 150,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+                ATTR_ENTITY_ID: mock_multiple_lights[:3],
+            },
+        )
+        return entity_id
+
+    async def test_autoconfigure_respects_parallel_limit(
+        self,
+        hass: HomeAssistant,
+        hass_ws_client,
+        init_integration,
+        mock_multiple_lights: list[str],
+    ) -> None:
+        """Verify semaphore limits concurrency to AUTOCONFIGURE_MAX_PARALLEL (5)."""
+        from custom_components.fade_lights.const import AUTOCONFIGURE_MAX_PARALLEL
+
+        # Track maximum concurrent tests
+        current_concurrent = 0
+        max_concurrent = 0
+        lock = asyncio.Lock()
+
+        async def mock_test_light_delay(hass: HomeAssistant, entity_id: str) -> dict:
+            """Mock that tracks concurrent execution."""
+            nonlocal current_concurrent, max_concurrent
+            async with lock:
+                current_concurrent += 1
+                max_concurrent = max(max_concurrent, current_concurrent)
+
+            # Simulate some work to allow other tasks to run
+            await asyncio.sleep(0.05)
+
+            async with lock:
+                current_concurrent -= 1
+
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with patch(
+            "custom_components.fade_lights.autoconfigure.async_test_light_delay",
+            side_effect=mock_test_light_delay,
+        ):
+            client = await hass_ws_client(hass)
+
+            # Test all 10 lights
+            await client.send_json({
+                "id": 1,
+                "type": "fade_lights/autoconfigure",
+                "entity_ids": mock_multiple_lights,
+            })
+
+            # Collect all events until we get the final result
+            events = []
+            while True:
+                msg = await client.receive_json()
+                if msg["type"] == "result":
+                    break
+                events.append(msg)
+
+        # Verify the parallel limit was respected
+        assert max_concurrent <= AUTOCONFIGURE_MAX_PARALLEL
+        # With 10 lights and limit of 5, we should have hit at least some concurrency
+        assert max_concurrent >= 1
+
+    async def test_autoconfigure_streams_results(
+        self,
+        hass: HomeAssistant,
+        hass_ws_client,
+        init_integration,
+        service_calls_with_state_update: list[ServiceCall],
+    ) -> None:
+        """Verify events sent as lights complete (started, result, error)."""
+        # Create test lights
+        entity_id_success = "light.stream_test_success"
+        entity_id_error = "light.stream_test_error"
+
+        hass.states.async_set(
+            entity_id_success,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 200,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+            },
+        )
+        hass.states.async_set(
+            entity_id_error,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 200,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+            },
+        )
+
+        call_count = 0
+
+        async def mock_test_light_delay(hass: HomeAssistant, entity_id: str) -> dict:
+            """Mock that returns success or error based on entity."""
+            nonlocal call_count
+            call_count += 1
+
+            if entity_id == entity_id_success:
+                return {"entity_id": entity_id, "min_delay_ms": 100}
+            else:
+                return {"entity_id": entity_id, "error": "Test error message"}
+
+        with patch(
+            "custom_components.fade_lights.autoconfigure.async_test_light_delay",
+            side_effect=mock_test_light_delay,
+        ):
+            client = await hass_ws_client(hass)
+
+            await client.send_json({
+                "id": 1,
+                "type": "fade_lights/autoconfigure",
+                "entity_ids": [entity_id_success, entity_id_error],
+            })
+
+            # Collect events
+            events = []
+            while True:
+                msg = await client.receive_json()
+                if msg["type"] == "result":
+                    break
+                events.append(msg)
+
+        # Verify we got both started and result/error events for each light
+        event_types = {}
+        for event in events:
+            assert event["type"] == "event"
+            entity_id = event["event"]["entity_id"]
+            event_type = event["event"]["type"]
+            if entity_id not in event_types:
+                event_types[entity_id] = []
+            event_types[entity_id].append(event_type)
+
+        # Check success light
+        assert "started" in event_types[entity_id_success]
+        assert "result" in event_types[entity_id_success]
+
+        # Check error light
+        assert "started" in event_types[entity_id_error]
+        assert "error" in event_types[entity_id_error]
+
+        # Verify result event has min_delay_ms
+        result_event = next(
+            e for e in events
+            if e["event"]["entity_id"] == entity_id_success
+            and e["event"]["type"] == "result"
+        )
+        assert result_event["event"]["min_delay_ms"] == 100
+
+        # Verify error event has message
+        error_event = next(
+            e for e in events
+            if e["event"]["entity_id"] == entity_id_error
+            and e["event"]["type"] == "error"
+        )
+        assert error_event["event"]["message"] == "Test error message"
+
+    async def test_autoconfigure_expands_groups(
+        self,
+        hass: HomeAssistant,
+        hass_ws_client,
+        init_integration,
+        mock_multiple_lights: list[str],
+        mock_light_group_for_ws: str,
+    ) -> None:
+        """Verify light groups are expanded to individual lights."""
+        tested_entities: list[str] = []
+
+        async def mock_test_light_delay(hass: HomeAssistant, entity_id: str) -> dict:
+            """Mock that records tested entity IDs."""
+            tested_entities.append(entity_id)
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with patch(
+            "custom_components.fade_lights.autoconfigure.async_test_light_delay",
+            side_effect=mock_test_light_delay,
+        ):
+            client = await hass_ws_client(hass)
+
+            # Send only the group
+            await client.send_json({
+                "id": 1,
+                "type": "fade_lights/autoconfigure",
+                "entity_ids": [mock_light_group_for_ws],
+            })
+
+            # Wait for completion
+            while True:
+                msg = await client.receive_json()
+                if msg["type"] == "result":
+                    break
+
+        # Verify the group was expanded to individual lights
+        # The group contains mock_multiple_lights[:3]
+        expected_lights = set(mock_multiple_lights[:3])
+        actual_lights = set(tested_entities)
+
+        assert actual_lights == expected_lights
+        # Group itself should NOT be tested
+        assert mock_light_group_for_ws not in tested_entities
+
+    async def test_autoconfigure_filters_excluded(
+        self,
+        hass: HomeAssistant,
+        hass_ws_client,
+        init_integration,
+    ) -> None:
+        """Verify excluded lights are filtered out."""
+        # Create lights
+        included_light = "light.included"
+        excluded_light = "light.excluded"
+
+        hass.states.async_set(
+            included_light,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 200,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+            },
+        )
+        hass.states.async_set(
+            excluded_light,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 200,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+            },
+        )
+
+        # Mark one light as excluded in storage
+        hass.data[DOMAIN]["data"][excluded_light] = {"exclude": True}
+
+        tested_entities: list[str] = []
+
+        async def mock_test_light_delay(hass: HomeAssistant, entity_id: str) -> dict:
+            """Mock that records tested entity IDs."""
+            tested_entities.append(entity_id)
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with patch(
+            "custom_components.fade_lights.autoconfigure.async_test_light_delay",
+            side_effect=mock_test_light_delay,
+        ):
+            client = await hass_ws_client(hass)
+
+            await client.send_json({
+                "id": 1,
+                "type": "fade_lights/autoconfigure",
+                "entity_ids": [included_light, excluded_light],
+            })
+
+            # Wait for completion
+            while True:
+                msg = await client.receive_json()
+                if msg["type"] == "result":
+                    break
+
+        # Only included light should be tested
+        assert included_light in tested_entities
+        assert excluded_light not in tested_entities
+
+    async def test_autoconfigure_handles_cancellation(
+        self,
+        hass: HomeAssistant,
+        hass_ws_client,
+        init_integration,
+        mock_multiple_lights: list[str],
+    ) -> None:
+        """Verify subscription can be cancelled."""
+        started_count = 0
+        completed_count = 0
+        cancel_after = 2  # Cancel after 2 lights start
+
+        async def mock_test_light_delay(hass: HomeAssistant, entity_id: str) -> dict:
+            """Mock that simulates work."""
+            nonlocal completed_count
+            # Longer delay to allow time for cancellation
+            await asyncio.sleep(0.5)
+            completed_count += 1
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with patch(
+            "custom_components.fade_lights.autoconfigure.async_test_light_delay",
+            side_effect=mock_test_light_delay,
+        ):
+            client = await hass_ws_client(hass)
+
+            # Start autoconfigure with all 10 lights
+            await client.send_json({
+                "id": 1,
+                "type": "fade_lights/autoconfigure",
+                "entity_ids": mock_multiple_lights,
+            })
+
+            # Wait for some started events, then cancel
+            while started_count < cancel_after:
+                msg = await asyncio.wait_for(client.receive_json(), timeout=5.0)
+                if msg["type"] == "event" and msg["event"]["type"] == "started":
+                    started_count += 1
+
+            # Send unsubscribe command
+            await client.send_json({
+                "id": 2,
+                "type": "unsubscribe_events",
+                "subscription": 1,
+            })
+
+            # Receive unsubscribe confirmation - may receive more events first
+            unsubscribe_confirmed = False
+            while not unsubscribe_confirmed:
+                msg = await asyncio.wait_for(client.receive_json(), timeout=5.0)
+                if msg.get("id") == 2:
+                    assert msg["success"] is True
+                    unsubscribe_confirmed = True
+                # Ignore any remaining events from subscription 1
+
+            # Give some time for potential late completions
+            await asyncio.sleep(0.2)
+
+        # Due to cancellation, not all lights should have completed
+        # The semaphore limit is 5, and we cancel after 2 start
+        # Some lights may have completed depending on timing
+        assert completed_count < len(mock_multiple_lights)
