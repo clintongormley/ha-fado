@@ -258,6 +258,10 @@ async def _fade_light(
     - Delegating to _execute_fade for the actual work
     - Cleaning up tracking state when done (success, cancel, or error)
     """
+    # Get per-light config and determine effective delay
+    light_config = _get_light_config(hass, entity_id)
+    effective_delay = light_config.get("min_delay_ms") or min_step_delay_ms
+
     # Cancel any existing fade for this entity - only one fade per light at a time
     await _cancel_and_wait_for_fade(entity_id)
 
@@ -277,7 +281,7 @@ async def _fade_light(
         ACTIVE_FADES[entity_id] = current_task
 
     try:
-        await _execute_fade(hass, entity_id, fade_params, min_step_delay_ms, cancel_event)
+        await _execute_fade(hass, entity_id, fade_params, effective_delay, cancel_event)
     except asyncio.CancelledError:
         pass  # Normal cancellation, not an error
     finally:
@@ -1001,8 +1005,13 @@ def _get_light_config(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
     """Get per-light configuration.
 
     Returns the config dict for the light, or empty dict if not configured.
+    Handles legacy storage format where entity_id maps directly to an int (brightness).
     """
-    return hass.data.get(DOMAIN, {}).get("data", {}).get(entity_id, {})
+    config = hass.data.get(DOMAIN, {}).get("data", {}).get(entity_id, {})
+    # Handle legacy format where entity_id maps to int (brightness) instead of dict
+    if isinstance(config, int):
+        return {"orig_brightness": config}
+    return config if isinstance(config, dict) else {}
 
 
 def _get_orig_brightness(hass: HomeAssistant, entity_id: str) -> int:
