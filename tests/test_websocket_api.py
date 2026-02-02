@@ -273,5 +273,5 @@ async def test_register_websocket_api(
     with patch("homeassistant.components.websocket_api.async_register_command") as mock_register:
         async_register_websocket_api(hass)
 
-        # Verify both commands were registered
-        assert mock_register.call_count == 2
+        # Verify all three commands were registered (get_lights, save_light_config, autoconfigure)
+        assert mock_register.call_count == 3
