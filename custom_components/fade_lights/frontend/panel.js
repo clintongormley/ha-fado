@@ -52,8 +52,15 @@ class FadeLightsPanel extends LitElement {
 
       .area-header {
         font-size: 16px;
-        margin-left: 16px;
         margin-top: 8px;
+      }
+
+      .area-section {
+        /* No left margin when no floors shown */
+      }
+
+      .area-section.with-floor {
+        margin-left: 16px;
       }
 
       .chevron {
@@ -65,35 +72,87 @@ class FadeLightsPanel extends LitElement {
         transform: rotate(-90deg);
       }
 
-      .area-section {
-        margin-left: 16px;
+      .header-icon {
+        margin-right: 8px;
+        --mdc-icon-size: 20px;
       }
 
       .lights-table {
         width: 100%;
         border-collapse: collapse;
-        margin: 8px 0 8px 32px;
+        margin: 8px 0;
+        table-layout: fixed;
       }
 
-      .lights-table th {
-        text-align: left;
-        padding: 8px;
-        border-bottom: 1px solid var(--divider-color);
-        font-weight: 500;
+      .with-floor .lights-table {
+        margin-left: 16px;
+        width: calc(100% - 16px);
       }
 
+      .lights-table th,
       .lights-table td {
         padding: 8px;
         border-bottom: 1px solid var(--divider-color);
       }
 
+      .lights-table th {
+        text-align: left;
+        font-weight: 500;
+      }
+
+      /* Fixed column widths for consistency */
+      .col-light {
+        width: auto;
+      }
+
+      .col-delay {
+        width: 120px;
+        text-align: center;
+      }
+
+      .col-exclude {
+        width: 80px;
+        text-align: center;
+      }
+
+      .lights-table td.col-delay,
+      .lights-table td.col-exclude {
+        text-align: center;
+      }
+
+      .light-cell {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .light-cell:hover {
+        opacity: 0.8;
+      }
+
+      .light-icon {
+        margin-right: 12px;
+        --mdc-icon-size: 24px;
+        color: var(--secondary-text-color);
+      }
+
+      .light-info {
+        overflow: hidden;
+      }
+
       .light-name {
         font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .entity-id {
         font-size: 12px;
         color: var(--secondary-text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       input[type="number"] {
@@ -113,6 +172,15 @@ class FadeLightsPanel extends LitElement {
 
       .hidden {
         display: none;
+      }
+
+      .no-lights {
+        color: var(--secondary-text-color);
+        padding: 8px 0;
+      }
+
+      .with-floor .no-lights {
+        margin-left: 16px;
       }
     `;
   }
@@ -181,6 +249,22 @@ class FadeLightsPanel extends LitElement {
     this._saveConfig(entityId, field, e.target.checked);
   }
 
+  _openLightDialog(entityId) {
+    // Fire event to open the more-info dialog for this entity
+    const event = new CustomEvent("hass-more-info", {
+      bubbles: true,
+      composed: true,
+      detail: { entityId },
+    });
+    this.dispatchEvent(event);
+  }
+
+  _hasRealFloors() {
+    // Check if there are any floors with a real floor_id (not null/none)
+    if (!this._data || !this._data.floors) return false;
+    return this._data.floors.some((floor) => floor.floor_id !== null);
+  }
+
   render() {
     if (this._loading) {
       return html`<h1>Fade Lights</h1><p>Loading...</p>`;
@@ -190,10 +274,20 @@ class FadeLightsPanel extends LitElement {
       return html`<h1>Fade Lights</h1><p>No lights found.</p>`;
     }
 
+    const hasRealFloors = this._hasRealFloors();
+
     return html`
       <h1>Fade Lights</h1>
-      ${this._data.floors.map((floor) => this._renderFloor(floor))}
+      ${hasRealFloors
+        ? this._data.floors.map((floor) => this._renderFloor(floor))
+        : this._renderAreasOnly()}
     `;
+  }
+
+  _renderAreasOnly() {
+    // When no real floors exist, render areas directly without floor grouping
+    const allAreas = this._data.floors.flatMap((floor) => floor.areas);
+    return allAreas.map((area) => this._renderArea(area, null, false));
   }
 
   _renderFloor(floor) {
@@ -204,23 +298,25 @@ class FadeLightsPanel extends LitElement {
       <div class="floor-section">
         <div class="floor-header" @click=${() => this._toggleCollapse(floorKey)}>
           <span class="chevron ${isCollapsed ? "collapsed" : ""}">▼</span>
+          <ha-icon class="header-icon" icon="mdi:floor-plan"></ha-icon>
           ${floor.name}
         </div>
         <div class="${isCollapsed ? "hidden" : ""}">
-          ${floor.areas.map((area) => this._renderArea(area, floor.floor_id))}
+          ${floor.areas.map((area) => this._renderArea(area, floor.floor_id, true))}
         </div>
       </div>
     `;
   }
 
-  _renderArea(area, floorId) {
+  _renderArea(area, floorId, withFloor) {
     const areaKey = `area_${floorId || "none"}_${area.area_id || "none"}`;
     const isCollapsed = this._collapsed[areaKey];
 
     return html`
-      <div class="area-section">
+      <div class="area-section ${withFloor ? "with-floor" : ""}">
         <div class="area-header" @click=${() => this._toggleCollapse(areaKey)}>
           <span class="chevron ${isCollapsed ? "collapsed" : ""}">▼</span>
+          <ha-icon class="header-icon" icon="mdi:texture-box"></ha-icon>
           ${area.name}
         </div>
         <div class="${isCollapsed ? "hidden" : ""}">
@@ -229,10 +325,9 @@ class FadeLightsPanel extends LitElement {
                 <table class="lights-table">
                   <thead>
                     <tr>
-                      <th>Light</th>
-                      <th>Min Delay (ms)</th>
-                      <th>Exclude</th>
-                      <th>Native Transition</th>
+                      <th class="col-light">Light</th>
+                      <th class="col-delay">Min Delay (ms)</th>
+                      <th class="col-exclude">Exclude</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -240,7 +335,7 @@ class FadeLightsPanel extends LitElement {
                   </tbody>
                 </table>
               `
-            : html`<p style="margin-left: 32px; color: var(--secondary-text-color);">No lights</p>`}
+            : html`<p class="no-lights">No lights</p>`}
         </div>
       </div>
     `;
@@ -249,11 +344,16 @@ class FadeLightsPanel extends LitElement {
   _renderLight(light) {
     return html`
       <tr>
-        <td>
-          <div class="light-name">${light.name}</div>
-          <div class="entity-id">${light.entity_id}</div>
+        <td class="col-light">
+          <div class="light-cell" @click=${() => this._openLightDialog(light.entity_id)}>
+            <ha-icon class="light-icon" icon="mdi:lightbulb"></ha-icon>
+            <div class="light-info">
+              <div class="light-name">${light.name}</div>
+              <div class="entity-id">${light.entity_id}</div>
+            </div>
+          </div>
         </td>
-        <td>
+        <td class="col-delay">
           <input
             type="number"
             min="50"
@@ -264,18 +364,11 @@ class FadeLightsPanel extends LitElement {
             @change=${(e) => this._handleDelayChange(light.entity_id, e)}
           />
         </td>
-        <td>
+        <td class="col-exclude">
           <input
             type="checkbox"
             .checked=${light.exclude}
             @change=${(e) => this._handleCheckboxChange(light.entity_id, "exclude", e)}
-          />
-        </td>
-        <td>
-          <input
-            type="checkbox"
-            .checked=${light.use_native_transition}
-            @change=${(e) => this._handleCheckboxChange(light.entity_id, "use_native_transition", e)}
           />
         </td>
       </tr>

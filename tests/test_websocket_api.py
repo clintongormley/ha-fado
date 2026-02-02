@@ -81,7 +81,6 @@ async def test_get_lights_returns_grouped_data(
     hass.data[DOMAIN]["data"]["light.bedroom_ceiling"] = {
         "min_delay_ms": 150,
         "exclude": False,
-        "use_native_transition": True,
     }
 
     result = await async_get_lights(hass)
@@ -147,7 +146,6 @@ async def test_get_lights_returns_defaults_for_unconfigured(
     assert light is not None
     assert light["min_delay_ms"] is None  # No config
     assert light["exclude"] is False  # Default
-    assert light["use_native_transition"] is True  # Default
 
 
 async def test_get_lights_excludes_light_groups(
@@ -206,13 +204,11 @@ async def test_save_light_config_creates_entry(
         "light.new_light",
         min_delay_ms=200,
         exclude=True,
-        use_native_transition=False,
     )
 
     # Verify data was saved
     assert hass.data[DOMAIN]["data"]["light.new_light"]["min_delay_ms"] == 200
     assert hass.data[DOMAIN]["data"]["light.new_light"]["exclude"] is True
-    assert hass.data[DOMAIN]["data"]["light.new_light"]["use_native_transition"] is False
 
     # Verify result
     assert result == {"success": True}

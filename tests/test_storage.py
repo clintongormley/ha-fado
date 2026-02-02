@@ -22,7 +22,6 @@ def hass_with_storage(hass: HomeAssistant) -> HomeAssistant:
                 "orig_brightness": 200,
                 "min_delay_ms": 150,
                 "exclude": True,
-                "use_native_transition": False,
             },
             "light.kitchen": {
                 "orig_brightness": 255,
@@ -44,7 +43,6 @@ class TestGetLightConfig:
 
         assert config["min_delay_ms"] == 150
         assert config["exclude"] is True
-        assert config["use_native_transition"] is False
 
     def test_returns_empty_dict_for_unconfigured_light(
         self, hass_with_storage: HomeAssistant

@@ -94,7 +94,6 @@ async def async_get_lights(hass: HomeAssistant) -> dict[str, Any]:
             "name": friendly_name,
             "min_delay_ms": light_config.get("min_delay_ms"),
             "exclude": light_config.get("exclude", False),
-            "use_native_transition": light_config.get("use_native_transition", True),
         })
 
     # Convert to list format
@@ -126,7 +125,6 @@ async def async_save_light_config(
     entity_id: str,
     min_delay_ms: int | None = None,
     exclude: bool | None = None,
-    use_native_transition: bool | None = None,
     *,
     clear_min_delay: bool = False,
 ) -> dict[str, bool]:
@@ -137,7 +135,6 @@ async def async_save_light_config(
         entity_id: The light entity ID
         min_delay_ms: Optional minimum delay in milliseconds (50-1000)
         exclude: Optional flag to exclude light from fades
-        use_native_transition: Optional flag for native transition support
         clear_min_delay: If True and min_delay_ms is None, remove the setting
 
     Returns:
@@ -157,9 +154,6 @@ async def async_save_light_config(
     if exclude is not None:
         data[entity_id]["exclude"] = exclude
 
-    if use_native_transition is not None:
-        data[entity_id]["use_native_transition"] = use_native_transition
-
     # Save to disk
     store = hass.data[DOMAIN]["store"]
     await store.async_save(data)
@@ -173,7 +167,6 @@ async def async_save_light_config(
         vol.Required("entity_id"): str,
         vol.Optional("min_delay_ms"): vol.Any(None, vol.All(int, vol.Range(min=50, max=1000))),
         vol.Optional("exclude"): bool,
-        vol.Optional("use_native_transition"): bool,
     }
 )
 @websocket_api.async_response
@@ -193,7 +186,6 @@ async def ws_save_light_config(
         entity_id,
         min_delay_ms=msg.get("min_delay_ms"),
         exclude=msg.get("exclude"),
-        use_native_transition=msg.get("use_native_transition"),
         clear_min_delay=clear_min_delay,
     )
 
