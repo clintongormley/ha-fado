@@ -13,6 +13,7 @@ class FadeLightsPanel extends LitElement {
       _data: { type: Object },
       _loading: { type: Boolean },
       _collapsed: { type: Object },
+      _configureChecked: { type: Object },
     };
   }
 
@@ -115,8 +116,14 @@ class FadeLightsPanel extends LitElement {
         text-align: center;
       }
 
+      .col-configure {
+        width: 80px;
+        text-align: center;
+      }
+
       .lights-table td.col-delay,
-      .lights-table td.col-exclude {
+      .lights-table td.col-exclude,
+      .lights-table td.col-configure {
         text-align: center;
       }
 
@@ -134,6 +141,10 @@ class FadeLightsPanel extends LitElement {
         margin-right: 12px;
         --mdc-icon-size: 24px;
         color: var(--secondary-text-color);
+      }
+
+      .light-icon.on {
+        color: var(--amber-color, #ffc107);
       }
 
       .light-info {
@@ -190,11 +201,30 @@ class FadeLightsPanel extends LitElement {
     this._data = null;
     this._loading = true;
     this._collapsed = this._loadCollapsedState();
+    this._configureChecked = new Set();
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._fetchLights();
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    // Re-fetch when hass changes to pick up icon/state updates
+    if (changedProperties.has("hass") && this.hass && !this._loading) {
+      this._debouncedFetch();
+    }
+  }
+
+  _debouncedFetch() {
+    // Debounce re-fetches to avoid excessive API calls
+    if (this._fetchTimeout) {
+      clearTimeout(this._fetchTimeout);
+    }
+    this._fetchTimeout = setTimeout(() => {
+      this._fetchLights();
+    }, 1000);
   }
 
   _loadCollapsedState() {
@@ -214,6 +244,20 @@ class FadeLightsPanel extends LitElement {
     try {
       const result = await this.hass.callWS({ type: "fade_lights/get_lights" });
       this._data = result;
+      // Populate _configureChecked with lights where min_delay_ms is null/undefined
+      const checkedSet = new Set();
+      if (result && result.floors) {
+        for (const floor of result.floors) {
+          for (const area of floor.areas) {
+            for (const light of area.lights) {
+              if (light.min_delay_ms == null) {
+                checkedSet.add(light.entity_id);
+              }
+            }
+          }
+        }
+      }
+      this._configureChecked = checkedSet;
     } catch (err) {
       console.error("Failed to fetch lights:", err);
     }
@@ -247,6 +291,16 @@ class FadeLightsPanel extends LitElement {
 
   _handleCheckboxChange(entityId, field, e) {
     this._saveConfig(entityId, field, e.target.checked);
+  }
+
+  _handleConfigureChange(entityId, e) {
+    const newSet = new Set(this._configureChecked);
+    if (e.target.checked) {
+      newSet.add(entityId);
+    } else {
+      newSet.delete(entityId);
+    }
+    this._configureChecked = newSet;
   }
 
   _openLightDialog(entityId) {
@@ -293,12 +347,13 @@ class FadeLightsPanel extends LitElement {
   _renderFloor(floor) {
     const floorKey = `floor_${floor.floor_id || "none"}`;
     const isCollapsed = this._collapsed[floorKey];
+    const floorIcon = floor.icon || "mdi:floor-plan";
 
     return html`
       <div class="floor-section">
         <div class="floor-header" @click=${() => this._toggleCollapse(floorKey)}>
           <span class="chevron ${isCollapsed ? "collapsed" : ""}">▼</span>
-          <ha-icon class="header-icon" icon="mdi:floor-plan"></ha-icon>
+          <ha-icon class="header-icon" icon="${floorIcon}"></ha-icon>
           ${floor.name}
         </div>
         <div class="${isCollapsed ? "hidden" : ""}">
@@ -311,12 +366,13 @@ class FadeLightsPanel extends LitElement {
   _renderArea(area, floorId, withFloor) {
     const areaKey = `area_${floorId || "none"}_${area.area_id || "none"}`;
     const isCollapsed = this._collapsed[areaKey];
+    const areaIcon = area.icon || "mdi:texture-box";
 
     return html`
       <div class="area-section ${withFloor ? "with-floor" : ""}">
         <div class="area-header" @click=${() => this._toggleCollapse(areaKey)}>
           <span class="chevron ${isCollapsed ? "collapsed" : ""}">▼</span>
-          <ha-icon class="header-icon" icon="mdi:texture-box"></ha-icon>
+          <ha-icon class="header-icon" icon="${areaIcon}"></ha-icon>
           ${area.name}
         </div>
         <div class="${isCollapsed ? "hidden" : ""}">
@@ -328,6 +384,7 @@ class FadeLightsPanel extends LitElement {
                       <th class="col-light">Light</th>
                       <th class="col-delay">Min Delay (ms)</th>
                       <th class="col-exclude">Exclude</th>
+                      <th class="col-configure">Configure</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -342,11 +399,15 @@ class FadeLightsPanel extends LitElement {
   }
 
   _renderLight(light) {
+    const lightIcon = light.icon || "mdi:lightbulb";
+    const state = this.hass.states[light.entity_id];
+    const isOn = state && state.state === "on";
+
     return html`
       <tr>
         <td class="col-light">
           <div class="light-cell" @click=${() => this._openLightDialog(light.entity_id)}>
-            <ha-icon class="light-icon" icon="mdi:lightbulb"></ha-icon>
+            <ha-icon class="light-icon ${isOn ? "on" : ""}" icon="${lightIcon}"></ha-icon>
             <div class="light-info">
               <div class="light-name">${light.name}</div>
               <div class="entity-id">${light.entity_id}</div>
@@ -369,6 +430,13 @@ class FadeLightsPanel extends LitElement {
             type="checkbox"
             .checked=${light.exclude}
             @change=${(e) => this._handleCheckboxChange(light.entity_id, "exclude", e)}
+          />
+        </td>
+        <td class="col-configure">
+          <input
+            type="checkbox"
+            .checked=${this._configureChecked.has(light.entity_id)}
+            @change=${(e) => this._handleConfigureChange(light.entity_id, e)}
           />
         </td>
       </tr>
