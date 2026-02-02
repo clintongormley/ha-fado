@@ -209,6 +209,13 @@ class FadeLightsPanel extends LitElement {
     this._fetchLights();
   }
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._fetchTimeout) {
+      clearTimeout(this._fetchTimeout);
+    }
+  }
+
   updated(changedProperties) {
     super.updated(changedProperties);
     // Re-fetch when hass changes to pick up icon/state updates
@@ -241,23 +248,26 @@ class FadeLightsPanel extends LitElement {
 
   async _fetchLights() {
     this._loading = true;
+    const isInitialLoad = this._data === null;
     try {
       const result = await this.hass.callWS({ type: "fade_lights/get_lights" });
       this._data = result;
-      // Populate _configureChecked with lights where min_delay_ms is null/undefined
-      const checkedSet = new Set();
-      if (result && result.floors) {
-        for (const floor of result.floors) {
-          for (const area of floor.areas) {
-            for (const light of area.lights) {
-              if (light.min_delay_ms == null) {
-                checkedSet.add(light.entity_id);
+      // Only populate _configureChecked on initial load to preserve user changes
+      if (isInitialLoad) {
+        const checkedSet = new Set();
+        if (result && result.floors) {
+          for (const floor of result.floors) {
+            for (const area of floor.areas) {
+              for (const light of area.lights) {
+                if (light.min_delay_ms == null) {
+                  checkedSet.add(light.entity_id);
+                }
               }
             }
           }
         }
+        this._configureChecked = checkedSet;
       }
-      this._configureChecked = checkedSet;
     } catch (err) {
       console.error("Failed to fetch lights:", err);
     }
