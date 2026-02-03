@@ -10,10 +10,10 @@ from homeassistant.const import STATE_ON
 
 from custom_components.fade_lights import _execute_fade
 from custom_components.fade_lights.fade_change import FadeChange
+from custom_components.fade_lights.fade_params import FadeParams
 
 # Alias for cleaner test code
 _resolve_fade = FadeChange.resolve
-from custom_components.fade_lights.fade_params import FadeParams
 
 
 @pytest.fixture

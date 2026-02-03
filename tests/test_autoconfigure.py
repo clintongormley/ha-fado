@@ -253,16 +253,15 @@ class TestLightDelayTimeout:
             call_count += 1
 
             entity_id = call.data.get(ATTR_ENTITY_ID)
-            if entity_id:
-                # First call: don't update state (simulates timeout)
-                # Retry call: update state normally
-                if call_count != 1:
-                    current_state = hass_with_storage.states.get(entity_id)
-                    if current_state:
-                        current_attrs = dict(current_state.attributes)
-                        if ATTR_BRIGHTNESS in call.data:
-                            current_attrs[ATTR_BRIGHTNESS] = call.data[ATTR_BRIGHTNESS]
-                        hass_with_storage.states.async_set(entity_id, STATE_ON, current_attrs)
+            # First call: don't update state (simulates timeout)
+            # Retry call: update state normally
+            if entity_id and call_count != 1:
+                current_state = hass_with_storage.states.get(entity_id)
+                if current_state:
+                    current_attrs = dict(current_state.attributes)
+                    if ATTR_BRIGHTNESS in call.data:
+                        current_attrs[ATTR_BRIGHTNESS] = call.data[ATTR_BRIGHTNESS]
+                    hass_with_storage.states.async_set(entity_id, STATE_ON, current_attrs)
 
         async def mock_turn_off(call: ServiceCall) -> None:
             """Mock turn_off."""
@@ -361,7 +360,7 @@ class TestLightDelayCalculation:
 
         # Test various averages and their expected ceiling to nearest 10ms
         test_cases = [
-            (5, 10),   # 5ms -> 10ms
+            (5, 10),  # 5ms -> 10ms
             (10, 10),  # 10ms -> 10ms (exact)
             (11, 20),  # 11ms -> 20ms
             (25, 30),  # 25ms -> 30ms
@@ -395,9 +394,7 @@ class TestWsAutoconfigure:
         return entity_ids
 
     @pytest.fixture
-    def mock_light_group_for_ws(
-        self, hass: HomeAssistant, mock_multiple_lights: list[str]
-    ) -> str:
+    def mock_light_group_for_ws(self, hass: HomeAssistant, mock_multiple_lights: list[str]) -> str:
         """Create a mock light group containing lights 0-2."""
         entity_id = "light.ws_group"
         hass.states.async_set(
@@ -448,11 +445,13 @@ class TestWsAutoconfigure:
             client = await hass_ws_client(hass)
 
             # Test all 10 lights
-            await client.send_json({
-                "id": 1,
-                "type": "fade_lights/autoconfigure",
-                "entity_ids": mock_multiple_lights,
-            })
+            await client.send_json(
+                {
+                    "id": 1,
+                    "type": "fade_lights/autoconfigure",
+                    "entity_ids": mock_multiple_lights,
+                }
+            )
 
             # Collect all events until we get the final result
             events = []
@@ -514,11 +513,13 @@ class TestWsAutoconfigure:
         ):
             client = await hass_ws_client(hass)
 
-            await client.send_json({
-                "id": 1,
-                "type": "fade_lights/autoconfigure",
-                "entity_ids": [entity_id_success, entity_id_error],
-            })
+            await client.send_json(
+                {
+                    "id": 1,
+                    "type": "fade_lights/autoconfigure",
+                    "entity_ids": [entity_id_success, entity_id_error],
+                }
+            )
 
             # Collect events
             events = []
@@ -548,17 +549,17 @@ class TestWsAutoconfigure:
 
         # Verify result event has min_delay_ms
         result_event = next(
-            e for e in events
-            if e["event"]["entity_id"] == entity_id_success
-            and e["event"]["type"] == "result"
+            e
+            for e in events
+            if e["event"]["entity_id"] == entity_id_success and e["event"]["type"] == "result"
         )
         assert result_event["event"]["min_delay_ms"] == 100
 
         # Verify error event has message
         error_event = next(
-            e for e in events
-            if e["event"]["entity_id"] == entity_id_error
-            and e["event"]["type"] == "error"
+            e
+            for e in events
+            if e["event"]["entity_id"] == entity_id_error and e["event"]["type"] == "error"
         )
         assert error_event["event"]["message"] == "Test error message"
 
@@ -585,11 +586,13 @@ class TestWsAutoconfigure:
             client = await hass_ws_client(hass)
 
             # Send only the group
-            await client.send_json({
-                "id": 1,
-                "type": "fade_lights/autoconfigure",
-                "entity_ids": [mock_light_group_for_ws],
-            })
+            await client.send_json(
+                {
+                    "id": 1,
+                    "type": "fade_lights/autoconfigure",
+                    "entity_ids": [mock_light_group_for_ws],
+                }
+            )
 
             # Wait for completion
             while True:
@@ -650,11 +653,13 @@ class TestWsAutoconfigure:
         ):
             client = await hass_ws_client(hass)
 
-            await client.send_json({
-                "id": 1,
-                "type": "fade_lights/autoconfigure",
-                "entity_ids": [included_light, excluded_light],
-            })
+            await client.send_json(
+                {
+                    "id": 1,
+                    "type": "fade_lights/autoconfigure",
+                    "entity_ids": [included_light, excluded_light],
+                }
+            )
 
             # Wait for completion
             while True:
@@ -693,11 +698,13 @@ class TestWsAutoconfigure:
             client = await hass_ws_client(hass)
 
             # Start autoconfigure with all 10 lights
-            await client.send_json({
-                "id": 1,
-                "type": "fade_lights/autoconfigure",
-                "entity_ids": mock_multiple_lights,
-            })
+            await client.send_json(
+                {
+                    "id": 1,
+                    "type": "fade_lights/autoconfigure",
+                    "entity_ids": mock_multiple_lights,
+                }
+            )
 
             # Wait for some started events, then cancel
             while started_count < cancel_after:
@@ -706,11 +713,13 @@ class TestWsAutoconfigure:
                     started_count += 1
 
             # Send unsubscribe command
-            await client.send_json({
-                "id": 2,
-                "type": "unsubscribe_events",
-                "subscription": 1,
-            })
+            await client.send_json(
+                {
+                    "id": 2,
+                    "type": "unsubscribe_events",
+                    "subscription": 1,
+                }
+            )
 
             # Receive unsubscribe confirmation - may receive more events first
             unsubscribe_confirmed = False

@@ -35,9 +35,7 @@ def hass_with_storage(hass: HomeAssistant) -> HomeAssistant:
 class TestGetLightConfig:
     """Test _get_light_config helper."""
 
-    def test_returns_config_for_configured_light(
-        self, hass_with_storage: HomeAssistant
-    ) -> None:
+    def test_returns_config_for_configured_light(self, hass_with_storage: HomeAssistant) -> None:
         """Test that config is returned for a configured light."""
         config = _get_light_config(hass_with_storage, "light.bedroom")
 
@@ -52,9 +50,7 @@ class TestGetLightConfig:
 
         assert config == {}
 
-    def test_returns_empty_dict_when_domain_not_loaded(
-        self, hass: HomeAssistant
-    ) -> None:
+    def test_returns_empty_dict_when_domain_not_loaded(self, hass: HomeAssistant) -> None:
         """Test that empty dict is returned when domain not loaded."""
         config = _get_light_config(hass, "light.bedroom")
 
@@ -72,9 +68,7 @@ class TestGetOrigBrightness:
 
         assert brightness == 200
 
-    def test_returns_zero_for_unconfigured_light(
-        self, hass_with_storage: HomeAssistant
-    ) -> None:
+    def test_returns_zero_for_unconfigured_light(self, hass_with_storage: HomeAssistant) -> None:
         """Test zero is returned for unconfigured light."""
         brightness = _get_orig_brightness(hass_with_storage, "light.unknown")
 
@@ -84,25 +78,19 @@ class TestGetOrigBrightness:
 class TestStoreOrigBrightness:
     """Test _store_orig_brightness with new storage structure."""
 
-    def test_stores_brightness_in_nested_structure(
-        self, hass_with_storage: HomeAssistant
-    ) -> None:
+    def test_stores_brightness_in_nested_structure(self, hass_with_storage: HomeAssistant) -> None:
         """Test brightness is stored in nested dict."""
         _store_orig_brightness(hass_with_storage, "light.bedroom", 180)
 
         assert hass_with_storage.data[DOMAIN]["data"]["light.bedroom"]["orig_brightness"] == 180
 
-    def test_creates_entry_for_new_light(
-        self, hass_with_storage: HomeAssistant
-    ) -> None:
+    def test_creates_entry_for_new_light(self, hass_with_storage: HomeAssistant) -> None:
         """Test new entry is created for unconfigured light."""
         _store_orig_brightness(hass_with_storage, "light.new", 100)
 
         assert hass_with_storage.data[DOMAIN]["data"]["light.new"]["orig_brightness"] == 100
 
-    def test_preserves_other_config_when_updating(
-        self, hass_with_storage: HomeAssistant
-    ) -> None:
+    def test_preserves_other_config_when_updating(self, hass_with_storage: HomeAssistant) -> None:
         """Test other config fields are preserved when updating brightness."""
         _store_orig_brightness(hass_with_storage, "light.bedroom", 180)
 

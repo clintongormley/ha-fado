@@ -46,25 +46,30 @@ def mock_registries(hass: HomeAssistant):
     entity_kitchen_light.disabled_by = None
     entity_kitchen_light.platform = "hue"
 
-    with patch(
-        "homeassistant.helpers.floor_registry.async_get",
-        return_value=MagicMock(floors={"upstairs": floor_upstairs}),
-    ), patch(
-        "homeassistant.helpers.area_registry.async_get",
-        return_value=MagicMock(
-            areas={"bedroom": area_bedroom, "kitchen": area_kitchen},
-            async_get_area=lambda aid: {"bedroom": area_bedroom, "kitchen": area_kitchen}.get(aid),
+    with (
+        patch(
+            "homeassistant.helpers.floor_registry.async_get",
+            return_value=MagicMock(floors={"upstairs": floor_upstairs}),
         ),
-    ), patch(
-        "homeassistant.helpers.entity_registry.async_get",
-        return_value=MagicMock(
-            entities=MagicMock(
-                values=lambda: [entity_bedroom_light, entity_kitchen_light]
-            )
+        patch(
+            "homeassistant.helpers.area_registry.async_get",
+            return_value=MagicMock(
+                areas={"bedroom": area_bedroom, "kitchen": area_kitchen},
+                async_get_area=lambda aid: {"bedroom": area_bedroom, "kitchen": area_kitchen}.get(
+                    aid
+                ),
+            ),
         ),
-    ), patch(
-        "homeassistant.helpers.device_registry.async_get",
-        return_value=MagicMock(async_get=lambda did: None),
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(
+                entities=MagicMock(values=lambda: [entity_bedroom_light, entity_kitchen_light])
+            ),
+        ),
+        patch(
+            "homeassistant.helpers.device_registry.async_get",
+            return_value=MagicMock(async_get=lambda did: None),
+        ),
     ):
         yield
 
@@ -97,7 +102,7 @@ async def test_get_lights_returns_grouped_data(
 
     # Find bedroom light
     light = next(
-        (l for l in bedroom["lights"] if l["entity_id"] == "light.bedroom_ceiling"),
+        (lt for lt in bedroom["lights"] if lt["entity_id"] == "light.bedroom_ceiling"),
         None,
     )
     assert light is not None
@@ -139,7 +144,7 @@ async def test_get_lights_returns_defaults_for_unconfigured(
     no_floor = next((f for f in result["floors"] if f["floor_id"] is None), None)
     kitchen = next((a for a in no_floor["areas"] if a["area_id"] == "kitchen"), None)
     light = next(
-        (l for l in kitchen["lights"] if l["entity_id"] == "light.kitchen_main"),
+        (lt for lt in kitchen["lights"] if lt["entity_id"] == "light.kitchen_main"),
         None,
     )
 
@@ -169,16 +174,18 @@ async def test_get_lights_excludes_light_groups(
         {"entity_id": ["light.lamp1", "light.lamp2"]},
     )
 
-    with patch(
-        "homeassistant.helpers.floor_registry.async_get",
-        return_value=MagicMock(floors={}),
-    ), patch(
-        "homeassistant.helpers.area_registry.async_get",
-        return_value=MagicMock(areas={}, async_get_area=lambda aid: None),
-    ), patch(
-        "homeassistant.helpers.entity_registry.async_get",
-        return_value=MagicMock(
-            entities=MagicMock(values=lambda: [light_group])
+    with (
+        patch(
+            "homeassistant.helpers.floor_registry.async_get",
+            return_value=MagicMock(floors={}),
+        ),
+        patch(
+            "homeassistant.helpers.area_registry.async_get",
+            return_value=MagicMock(areas={}, async_get_area=lambda aid: None),
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(entities=MagicMock(values=lambda: [light_group])),
         ),
     ):
         result = await async_get_lights(hass)
@@ -189,7 +196,7 @@ async def test_get_lights_excludes_light_groups(
         for area in floor["areas"]:
             all_lights.extend(area["lights"])
 
-    assert not any(l["entity_id"] == "light.living_room_group" for l in all_lights)
+    assert not any(lt["entity_id"] == "light.living_room_group" for lt in all_lights)
 
 
 async def test_save_light_config_creates_entry(

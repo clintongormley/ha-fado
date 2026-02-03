@@ -765,6 +765,7 @@ async def test_per_light_min_delay_overrides_global(
 
     # Fade with 1 second transition
     import time
+
     start = time.monotonic()
 
     await hass.services.async_call(
