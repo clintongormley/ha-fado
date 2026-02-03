@@ -168,3 +168,66 @@ class TestExpectedStateColorMatching:
         assert result is not None
         assert result.brightness == 128
         assert state.is_empty
+
+    def test_brightness_range_match_intermediate_value(self) -> None:
+        """Test range matching accepts intermediate brightness values."""
+        expected_state = ExpectedState(entity_id="light.test")
+
+        # Transition from 10 -> 100
+        expected = ExpectedValues(brightness=100, from_brightness=10)
+        expected_state.add(expected)
+
+        # Intermediate value during transition
+        actual = ExpectedValues(brightness=50)
+
+        matched = expected_state.match_and_remove(actual)
+        assert matched == expected
+        # Should NOT remove (range match, waiting for final value)
+        assert len(expected_state.values) == 1
+
+    def test_brightness_range_match_final_value(self) -> None:
+        """Test range matching removes on final target value."""
+        expected_state = ExpectedState(entity_id="light.test")
+
+        # Transition from 10 -> 100
+        expected = ExpectedValues(brightness=100, from_brightness=10)
+        expected_state.add(expected)
+
+        # Final value (within tolerance of target)
+        actual = ExpectedValues(brightness=98)
+
+        matched = expected_state.match_and_remove(actual)
+        assert matched == expected
+        # Should remove (exact match)
+        assert len(expected_state.values) == 0
+
+    def test_brightness_range_match_outside_range(self) -> None:
+        """Test range matching rejects values outside range."""
+        expected_state = ExpectedState(entity_id="light.test")
+
+        # Transition from 10 -> 100
+        expected = ExpectedValues(brightness=100, from_brightness=10)
+        expected_state.add(expected)
+
+        # Value outside range
+        actual = ExpectedValues(brightness=150)
+
+        matched = expected_state.match_and_remove(actual)
+        assert matched is None
+        assert len(expected_state.values) == 1
+
+    def test_brightness_point_match_unchanged(self) -> None:
+        """Test point matching behavior unchanged when no from_brightness."""
+        expected_state = ExpectedState(entity_id="light.test")
+
+        # Point-based (no from_brightness)
+        expected = ExpectedValues(brightness=100)
+        expected_state.add(expected)
+
+        # Within tolerance
+        actual = ExpectedValues(brightness=98)
+
+        matched = expected_state.match_and_remove(actual)
+        assert matched == expected
+        # Should remove (exact match)
+        assert len(expected_state.values) == 0
