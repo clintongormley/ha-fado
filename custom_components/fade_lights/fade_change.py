@@ -9,8 +9,12 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN as HA_ATTR_COLOR_TEMP_KELVIN
 from homeassistant.components.light import ATTR_HS_COLOR as HA_ATTR_HS_COLOR
-from homeassistant.components.light import ATTR_MAX_COLOR_TEMP_KELVIN as HA_ATTR_MAX_COLOR_TEMP_KELVIN
-from homeassistant.components.light import ATTR_MIN_COLOR_TEMP_KELVIN as HA_ATTR_MIN_COLOR_TEMP_KELVIN
+from homeassistant.components.light import (
+    ATTR_MAX_COLOR_TEMP_KELVIN as HA_ATTR_MAX_COLOR_TEMP_KELVIN,
+)
+from homeassistant.components.light import (
+    ATTR_MIN_COLOR_TEMP_KELVIN as HA_ATTR_MIN_COLOR_TEMP_KELVIN,
+)
 from homeassistant.components.light.const import ColorMode
 
 from .const import (
@@ -65,9 +69,7 @@ def _resolve_end_brightness(params: FadeParams) -> int | None:
     return None
 
 
-def _resolve_start_hs(
-    params: FadeParams, state: dict[str, Any]
-) -> tuple[float, float] | None:
+def _resolve_start_hs(params: FadeParams, state: dict[str, Any]) -> tuple[float, float] | None:
     """Resolve starting HS from params.from_hs_color or current state.
 
     Only returns HS if the light is actually in HS mode (not emulated HS from COLOR_TEMP).
@@ -504,9 +506,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             )
 
         # Check if anything is changing
-        brightness_changing = (
-            end_brightness is not None and start_brightness != end_brightness
-        )
+        brightness_changing = end_brightness is not None and start_brightness != end_brightness
         hs_changing = end_hs is not None and start_hs != end_hs
         mireds_changing = end_mireds is not None and start_mireds != end_mireds
 
@@ -555,9 +555,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
                 if min_mireds is not None and max_mireds is not None:
                     dist_to_min = abs(end_mireds - min_mireds)
                     dist_to_max = abs(end_mireds - max_mireds)
-                    start_mireds = (
-                        min_mireds if dist_to_min <= dist_to_max else max_mireds
-                    )
+                    start_mireds = min_mireds if dist_to_min <= dist_to_max else max_mireds
                 elif min_mireds is not None:
                     start_mireds = min_mireds
                 elif max_mireds is not None:
@@ -656,9 +654,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
 
         ideal = max(ideal_steps) if ideal_steps else 1
         max_by_time = (
-            self.transition_ms // self.min_step_delay_ms
-            if self.min_step_delay_ms > 0
-            else ideal
+            self.transition_ms // self.min_step_delay_ms if self.min_step_delay_ms > 0 else ideal
         )
 
         self._step_count = max(1, min(ideal, max_by_time))
@@ -751,9 +747,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             if self._current_step <= crossover_step:
                 # Map t to [0, crossover_t] -> [0, 1] for HS interpolation
                 phase_t = t / crossover_t if crossover_t > 0 else 1.0
-                hs_color = self._interpolate_hs_between(
-                    self.start_hs, self._crossover_hs, phase_t
-                )
+                hs_color = self._interpolate_hs_between(self.start_hs, self._crossover_hs, phase_t)
                 return FadeStep(
                     brightness=self._interpolate_brightness(t),
                     hs_color=hs_color,

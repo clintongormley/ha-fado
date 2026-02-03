@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 import asyncio
+import contextlib
 import logging
 import time
+from pathlib import Path
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.components import panel_custom
@@ -51,9 +51,14 @@ from homeassistant.helpers.target import (
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
     DOMAIN,
     FADE_CANCEL_TIMEOUT_S,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARNING,
+    OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
     SERVICE_FADE_LIGHTS,
     STORAGE_KEY,
@@ -124,6 +129,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "store": store,
         "data": storage_data,
         "min_step_delay_ms": entry.options.get(OPTION_MIN_STEP_DELAY_MS, DEFAULT_MIN_STEP_DELAY_MS),
+        "testing_lights": set(),  # Lights currently being autoconfigured
     }
 
     async def handle_fade_lights(call: ServiceCall) -> None:
@@ -149,7 +155,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         handle_light_state_change,
     )
     entry.async_on_unload(tracker.async_remove)
-    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     # Register WebSocket API
     async_register_websocket_api(hass)
@@ -158,11 +163,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if hass.http is not None:
         # Register static path for frontend files
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(
-                "/fade_lights_panel",
-                str(Path(__file__).parent / "frontend"),
-                cache_headers=False,  # Disable caching during development
-            )]
+            [
+                StaticPathConfig(
+                    "/fade_lights_panel",
+                    str(Path(__file__).parent / "frontend"),
+                    cache_headers=False,  # Disable caching during development
+                )
+            ]
         )
 
         # Register the panel
@@ -176,12 +183,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             require_admin=False,
         )
 
+    # Apply stored log level on startup
+    await _apply_stored_log_level(hass, entry)
+
     return True
 
 
-async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
+async def _apply_stored_log_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Apply the stored log level setting."""
+    log_level = entry.options.get(OPTION_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+
+    # Map our level names to Python logging level names
+    level_map = {
+        LOG_LEVEL_WARNING: "warning",
+        LOG_LEVEL_INFO: "info",
+        LOG_LEVEL_DEBUG: "debug",
+    }
+    python_level = level_map.get(log_level, "warning")
+
+    # Use HA's logger service to set the level
+    # Logger service may not be available in tests
+    with contextlib.suppress(Exception):
+        await hass.services.async_call(
+            "logger",
+            "set_level",
+            {f"custom_components.{DOMAIN}": python_level},
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, _entry: ConfigEntry) -> bool:
@@ -526,11 +553,17 @@ def _expand_light_groups(hass: HomeAssistant, entity_ids: list[str]) -> list[str
         else:
             result.add(entity_id)
 
-    # Filter out excluded lights
-    return [
-        eid for eid in result
-        if not _get_light_config(hass, eid).get("exclude", False)
-    ]
+    # Filter out excluded lights and lights being autoconfigured
+    testing_lights = hass.data.get(DOMAIN, {}).get("testing_lights", set())
+    final_result = []
+    for eid in result:
+        if _get_light_config(hass, eid).get("exclude", False):
+            _LOGGER.debug("%s: Excluded from fade", eid)
+        elif eid in testing_lights:
+            _LOGGER.debug("%s: Excluded from fade (autoconfigure in progress)", eid)
+        else:
+            final_result.append(eid)
+    return final_result
 
 
 def _can_apply_fade_params(state: State, params: FadeParams) -> bool:
