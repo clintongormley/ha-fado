@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from custom_components.fade_lights import async_setup_entry
 from custom_components.fade_lights.const import DOMAIN, NOTIFICATION_ID
 from custom_components.fade_lights.notifications import (
     _get_unconfigured_lights,
@@ -216,3 +218,30 @@ class TestNotifyUnconfiguredLights:
             await _notify_unconfigured_lights(hass)
 
         mock_dismiss.assert_called_once_with(hass, NOTIFICATION_ID)
+
+
+class TestSetupNotification:
+    """Test notification on setup."""
+
+    async def test_checks_unconfigured_on_setup(self, hass: HomeAssistant) -> None:
+        """Test that setup checks for unconfigured lights."""
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch(
+                "custom_components.fade_lights.async_register_websocket_api"
+            ),
+            patch(
+                "custom_components.fade_lights._notify_unconfigured_lights"
+            ) as mock_notify,
+            patch(
+                "custom_components.fade_lights._apply_stored_log_level"
+            ),
+        ):
+            hass.http = None  # Skip panel registration
+            await async_setup_entry(hass, mock_entry)
+
+        mock_notify.assert_called_once_with(hass)

@@ -67,6 +67,7 @@ from .const import (
 from .expected_state import ExpectedState, ExpectedValues
 from .fade_change import FadeChange, FadeStep
 from .fade_params import FadeParams
+from .notifications import _notify_unconfigured_lights
 from .websocket_api import async_register_websocket_api
 
 _LOGGER = logging.getLogger(__name__)
@@ -208,6 +209,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Apply stored log level on startup
     await _apply_stored_log_level(hass, entry)
+
+    # Check for unconfigured lights and notify
+    await _notify_unconfigured_lights(hass)
 
     return True
 
