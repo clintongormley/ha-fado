@@ -408,10 +408,10 @@ async def test_fade_stores_orig_brightness(
     )
     await hass.async_block_till_done()
 
-    # Check that the original brightness was stored (flat map: entity_id -> brightness)
+    # Check that the original brightness was stored (nested: entity_id -> {orig_brightness: ...})
     storage_data = hass.data[DOMAIN]["data"]
     assert entity_id in storage_data
-    assert storage_data[entity_id] == 153  # 60% of 255
+    assert storage_data[entity_id]["orig_brightness"] == 153  # 60% of 255
 
 
 async def test_fade_from_off_turns_on(
@@ -742,3 +742,53 @@ async def test_fade_cancel_event_after_brightness_apply(
     assert len(service_calls) == 1
 
 
+async def test_per_light_min_delay_overrides_global(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    service_calls: list[ServiceCall],
+) -> None:
+    """Test that per-light min_delay_ms overrides global setting."""
+    entity_id = "light.custom_delay"
+
+    # Configure per-light delay of 200ms (global is 100ms)
+    hass.data[DOMAIN]["data"][entity_id] = {"min_delay_ms": 200}
+
+    hass.states.async_set(
+        entity_id,
+        STATE_ON,
+        {
+            ATTR_BRIGHTNESS: 255,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        },
+    )
+    await hass.async_block_till_done()
+
+    # Fade with 1 second transition
+    import time
+
+    start = time.monotonic()
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_FADE_LIGHTS,
+        {
+            "entity_id": entity_id,
+            ATTR_BRIGHTNESS_PCT: 0,
+            ATTR_TRANSITION: 1,  # 1 second
+        },
+        blocking=True,
+    )
+
+    elapsed = time.monotonic() - start
+
+    # With 200ms delay and 255 brightness change, should have ~5 steps
+    # 5 steps with 4 sleeps (no sleep after last step) * 200ms = 800ms minimum
+    # Global 100ms would give ~10 steps with 9 sleeps * 100ms = 900ms
+    # The per-light delay results in fewer, slower steps
+    assert elapsed >= 0.7  # At least 700ms (accounting for variance)
+
+    # Verify we got approximately 5 turn_on calls + 1 turn_off call
+    turn_on_calls = _get_turn_on_calls(service_calls)
+    turn_off_calls = _get_turn_off_calls(service_calls)
+    assert len(turn_on_calls) == 4  # Steps before turn_off (255->204->153->102->51)
+    assert len(turn_off_calls) == 1  # Final turn_off to 0

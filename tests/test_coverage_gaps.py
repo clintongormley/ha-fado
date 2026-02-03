@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.fade_lights.fade_change import FadeChange
 from custom_components.fade_lights.const import (
     ATTR_BRIGHTNESS_PCT,
     ATTR_FROM,
@@ -22,6 +21,7 @@ from custom_components.fade_lights.const import (
     SERVICE_FADE_LIGHTS,
 )
 from custom_components.fade_lights.expected_state import ExpectedValues
+from custom_components.fade_lights.fade_change import FadeChange
 from custom_components.fade_lights.fade_params import FadeParams
 
 
