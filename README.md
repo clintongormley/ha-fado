@@ -68,13 +68,34 @@ After installation and restart, add the integration via the Home Assistant UI:
 
 Once configured, the `fade_lights.fade_lights` service will be available in **Developer Tools** → **Actions**.
 
-### Configuration Options
+### Configuration Panel
 
-To adjust the integration settings, go to **Settings** → **Devices & Services** → **Fade Lights** → **Configure**.
+After installation, **Fade Lights** appears in your Home Assistant sidebar. Click it to access the configuration panel where you can:
 
-| Option                          | Description                                                                                                          | Default | Range   |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | ------- |
-| **Minimum delay between steps** | Minimum delay between brightness steps in milliseconds. Lower values create smoother fades but increase system load. | 100ms   | 50-1000 |
+- **View all lights** organized by floor and area
+- **Set per-light minimum delay** values for smoother fading on slower devices
+- **Exclude lights** from fade operations (at light, area, or floor level)
+- **Run auto-configure** to automatically measure optimal timing for each light
+- **Set the global minimum delay** that applies as a floor for all lights
+- **Configure log level** that persists across restarts (warning, info, or debug)
+
+| Setting                         | Description                                                                                                          | Default | Range              |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | ------------------ |
+| **Log level**                   | Controls logging verbosity. Warning shows only issues, Info shows fade operations, Debug shows all details.          | Warning | warning/info/debug |
+| **Global min delay**            | The absolute minimum delay for all lights. Per-light values cannot be set lower than this.                           | 100ms   | 50-1000            |
+| **Per-light min delay**         | Override for specific lights. Must be at least the global minimum. If global is raised, these auto-update.           | —       | global-1000        |
+| **Exclude**                     | Exclude lights from all fade operations. Excluded lights are skipped when fading areas or groups.                    | Off     | —                  |
+
+#### Auto-Configure
+
+The auto-configure feature measures each light's response time to determine the optimal minimum delay:
+
+1. Select the lights you want to configure using the checkboxes
+2. Click **Auto-configure selected lights**
+3. The integration will toggle each light's brightness multiple times and measure response times
+4. The 90th percentile response time (rounded up to nearest 10ms) is saved as the light's minimum delay
+
+This ensures smooth fading without overwhelming slower devices.
 
 ## Usage
 

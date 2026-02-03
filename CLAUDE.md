@@ -2,10 +2,10 @@
 
 ## Pre-approved Commands (NEVER ask for permission)
 
-The following command is pre-approved and must be run WITHOUT asking for permission:
+The following commands are pre-approved and must be run WITHOUT asking for permission:
 
 ```
-cp -r /tmp/ha_fade_lights/custom_components/fade_lights /workspaces/homeassistant-core/config/custom_components/
+rm -Rf /workspaces/homeassistant-core/config/custom_components/fade_lights && cp -r /tmp/ha_fade_lights/custom_components/fade_lights /workspaces/homeassistant-core/config/custom_components/
 ```
 
 ## Git Workflow
@@ -23,13 +23,16 @@ cp -r /tmp/ha_fade_lights/custom_components/fade_lights /workspaces/homeassistan
 
 - After making changes, always copy the integration to the HA config directory for testing:
   ```
-  cp -r /tmp/ha_fade_lights/custom_components/fade_lights /workspaces/homeassistant-core/config/custom_components/
+  rm -Rf /workspaces/homeassistant-core/config/custom_components/fade_lights && cp -r /tmp/ha_fade_lights/custom_components/fade_lights /workspaces/homeassistant-core/config/custom_components/
   ```
 - This is a **custom component**, NOT a core integration - never copy to `homeassistant/components/`
 - Run the copy command automatically without asking for permission
 
 ## Shortcuts
 
-- `cp to ha` - Copy the integration to `/workspaces/homeassistant-core/config/custom_components/fade_lights/` for testing
+- `cp to ha` - Remove existing and copy the integration to `/workspaces/homeassistant-core/config/custom_components/fade_lights/` for testing:
+  ```
+  rm -Rf /workspaces/homeassistant-core/config/custom_components/fade_lights && cp -r /tmp/ha_fade_lights/custom_components/fade_lights /workspaces/homeassistant-core/config/custom_components/
+  ```
 - `pr` - Commit any changes in separate commits if that makes sense, and create a PR (do not merge)
 - `merge` - Merge the current PR (only after explicit user approval)
