@@ -1,7 +1,7 @@
 """Tests for unconfigured lights notification."""
 
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
@@ -444,3 +444,21 @@ class TestDailyNotificationTimer:
         call_args = mock_timer.call_args
         assert call_args[0][0] is hass  # First arg is hass
         assert call_args[0][2] == timedelta(hours=24)  # Third arg is interval
+
+
+class TestSaveConfigNotification:
+    """Test notification after saving config."""
+
+    async def test_notifies_after_save(self, hass: HomeAssistant) -> None:
+        """Test notification check is called after saving config."""
+        from custom_components.fade_lights.websocket_api import async_save_light_config
+
+        hass.data[DOMAIN] = {"data": {}, "store": MagicMock()}
+        hass.data[DOMAIN]["store"].async_save = AsyncMock()
+
+        with patch(
+            "custom_components.fade_lights.websocket_api._notify_unconfigured_lights"
+        ) as mock_notify:
+            await async_save_light_config(hass, "light.bedroom", min_delay_ms=100)
+
+        mock_notify.assert_called_once_with(hass)
