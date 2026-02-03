@@ -158,20 +158,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     entry.async_on_unload(tracker.async_remove)
 
-    # Listen for entity registry changes to clean up deleted entities
+    # Listen for entity registry changes to clean up deleted entities and check for new ones
     async def handle_entity_registry_updated(
         event: Event[er.EventEntityRegistryUpdatedData],
     ) -> None:
         """Handle entity registry updates."""
-        if event.data["action"] != "remove":
-            return
-
+        action = event.data["action"]
         entity_id = event.data["entity_id"]
+
         # Only handle light entities
         if not entity_id.startswith(f"{LIGHT_DOMAIN}."):
             return
 
-        await _cleanup_entity_data(hass, entity_id)
+        if action == "remove":
+            await _cleanup_entity_data(hass, entity_id)
+            await _notify_unconfigured_lights(hass)
+        elif action == "create":
+            await _notify_unconfigured_lights(hass)
+        elif action == "update":
+            # Check if light was re-enabled (disabled_by changed)
+            changes = event.data.get("changes", {})
+            if "disabled_by" in changes:
+                await _notify_unconfigured_lights(hass)
 
     entry.async_on_unload(
         hass.bus.async_listen(

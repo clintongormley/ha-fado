@@ -1,6 +1,6 @@
 """Tests for unconfigured lights notification."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
@@ -245,3 +245,172 @@ class TestSetupNotification:
             await async_setup_entry(hass, mock_entry)
 
         mock_notify.assert_called_once_with(hass)
+
+
+class TestEntityRegistryNotification:
+    """Test notification on entity registry events."""
+
+    async def test_notifies_on_light_create(self, hass: HomeAssistant) -> None:
+        """Test notification check on light entity creation."""
+        from homeassistant.helpers import entity_registry as er
+
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fade_lights.async_register_websocket_api"),
+            patch(
+                "custom_components.fade_lights._notify_unconfigured_lights"
+            ) as mock_notify,
+            patch("custom_components.fade_lights._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+            # Reset mock to clear the call from setup
+            mock_notify.reset_mock()
+
+            # Simulate entity registry create event
+            hass.bus.async_fire(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                {"action": "create", "entity_id": "light.new_light"},
+            )
+            await hass.async_block_till_done()
+
+            mock_notify.assert_called()
+
+    async def test_notifies_on_light_reenable(self, hass: HomeAssistant) -> None:
+        """Test notification check when light is re-enabled."""
+        from homeassistant.helpers import entity_registry as er
+
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fade_lights.async_register_websocket_api"),
+            patch(
+                "custom_components.fade_lights._notify_unconfigured_lights"
+            ) as mock_notify,
+            patch("custom_components.fade_lights._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+            # Reset mock to clear the call from setup
+            mock_notify.reset_mock()
+
+            # Simulate entity registry update with disabled_by change
+            hass.bus.async_fire(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                {
+                    "action": "update",
+                    "entity_id": "light.bedroom",
+                    "changes": {"disabled_by": None},
+                },
+            )
+            await hass.async_block_till_done()
+
+            mock_notify.assert_called()
+
+    async def test_notifies_on_light_remove(self, hass: HomeAssistant) -> None:
+        """Test notification check on light removal (may dismiss)."""
+        from homeassistant.helpers import entity_registry as er
+
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fade_lights.async_register_websocket_api"),
+            patch(
+                "custom_components.fade_lights._notify_unconfigured_lights"
+            ) as mock_notify,
+            patch("custom_components.fade_lights._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+            # Reset mock to clear the call from setup
+            mock_notify.reset_mock()
+
+            # Simulate entity registry remove event
+            hass.bus.async_fire(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                {"action": "remove", "entity_id": "light.old_light"},
+            )
+            await hass.async_block_till_done()
+
+            mock_notify.assert_called()
+
+    async def test_ignores_non_light_entities(self, hass: HomeAssistant) -> None:
+        """Test ignores non-light entity events."""
+        from homeassistant.helpers import entity_registry as er
+
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fade_lights.async_register_websocket_api"),
+            patch(
+                "custom_components.fade_lights._notify_unconfigured_lights"
+            ) as mock_notify,
+            patch("custom_components.fade_lights._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+            # Reset mock to clear the call from setup
+            mock_notify.reset_mock()
+
+            # Simulate switch entity creation
+            hass.bus.async_fire(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                {"action": "create", "entity_id": "switch.new_switch"},
+            )
+            await hass.async_block_till_done()
+
+            mock_notify.assert_not_called()
+
+    async def test_ignores_update_without_disabled_change(
+        self, hass: HomeAssistant
+    ) -> None:
+        """Test ignores updates that don't change disabled state."""
+        from homeassistant.helpers import entity_registry as er
+
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fade_lights.async_register_websocket_api"),
+            patch(
+                "custom_components.fade_lights._notify_unconfigured_lights"
+            ) as mock_notify,
+            patch("custom_components.fade_lights._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+            # Reset mock to clear the call from setup
+            mock_notify.reset_mock()
+
+            # Simulate entity registry update without disabled_by change
+            hass.bus.async_fire(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                {
+                    "action": "update",
+                    "entity_id": "light.bedroom",
+                    "changes": {"name": "New Name"},
+                },
+            )
+            await hass.async_block_till_done()
+
+            mock_notify.assert_not_called()
