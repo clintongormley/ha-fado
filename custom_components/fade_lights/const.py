@@ -8,6 +8,7 @@ SERVICE_FADE_LIGHTS = "fade_lights"
 # Service attributes
 ATTR_BRIGHTNESS_PCT = "brightness_pct"
 ATTR_TRANSITION = "transition"
+ATTR_EASING = "easing"
 
 # Color attributes (input parameters)
 ATTR_COLOR_TEMP_KELVIN = "color_temp_kelvin"
@@ -49,6 +50,7 @@ MAIN_PARAMS = frozenset(
         "entity_id",
         ATTR_BRIGHTNESS_PCT,
         ATTR_TRANSITION,
+        ATTR_EASING,
         ATTR_FROM,
         ATTR_COLOR_TEMP_KELVIN,
         ATTR_HS_COLOR,

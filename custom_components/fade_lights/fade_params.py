@@ -15,6 +15,7 @@ from homeassistant.util.color import (
 from .const import (
     ATTR_BRIGHTNESS_PCT,
     ATTR_COLOR_TEMP_KELVIN,
+    ATTR_EASING,
     ATTR_FROM,
     ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
@@ -42,6 +43,7 @@ class FadeParams:
     hs_color: tuple[float, float] | None = None  # (hue, saturation)
     color_temp_kelvin: int | None = None
     transition_ms: int = DEFAULT_TRANSITION * 1000
+    easing: str = "auto"  # "auto", "linear", or explicit curve name
 
     # Starting values (from: parameter)
     from_brightness_pct: int | None = None
@@ -106,12 +108,14 @@ class FadeParams:
             ) = cls._extract_fade_values(from_data)
 
         transition_ms = int(1000 * float(data.get(ATTR_TRANSITION, DEFAULT_TRANSITION)))
+        easing = str(data.get(ATTR_EASING, "auto"))
 
         return cls(
             brightness_pct=brightness_pct,
             hs_color=hs_color,
             color_temp_kelvin=color_temp_kelvin,
             transition_ms=transition_ms,
+            easing=easing,
             from_brightness_pct=from_brightness_pct,
             from_hs_color=from_hs_color,
             from_color_temp_kelvin=from_color_temp_kelvin,
