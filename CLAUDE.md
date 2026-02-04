@@ -10,3 +10,7 @@
 
 - Before creating a PR, always run `ruff check .` and `ruff format .` to fix any linting issues
 - Before creating a PR, run `npx pyright` to check for Pylance/type errors and fix any that can be fixed
+
+## Shortcuts
+
+- `cp to ha` - Copy the integration to `/workspaces/homeassistant-core/config/custom_components/fade_lights/` for testing
