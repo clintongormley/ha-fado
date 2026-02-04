@@ -325,3 +325,98 @@ class TestFromParameter:
                 },
                 blocking=True,
             )
+
+
+class TestValueRangeValidation:
+    """Test parameter value range validation."""
+
+    async def test_rejects_invalid_hue(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test service rejects hue outside 0-360."""
+        with pytest.raises(ServiceValidationError, match="[Hh]ue"):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
+                {
+                    "entity_id": mock_light_entity,
+                    ATTR_HS_COLOR: [400, 50],  # Invalid hue
+                },
+                blocking=True,
+            )
+
+    async def test_rejects_invalid_saturation(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test service rejects saturation outside 0-100."""
+        with pytest.raises(ServiceValidationError, match="[Ss]aturation"):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
+                {
+                    "entity_id": mock_light_entity,
+                    ATTR_HS_COLOR: [200, 150],  # Invalid saturation
+                },
+                blocking=True,
+            )
+
+    async def test_rejects_invalid_rgb(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test service rejects RGB values outside 0-255."""
+        with pytest.raises(ServiceValidationError, match="RGB"):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
+                {
+                    "entity_id": mock_light_entity,
+                    ATTR_RGB_COLOR: [300, 128, 0],  # Invalid R
+                },
+                blocking=True,
+            )
+
+    async def test_rejects_invalid_color_temp(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test service rejects color temp outside reasonable range."""
+        with pytest.raises(ServiceValidationError, match="[Cc]olor temp"):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
+                {
+                    "entity_id": mock_light_entity,
+                    ATTR_COLOR_TEMP_KELVIN: 500,  # Too low
+                },
+                blocking=True,
+            )
+
+    async def test_accepts_valid_ranges(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test service accepts valid parameter ranges."""
+        # Should not raise
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_FADE_LIGHTS,
+            {
+                "entity_id": mock_light_entity,
+                ATTR_HS_COLOR: [360, 100],  # Max valid values
+                ATTR_TRANSITION: 0.1,
+            },
+            blocking=True,
+        )
