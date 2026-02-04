@@ -83,8 +83,10 @@ fade_lights:
         object:
     from:
       name: Starting values
-      description: Override starting values instead of using current state. Accepts brightness_pct and one color parameter.
+      description: >-
+        Override starting values instead of using current state.
+        Accepts brightness_pct and one color parameter (color_temp_kelvin, hs_color, rgb_color, rgbw_color, rgbww_color, or xy_color).
       required: false
-      example: "{ brightness_pct: 0, hs_color: [0, 0] }"
+      example: "{ brightness_pct: 0, color_temp_kelvin: 2700 }"
       selector:
         object:

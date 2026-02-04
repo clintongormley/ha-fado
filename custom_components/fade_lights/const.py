@@ -53,7 +53,8 @@ BRIGHTNESS_TOLERANCE = 3
 # Color tolerances for detecting manual intervention (accounts for device rounding)
 HUE_TOLERANCE = 5.0  # degrees (0-360 scale)
 SATURATION_TOLERANCE = 3.0  # percentage points (0-100 scale)
-MIREDS_TOLERANCE = 10  # mireds
+MIREDS_TOLERANCE = 10  # mireds (internal use only)
+KELVIN_TOLERANCE = 100  # kelvin
 
 # Timeout for waiting on fade cancellation (seconds)
 FADE_CANCEL_TIMEOUT_S = 2.0
@@ -88,3 +89,8 @@ MIN_BRIGHTNESS_DELTA = 1      # 0-255 scale
 MIN_HUE_DELTA = 1.0           # degrees (0-360)
 MIN_SATURATION_DELTA = 1.0    # percentage (0-100)
 MIN_MIREDS_DELTA = 5          # mireds (~150-500 typical range)
+
+# Hybrid transition crossover ratio (HS phase proportion for hs_to_mireds)
+# For hs_to_mireds: 70% of steps in HS phase, 30% in mireds phase
+# For mireds_to_hs: inverted (30% mireds, 70% HS)
+HYBRID_HS_PHASE_RATIO = 0.7

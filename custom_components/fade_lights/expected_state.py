@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from .const import (
     BRIGHTNESS_TOLERANCE,
     HUE_TOLERANCE,
-    MIREDS_TOLERANCE,
+    KELVIN_TOLERANCE,
     SATURATION_TOLERANCE,
     STALE_THRESHOLD,
 )
@@ -28,7 +28,7 @@ class ExpectedValues:
 
     brightness: int | None = None
     hs_color: tuple[float, float] | None = None
-    color_temp_mireds: int | None = None
+    color_temp_kelvin: int | None = None
 
 
 @dataclass
@@ -169,13 +169,13 @@ class ExpectedState:
             if not self._hs_match(expected.hs_color, actual.hs_color):
                 return False
 
-        # Check mireds if tracked
-        if expected.color_temp_mireds is not None:
-            if actual.color_temp_mireds is None:
+        # Check color temp if tracked
+        if expected.color_temp_kelvin is not None:
+            if actual.color_temp_kelvin is None:
                 return False
             if (
-                abs(expected.color_temp_mireds - actual.color_temp_mireds)
-                > MIREDS_TOLERANCE
+                abs(expected.color_temp_kelvin - actual.color_temp_kelvin)
+                > KELVIN_TOLERANCE
             ):
                 return False
 

@@ -89,21 +89,21 @@ class TestCanFadeColor:
         """Test color temp fade allowed on COLOR_TEMP light."""
         entity_id = self._make_state(hass, [ColorMode.COLOR_TEMP])
         state = hass.states.get(entity_id)
-        params = FadeParams(color_temp_mireds=250)
+        params = FadeParams(color_temp_kelvin=4000)
         assert _can_apply_fade_params(state, params) is True
 
     async def test_color_temp_rejected_on_hs_only(self, hass: HomeAssistant) -> None:
         """Test color temp fade rejected on HS-only light."""
         entity_id = self._make_state(hass, [ColorMode.HS])
         state = hass.states.get(entity_id)
-        params = FadeParams(color_temp_mireds=250)
+        params = FadeParams(color_temp_kelvin=4000)
         assert _can_apply_fade_params(state, params) is False
 
     async def test_color_temp_rejected_on_brightness_only(self, hass: HomeAssistant) -> None:
         """Test color temp fade rejected on brightness-only light."""
         entity_id = self._make_state(hass, [ColorMode.BRIGHTNESS])
         state = hass.states.get(entity_id)
-        params = FadeParams(color_temp_mireds=250)
+        params = FadeParams(color_temp_kelvin=4000)
         assert _can_apply_fade_params(state, params) is False
 
     async def test_brightness_only_allowed_on_any_dimmable(self, hass: HomeAssistant) -> None:
@@ -131,7 +131,7 @@ class TestCanFadeColor:
         """Test light with multiple modes (COLOR_TEMP + HS) allows color temp."""
         entity_id = self._make_state(hass, [ColorMode.COLOR_TEMP, ColorMode.HS])
         state = hass.states.get(entity_id)
-        params = FadeParams(color_temp_mireds=250)
+        params = FadeParams(color_temp_kelvin=4000)
         assert _can_apply_fade_params(state, params) is True
 
 

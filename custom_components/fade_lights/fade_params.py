@@ -33,25 +33,25 @@ class FadeParams:
 
     All color inputs are converted to internal representations:
     - RGB/RGBW/RGBWW/XY colors -> hs_color (hue 0-360, saturation 0-100)
-    - color_temp_kelvin -> color_temp_mireds
+    - color_temp_kelvin is stored directly (no conversion)
     """
 
     brightness_pct: int | None = None
     hs_color: tuple[float, float] | None = None  # (hue, saturation)
-    color_temp_mireds: int | None = None
+    color_temp_kelvin: int | None = None
     transition_ms: int = DEFAULT_TRANSITION * 1000
 
     # Starting values (from: parameter)
     from_brightness_pct: int | None = None
     from_hs_color: tuple[float, float] | None = None
-    from_color_temp_mireds: int | None = None
+    from_color_temp_kelvin: int | None = None
 
     def has_target(self) -> bool:
         """Check if any fade target values are specified."""
         return (
             self.brightness_pct is not None
             or self.hs_color is not None
-            or self.color_temp_mireds is not None
+            or self.color_temp_kelvin is not None
         )
 
     def has_from_target(self) -> bool:
@@ -59,7 +59,7 @@ class FadeParams:
         return (
             self.from_brightness_pct is not None
             or self.from_hs_color is not None
-            or self.from_color_temp_mireds is not None
+            or self.from_color_temp_kelvin is not None
         )
 
     @classmethod
@@ -72,7 +72,6 @@ class FadeParams:
 
         Converts:
         - rgb_color, rgbw_color, rgbww_color, xy_color -> hs_color
-        - color_temp_kelvin -> color_temp_mireds
 
         Also handles the 'from:' parameter for starting values.
 
@@ -88,18 +87,18 @@ class FadeParams:
         cls._validate_color_params(data)
         cls._validate_color_ranges(data)
 
-        brightness_pct, hs_color, color_temp_mireds = cls._extract_fade_values(data)
+        brightness_pct, hs_color, color_temp_kelvin = cls._extract_fade_values(data)
 
         from_brightness_pct = None
         from_hs_color = None
-        from_color_temp_mireds = None
+        from_color_temp_kelvin = None
 
         from_data = data.get(ATTR_FROM, {})
         if from_data:
             (
                 from_brightness_pct,
                 from_hs_color,
-                from_color_temp_mireds,
+                from_color_temp_kelvin,
             ) = cls._extract_fade_values(from_data)
 
         transition_ms = int(
@@ -109,11 +108,11 @@ class FadeParams:
         return cls(
             brightness_pct=brightness_pct,
             hs_color=hs_color,
-            color_temp_mireds=color_temp_mireds,
+            color_temp_kelvin=color_temp_kelvin,
             transition_ms=transition_ms,
             from_brightness_pct=from_brightness_pct,
             from_hs_color=from_hs_color,
-            from_color_temp_mireds=from_color_temp_mireds,
+            from_color_temp_kelvin=from_color_temp_kelvin,
         )
 
     @classmethod
@@ -226,23 +225,23 @@ class FadeParams:
     def _extract_fade_values(
         cls, data: dict
     ) -> tuple[int | None, tuple[float, float] | None, int | None]:
-        """Extract brightness, HS color, and mireds from data dict.
+        """Extract brightness, HS color, and color temp from data dict.
 
         Returns:
-            Tuple of (brightness_pct, hs_color, color_temp_mireds)
+            Tuple of (brightness_pct, hs_color, color_temp_kelvin)
         """
         brightness_pct = (
             int(data[ATTR_BRIGHTNESS_PCT]) if ATTR_BRIGHTNESS_PCT in data else None
         )
-        hs, mireds = cls._extract_color(data)
-        return brightness_pct, hs, mireds
+        hs, kelvin = cls._extract_color(data)
+        return brightness_pct, hs, kelvin
 
     @staticmethod
     def _extract_color(data: dict) -> tuple[tuple[float, float] | None, int | None]:
-        """Extract color from data dict, converting to HS or mireds.
+        """Extract color from data dict, converting to HS or keeping kelvin.
 
         Returns:
-            Tuple of (hs_color, color_temp_mireds) - one will be None
+            Tuple of (hs_color, color_temp_kelvin) - one will be None
         """
         # Handle HS color (pass through)
         if ATTR_HS_COLOR in data:
@@ -283,9 +282,8 @@ class FadeParams:
             hs = color_xy_to_hs(xy[0], xy[1])
             return hs, None
 
-        # Handle color temperature
+        # Handle color temperature (keep as kelvin)
         if ATTR_COLOR_TEMP_KELVIN in data:
-            kelvin = data[ATTR_COLOR_TEMP_KELVIN]
-            return None, int(1_000_000 / kelvin)
+            return None, int(data[ATTR_COLOR_TEMP_KELVIN])
 
         return None, None

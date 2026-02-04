@@ -199,19 +199,18 @@ class TestColorConversions:
 
         assert params.hs_color == (180, 75)
 
-    async def test_color_temp_converts_to_mireds(
+    async def test_color_temp_stored_as_kelvin(
         self,
         hass: HomeAssistant,
         init_integration: MockConfigEntry,
         mock_light_entity: str,
     ) -> None:
-        """Test color_temp_kelvin is converted to mireds."""
+        """Test color_temp_kelvin is stored directly (no conversion)."""
         from custom_components.fade_lights.fade_params import FadeParams
 
-        # 4000K = 250 mireds (1_000_000 / 4000)
         params = FadeParams.from_service_data({ATTR_COLOR_TEMP_KELVIN: 4000})
 
-        assert params.color_temp_mireds == 250
+        assert params.color_temp_kelvin == 4000
         assert params.hs_color is None
 
     async def test_no_color_returns_none(
@@ -226,7 +225,7 @@ class TestColorConversions:
         params = FadeParams.from_service_data({ATTR_BRIGHTNESS_PCT: 50})
 
         assert params.hs_color is None
-        assert params.color_temp_mireds is None
+        assert params.color_temp_kelvin is None
 
 
 class TestFromParameter:
@@ -289,8 +288,8 @@ class TestFromParameter:
             }
         )
 
-        assert params.color_temp_mireds == 250  # 4000K
-        assert params.from_color_temp_mireds == 370  # 2700K
+        assert params.color_temp_kelvin == 4000
+        assert params.from_color_temp_kelvin == 2700
 
     async def test_from_rgb_converts_to_hs(
         self,

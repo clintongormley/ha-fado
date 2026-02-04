@@ -40,6 +40,7 @@ from .const import (
     DEFAULT_MIN_STEP_DELAY_MS,
     DOMAIN,
     FADE_CANCEL_TIMEOUT_S,
+    HYBRID_HS_PHASE_RATIO,
     OPTION_MIN_STEP_DELAY_MS,
     PLANCKIAN_LOCUS_HS,
     PLANCKIAN_LOCUS_SATURATION_THRESHOLD,
@@ -275,22 +276,8 @@ async def _execute_fade(
     if existing_orig == 0 and start_brightness > 0:
         _store_orig_brightness(hass, entity_id, start_brightness)
 
-    # Get light capabilities and bounds
-    supported_modes = _get_supported_color_modes(state.attributes)
-    min_kelvin = state.attributes.get(HA_ATTR_MIN_COLOR_TEMP_KELVIN)
-    max_kelvin = state.attributes.get(HA_ATTR_MAX_COLOR_TEMP_KELVIN)
-    min_mireds = int(1_000_000 / max_kelvin) if max_kelvin else None
-    max_mireds = int(1_000_000 / min_kelvin) if min_kelvin else None
-
     # Resolve fade parameters into a configured FadeChange
-    fade = resolve_fade(
-        fade_params,
-        state.attributes,
-        supported_modes,
-        min_step_delay_ms,
-        min_mireds,
-        max_mireds,
-    )
+    fade = resolve_fade(fade_params, state.attributes, min_step_delay_ms)
 
     if fade is None:
         _LOGGER.debug("%s: Nothing to fade", entity_id)
@@ -532,14 +519,12 @@ def _supports_color_temp(supported_modes: set[ColorMode]) -> bool:
 def resolve_fade(
     params: FadeParams,
     state_attributes: dict,
-    supported_color_modes: set[ColorMode],
     min_step_delay_ms: int,
-    min_mireds: int | None = None,
-    max_mireds: int | None = None,
 ) -> FadeChange | None:
     """Resolve fade parameters against light state, returning configured FadeChange.
 
     This function consolidates all resolution and filtering logic:
+    - Extracts light capabilities from state attributes
     - Resolves start values from params or state
     - Converts kelvin to mireds (with bounds clamping)
     - Detects hybrid transition scenarios (HS <-> color temp)
@@ -550,18 +535,22 @@ def resolve_fade(
     Args:
         params: FadeParams from service call
         state_attributes: Light state attributes dict
-        supported_color_modes: Set of ColorMode values the light supports
         min_step_delay_ms: Minimum delay between steps in milliseconds
-        min_mireds: Minimum mireds (coolest/highest kelvin), or None
-        max_mireds: Maximum mireds (warmest/lowest kelvin), or None
 
     Returns:
         Configured FadeChange, or None if nothing to fade
     """
-    # Check light capabilities
+    # Extract light capabilities from state
+    supported_color_modes = _get_supported_color_modes(state_attributes)
     can_dim = _supports_brightness(supported_color_modes)
     can_hs = _supports_hs(supported_color_modes)
     can_color_temp = _supports_color_temp(supported_color_modes)
+
+    # Extract color temp bounds (kelvin -> mireds with inversion)
+    min_kelvin = state_attributes.get(HA_ATTR_MIN_COLOR_TEMP_KELVIN)
+    max_kelvin = state_attributes.get(HA_ATTR_MAX_COLOR_TEMP_KELVIN)
+    min_mireds = int(1_000_000 / max_kelvin) if max_kelvin else None
+    max_mireds = int(1_000_000 / min_kelvin) if min_kelvin else None
 
     # Resolve brightness values
     start_brightness = _resolve_start_brightness(params, state_attributes)
@@ -588,9 +577,9 @@ def resolve_fade(
     end_mireds = _resolve_end_mireds(params)
 
     # Clamp mireds to light's supported range
-    if start_mireds is not None and (min_mireds or max_mireds):
+    if start_mireds is not None:
         start_mireds = _clamp_mireds(start_mireds, min_mireds, max_mireds)
-    if end_mireds is not None and (min_mireds or max_mireds):
+    if end_mireds is not None:
         end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
 
     # Handle capability filtering - convert unsupported color modes
@@ -602,8 +591,7 @@ def resolve_fade(
         # Convert target HS to nearest mireds (if low saturation)
         if _is_on_planckian_locus(end_hs):
             end_mireds = _hs_to_mireds(end_hs)
-            if min_mireds or max_mireds:
-                end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
+            end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
         end_hs = None
 
     # Filter out unsupported modes entirely
@@ -642,8 +630,7 @@ def resolve_fade(
         # Find crossover point on Planckian locus
         crossover_hs = _mireds_to_hs(end_mireds)
         crossover_mireds = _hs_to_mireds(crossover_hs)
-        if min_mireds or max_mireds:
-            crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
+        crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
 
     # mireds -> HS: starting with color temp and targeting HS
     elif (
@@ -655,8 +642,7 @@ def resolve_fade(
         hybrid_direction = "mireds_to_hs"
         # Find crossover point on Planckian locus closest to target HS
         crossover_mireds = _hs_to_mireds(end_hs)
-        if min_mireds or max_mireds:
-            crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
+        crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
         crossover_hs = _mireds_to_hs(crossover_mireds)
 
     # Create FadeChange
@@ -674,13 +660,13 @@ def resolve_fade(
         _crossover_mireds=crossover_mireds,
     )
 
-    # Calculate crossover step if hybrid (70/30 split for hs_to_mireds, 30/70 for mireds_to_hs)
+    # Calculate crossover step if hybrid
     if hybrid_direction:
         total_steps = fade.step_count()
         if hybrid_direction == "hs_to_mireds":
-            crossover_step = int(total_steps * 0.7)
+            crossover_step = int(total_steps * HYBRID_HS_PHASE_RATIO)
         else:  # mireds_to_hs
-            crossover_step = int(total_steps * 0.3)
+            crossover_step = int(total_steps * (1 - HYBRID_HS_PHASE_RATIO))
         # Update the crossover step (need to set directly since it's a private field)
         fade._crossover_step = crossover_step  # noqa: SLF001
 
@@ -822,6 +808,8 @@ def _clamp_mireds(mireds: int, min_mireds: int | None, max_mireds: int | None) -
     Returns:
         Clamped mireds value
     """
+    if min_mireds is None and max_mireds is None:
+        return mireds
     result = mireds
     if min_mireds is not None:
         result = max(result, min_mireds)

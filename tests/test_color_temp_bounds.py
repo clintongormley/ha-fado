@@ -73,14 +73,12 @@ class TestResolveFadeWithBounds:
             ATTR_COLOR_TEMP_KELVIN: 4000,
             ATTR_MIN_COLOR_TEMP_KELVIN: 2000,
             ATTR_MAX_COLOR_TEMP_KELVIN: 6500,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
         }
-        supported_modes = {ColorMode.COLOR_TEMP}
 
         # min_mireds = 1_000_000 / 6500 = 153
         # max_mireds = 1_000_000 / 2000 = 500
-        change = resolve_fade(
-            params, state, supported_modes, min_step_delay_ms=100, min_mireds=153, max_mireds=500
-        )
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # End mireds should be clamped to max_mireds (500) = 2000K
@@ -100,14 +98,12 @@ class TestResolveFadeWithBounds:
             ATTR_COLOR_TEMP_KELVIN: 4000,
             ATTR_MIN_COLOR_TEMP_KELVIN: 2000,
             ATTR_MAX_COLOR_TEMP_KELVIN: 6500,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
         }
-        supported_modes = {ColorMode.COLOR_TEMP}
 
         # min_mireds = 1_000_000 / 6500 = 153
         # max_mireds = 1_000_000 / 2000 = 500
-        change = resolve_fade(
-            params, state, supported_modes, min_step_delay_ms=100, min_mireds=153, max_mireds=500
-        )
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # End mireds should be clamped to min_mireds (153) = 6500K
@@ -125,14 +121,12 @@ class TestResolveFadeWithBounds:
             ATTR_COLOR_TEMP_KELVIN: 3000,
             ATTR_MIN_COLOR_TEMP_KELVIN: 2000,
             ATTR_MAX_COLOR_TEMP_KELVIN: 6500,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
         }
-        supported_modes = {ColorMode.COLOR_TEMP}
 
         # min_mireds = 1_000_000 / 6500 = 153
         # max_mireds = 1_000_000 / 2000 = 500
-        change = resolve_fade(
-            params, state, supported_modes, min_step_delay_ms=100, min_mireds=153, max_mireds=500
-        )
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # 4000K = 250 mireds, should be unchanged
@@ -150,14 +144,12 @@ class TestResolveFadeWithBounds:
             ATTR_COLOR_TEMP_KELVIN: 4000,
             ATTR_MIN_COLOR_TEMP_KELVIN: 2000,
             ATTR_MAX_COLOR_TEMP_KELVIN: 6500,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
         }
-        supported_modes = {ColorMode.COLOR_TEMP}
 
         # min_mireds = 1_000_000 / 6500 = 153
         # max_mireds = 1_000_000 / 2000 = 500
-        change = resolve_fade(
-            params, state, supported_modes, min_step_delay_ms=100, min_mireds=153, max_mireds=500
-        )
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Start mireds should be clamped to max_mireds (500) = 2000K
@@ -173,11 +165,11 @@ class TestResolveFadeWithBounds:
         state = {
             ATTR_BRIGHTNESS: 128,
             ATTR_COLOR_TEMP_KELVIN: 4000,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.COLOR_TEMP],
             # No min/max bounds
         }
-        supported_modes = {ColorMode.COLOR_TEMP}
 
-        change = resolve_fade(params, state, supported_modes, min_step_delay_ms=100)
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # 1500K = 666 mireds, should NOT be clamped
@@ -196,12 +188,12 @@ class TestHybridTransitionsWithBounds:
         )
         state = {
             "hs_color": (120.0, 100.0),  # Saturated green - off locus
+            ATTR_MIN_COLOR_TEMP_KELVIN: 2000,
+            ATTR_MAX_COLOR_TEMP_KELVIN: 6500,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
         }
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
 
-        change = resolve_fade(
-            params, state, supported_modes, min_step_delay_ms=100, min_mireds=153, max_mireds=500
-        )
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should be hybrid transition
@@ -219,12 +211,12 @@ class TestHybridTransitionsWithBounds:
         )
         state = {
             ATTR_COLOR_TEMP_KELVIN: 1500,  # Will be clamped
+            ATTR_MIN_COLOR_TEMP_KELVIN: 2000,
+            ATTR_MAX_COLOR_TEMP_KELVIN: 6500,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.HS, ColorMode.COLOR_TEMP],
         }
-        supported_modes = {ColorMode.HS, ColorMode.COLOR_TEMP}
 
-        change = resolve_fade(
-            params, state, supported_modes, min_step_delay_ms=100, min_mireds=153, max_mireds=500
-        )
+        change = resolve_fade(params, state, min_step_delay_ms=100)
 
         assert change is not None
         # Should be hybrid transition

@@ -354,40 +354,45 @@ class TestFadeChangeInterpolateHS:
         assert result is None
 
 
-class TestFadeChangeInterpolateMireds:
-    """Test mireds interpolation."""
+class TestFadeChangeInterpolateColorTempKelvin:
+    """Test color temp interpolation (returns kelvin from internal mireds)."""
 
-    def test_interpolate_mireds_simple(self) -> None:
-        """Test simple mireds interpolation."""
+    def test_interpolate_color_temp_kelvin_simple(self) -> None:
+        """Test simple color temp kelvin interpolation.
+
+        Internal mireds: 200-400, midpoint at t=0.5 is 300 mireds = 3333K
+        """
         change = FadeChange(
-            start_mireds=200,
-            end_mireds=400,
+            start_mireds=200,  # 5000K
+            end_mireds=400,  # 2500K
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_mireds(0.5)
-        assert result == 300
+        result = change._interpolate_color_temp_kelvin(0.5)
+        # At t=0.5, mireds = 300, kelvin = 1_000_000/300 = 3333
+        assert result == 3333
 
-    def test_interpolate_mireds_end(self) -> None:
-        """Test mireds interpolation at t=1.0."""
+    def test_interpolate_color_temp_kelvin_end(self) -> None:
+        """Test color temp kelvin interpolation at t=1.0."""
         change = FadeChange(
-            start_mireds=200,
-            end_mireds=400,
+            start_mireds=200,  # 5000K
+            end_mireds=400,  # 2500K
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_mireds(1.0)
-        assert result == 400
+        result = change._interpolate_color_temp_kelvin(1.0)
+        # At t=1.0, mireds = 400, kelvin = 1_000_000/400 = 2500
+        assert result == 2500
 
-    def test_interpolate_mireds_none_when_not_set(self) -> None:
-        """Test mireds interpolation returns None when not set."""
+    def test_interpolate_color_temp_kelvin_none_when_not_set(self) -> None:
+        """Test color temp kelvin interpolation returns None when not set."""
         change = FadeChange(
             start_brightness=100,
             end_brightness=200,
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_mireds(0.5)
+        result = change._interpolate_color_temp_kelvin(0.5)
         assert result is None
 
 
@@ -472,11 +477,11 @@ class TestFadeChangeNextStepValues:
         assert steps[-1].brightness == 200
         assert steps[-1].hs_color == (100.0, 80.0)
 
-    def test_mireds_progression(self) -> None:
-        """Test mireds progresses correctly through steps."""
+    def test_color_temp_progression(self) -> None:
+        """Test color temp (kelvin) progresses correctly through steps."""
         change = FadeChange(
-            start_mireds=200,
-            end_mireds=400,
+            start_mireds=200,  # 5000K
+            end_mireds=400,  # 2500K
             transition_ms=1000,
             min_step_delay_ms=100,
         )
@@ -484,9 +489,10 @@ class TestFadeChangeNextStepValues:
         while change.has_next():
             steps.append(change.next_step())
 
-        assert steps[-1].color_temp_mireds == 400
+        # FadeStep outputs kelvin (converted from internal mireds)
+        assert steps[-1].color_temp_kelvin == 2500  # 400 mireds = 2500K
         for step in steps:
-            assert step.color_temp_mireds is not None
+            assert step.color_temp_kelvin is not None
 
     def test_no_start_value_in_steps(self) -> None:
         """Test that the start value is not included in steps."""

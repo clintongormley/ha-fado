@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.components.light import ATTR_BRIGHTNESS
+from homeassistant.components.light import ATTR_COLOR_TEMP_KELVIN as HA_ATTR_COLOR_TEMP_KELVIN
 from homeassistant.components.light import ATTR_HS_COLOR as HA_ATTR_HS_COLOR
 
 from custom_components.fade_lights import (
@@ -188,28 +189,32 @@ class TestResolveStartHs:
 
 
 class TestResolveStartMireds:
-    """Test _resolve_start_mireds function."""
+    """Test _resolve_start_mireds function.
 
-    def test_uses_from_color_temp_mireds_when_specified(self) -> None:
-        """Test that from_color_temp_mireds takes precedence over state."""
-        params = FadeParams(from_color_temp_mireds=250)
-        state = {"color_temp": 400}
+    This function takes kelvin from FadeParams and state, but returns mireds
+    for use with FadeChange which uses mireds internally for linear interpolation.
+    """
+
+    def test_uses_from_color_temp_kelvin_when_specified(self) -> None:
+        """Test that from_color_temp_kelvin takes precedence over state."""
+        params = FadeParams(from_color_temp_kelvin=4000)  # 250 mireds
+        state = {HA_ATTR_COLOR_TEMP_KELVIN: 2500}  # 400 mireds
 
         result = _resolve_start_mireds(params, state)
 
         assert result == 250
 
-    def test_uses_current_state_when_no_from_mireds(self) -> None:
-        """Test that current state is used when from_color_temp_mireds is None."""
+    def test_uses_current_state_when_no_from_kelvin(self) -> None:
+        """Test that current state is used when from_color_temp_kelvin is None."""
         params = FadeParams()
-        state = {"color_temp": 333}
+        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3003}  # ~333 mireds
 
         result = _resolve_start_mireds(params, state)
 
         assert result == 333
 
     def test_returns_none_when_both_missing(self) -> None:
-        """Test that None is returned when neither source has mireds."""
+        """Test that None is returned when neither source has color temp."""
         params = FadeParams()
         state = {}
 
@@ -217,29 +222,29 @@ class TestResolveStartMireds:
 
         assert result is None
 
-    def test_warm_white_mireds(self) -> None:
-        """Test handling of warm white color temp (high mireds)."""
-        params = FadeParams(from_color_temp_mireds=500)  # ~2000K
+    def test_warm_white_kelvin(self) -> None:
+        """Test handling of warm white color temp (low kelvin)."""
+        params = FadeParams(from_color_temp_kelvin=2000)  # 500 mireds
         state = {}
 
         result = _resolve_start_mireds(params, state)
 
         assert result == 500
 
-    def test_cool_white_mireds(self) -> None:
-        """Test handling of cool white color temp (low mireds)."""
-        params = FadeParams(from_color_temp_mireds=154)  # ~6500K
+    def test_cool_white_kelvin(self) -> None:
+        """Test handling of cool white color temp (high kelvin)."""
+        params = FadeParams(from_color_temp_kelvin=6500)  # 153 mireds (int(1_000_000/6500))
         state = {}
 
         result = _resolve_start_mireds(params, state)
 
-        assert result == 154
+        assert result == 153
 
-    def test_state_with_integer_mireds(self) -> None:
-        """Test handling of integer mireds from state."""
+    def test_state_with_kelvin(self) -> None:
+        """Test handling of kelvin from state."""
         params = FadeParams()
-        state = {"color_temp": 286}  # ~3500K
+        state = {HA_ATTR_COLOR_TEMP_KELVIN: 3500}  # 285 mireds (int(1_000_000/3500))
 
         result = _resolve_start_mireds(params, state)
 
-        assert result == 286
+        assert result == 285

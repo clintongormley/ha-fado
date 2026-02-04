@@ -42,7 +42,7 @@ def mock_state_on():
         "brightness": 128,
         "supported_color_modes": ["brightness", "hs", "color_temp"],
         "hs_color": (0.0, 0.0),
-        "color_temp": 300,
+        "color_temp_kelvin": 3333,  # ~300 mireds equivalent
     }
     return state
 
@@ -88,7 +88,7 @@ class TestExecuteFadeWithColors:
         mock_hass.states.get = MagicMock(return_value=mock_state_on)
 
         params = FadeParams(
-            color_temp_mireds=400,  # Target warm white
+            color_temp_kelvin=2500,  # Target warm white (400 mireds equivalent)
         )
 
         params.transition_ms = 1000
