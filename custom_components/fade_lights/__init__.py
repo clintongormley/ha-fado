@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
+    ATTR_COLOR_TEMP,
+    ATTR_HS_COLOR as HA_ATTR_HS_COLOR,
     ATTR_SUPPORTED_COLOR_MODES,
 )
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
