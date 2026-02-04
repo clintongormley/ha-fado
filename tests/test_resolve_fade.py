@@ -40,9 +40,9 @@ class TestResolveFadeBasicStructure:
 
     def test_returns_none_when_target_equals_current(self) -> None:
         """Test that None is returned when target equals current state."""
-        params = FadeParams(brightness_pct=50, transition_ms=1000)  # 50% = 127
+        params = FadeParams(brightness_pct=50, transition_ms=1000)  # 50% = int(127.5) = 127
         state = {
-            ATTR_BRIGHTNESS: 127,
+            ATTR_BRIGHTNESS: 127,  # Current brightness matches target
             ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
         }
 
@@ -84,7 +84,7 @@ class TestResolveFadeSimpleBrightnessFade:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100)
 
         assert change is not None
-        # 25% of 255 = 63
+        # 25% of 255 = int(63.75) = 63
         assert change.start_brightness == 63
         assert change.end_brightness == 255
 
@@ -565,8 +565,8 @@ class TestResolveFadeEdgeCases:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100)
 
         assert change is not None
-        # When light is off (no brightness in state), start_brightness is 0
-        assert change.start_brightness == 0
+        # When light is off (no brightness in state), start_brightness is clamped to min_brightness (default=1)
+        assert change.start_brightness == 1
         assert change.end_brightness == 127
 
     def test_saturation_threshold_boundary_on_locus(self) -> None:

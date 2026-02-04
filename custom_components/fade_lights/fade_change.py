@@ -39,35 +39,95 @@ _LOGGER = logging.getLogger(__name__)
 # =============================================================================
 
 
-def _resolve_start_brightness(params: FadeParams, state: dict[str, Any]) -> int:
-    """Resolve starting brightness from params.from_brightness_pct or current state.
+def _resolve_start_brightness(
+    params: FadeParams, state: dict[str, Any], min_brightness: int = 1
+) -> int:
+    """Resolve starting brightness from params or current state, with clamping.
+
+    Priority order:
+    1. params.from_brightness (raw 1-255) - used directly
+    2. params.from_brightness_pct (1-100%) - converted to 0-255
+       - Special case: 1% maps to min_brightness when min_brightness > normal conversion
+    3. Current state brightness
+    4. 0 if light is off
+
+    The result is clamped to min_brightness floor (ensuring fade doesn't start from 0).
 
     Args:
-        params: FadeParams with optional from_brightness_pct
+        params: FadeParams with optional from_brightness_pct/from_brightness
         state: Light attributes dict from state.attributes
+        min_brightness: Minimum brightness floor (1-255)
 
     Returns:
-        Starting brightness (0-255 scale)
+        Starting brightness (min_brightness to 255 scale)
     """
-    if params.from_brightness_pct is not None:
-        return int(params.from_brightness_pct * 255 / 100)
-    # When light is off (no brightness in state), treat as 0
-    brightness = state.get(ATTR_BRIGHTNESS)
-    return int(brightness) if brightness is not None else 0
+    brightness: int
+
+    if params.from_brightness is not None:
+        # Raw brightness value - use directly
+        brightness = params.from_brightness
+    elif params.from_brightness_pct is not None:
+        # Percentage conversion (using int() for truncation to match legacy behavior)
+        pct = params.from_brightness_pct
+        normal_conversion = int(pct * 255 / 100)
+
+        # Special case: brightness_pct=1 means "dimmest possible"
+        # Use min_brightness if it's higher than normal conversion
+        if pct == 1 and min_brightness > normal_conversion:
+            brightness = min_brightness
+        else:
+            brightness = normal_conversion
+    else:
+        # Use state brightness, or 0 if light is off
+        state_brightness = state.get(ATTR_BRIGHTNESS)
+        brightness = int(state_brightness) if state_brightness is not None else 0
+
+    # Clamp to min_brightness floor
+    return max(brightness, min_brightness)
 
 
-def _resolve_end_brightness(params: FadeParams) -> int | None:
-    """Resolve ending brightness from params.brightness_pct.
+def _resolve_end_brightness(params: FadeParams, min_brightness: int = 1) -> int | None:
+    """Resolve ending brightness from params, with clamping.
+
+    Priority order:
+    1. params.brightness (raw 1-255) - used directly
+    2. params.brightness_pct (1-100%) - converted to 0-255
+       - Special case: 1% maps to min_brightness when min_brightness > normal conversion
+
+    The result is clamped to min_brightness floor, EXCEPT when targeting 0
+    (user explicitly wants to turn off the light).
 
     Args:
-        params: FadeParams with optional brightness_pct
+        params: FadeParams with optional brightness_pct/brightness
+        min_brightness: Minimum brightness floor (1-255)
 
     Returns:
-        Ending brightness (0-255 scale), or None if not specified
+        Ending brightness (0 or min_brightness to 255 scale), or None if not specified
     """
-    if params.brightness_pct is not None:
-        return int(params.brightness_pct * 255 / 100)
-    return None
+    brightness: int | None = None
+
+    if params.brightness is not None:
+        # Raw brightness value - use directly
+        brightness = params.brightness
+    elif params.brightness_pct is not None:
+        # Percentage conversion (using int() for truncation to match legacy behavior)
+        pct = params.brightness_pct
+        normal_conversion = int(pct * 255 / 100)
+
+        # Special case: brightness_pct=1 means "dimmest possible"
+        # Use min_brightness if it's higher than normal conversion
+        if pct == 1 and min_brightness > normal_conversion:
+            brightness = min_brightness
+        else:
+            brightness = normal_conversion
+
+    if brightness is None:
+        return None
+
+    # Clamp to min_brightness floor, but allow 0 (turn off)
+    if brightness == 0:
+        return 0
+    return max(brightness, min_brightness)
 
 
 def _resolve_start_hs(params: FadeParams, state: dict[str, Any]) -> tuple[float, float] | None:
@@ -398,6 +458,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         state_attributes: dict[str, Any],
         min_step_delay_ms: int,
         stored_brightness: int = 0,
+        min_brightness: int = 1,
     ) -> FadeChange | None:
         """Factory that resolves fade parameters against light capabilities.
 
@@ -409,6 +470,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         - Filters/converts based on light capabilities
         - Handles non-dimmable lights (single step, zero delay)
         - Auto-fades brightness from 0 when targeting color from off state
+        - Clamps brightness values to min_brightness floor
         - Returns None if nothing to fade
 
         Args:
@@ -416,6 +478,8 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             state_attributes: Light state attributes dict
             min_step_delay_ms: Minimum delay between steps in milliseconds
             stored_brightness: Previously stored brightness (for auto-turn-on from off)
+            min_brightness: Minimum brightness floor (1-255), ensures fade
+                doesn't include brightness values below this threshold
 
         Returns:
             Configured FadeChange, or None if nothing to fade
@@ -432,9 +496,9 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         min_mireds = int(1_000_000 / max_kelvin) if max_kelvin else None
         max_mireds = int(1_000_000 / min_kelvin) if min_kelvin else None
 
-        # Resolve brightness values
-        start_brightness = _resolve_start_brightness(params, state_attributes)
-        end_brightness = _resolve_end_brightness(params)
+        # Resolve brightness values (with min_brightness clamping)
+        start_brightness = _resolve_start_brightness(params, state_attributes, min_brightness)
+        end_brightness = _resolve_end_brightness(params, min_brightness)
 
         # Resolve easing function for brightness
         easing_name = params.easing
@@ -510,14 +574,21 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             )
 
         # Auto-turn-on: when fading color from off state without explicit brightness,
-        # automatically fade brightness from 0 to stored value (or full brightness)
+        # automatically fade brightness from min_brightness to stored value (or full brightness)
+        # Note: start_brightness is clamped to min_brightness, so check if it equals min_brightness
+        # and the light was off (no brightness in state) or state brightness was below min_brightness
+        state_brightness = state_attributes.get(ATTR_BRIGHTNESS)
+        light_was_off_or_dim = state_brightness is None or state_brightness < min_brightness
         if (
-            start_brightness == 0
+            start_brightness == min_brightness
+            and light_was_off_or_dim
             and end_brightness is None
             and (end_hs is not None or end_mireds is not None)
         ):
-            # Use stored brightness if available, otherwise full brightness
-            end_brightness = stored_brightness if stored_brightness > 0 else 255
+            # Use stored brightness if available (and above min), otherwise full brightness
+            target_brightness = stored_brightness if stored_brightness > min_brightness else 255
+            # Clamp auto-turn-on target to min_brightness floor
+            end_brightness = max(target_brightness, min_brightness)
             _LOGGER.debug(
                 "FadeChange.resolve: Auto-turn-on from off state, end_brightness=%s",
                 end_brightness,
