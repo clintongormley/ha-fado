@@ -229,7 +229,7 @@ class FadeChange:
         # Linear interpolation for saturation
         sat = start_sat + (end_sat - start_sat) * t
 
-        return (hue, sat)
+        return (round(hue, 2), round(sat, 2))
 
     def _interpolate_mireds(self, t: float) -> int | None:
         """Interpolate mireds at factor t.
