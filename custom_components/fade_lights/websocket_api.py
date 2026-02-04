@@ -164,9 +164,11 @@ async def async_save_light_config(
     min_delay_ms: int | None = None,
     exclude: bool | None = None,
     native_transitions: bool | None = None,
+    min_brightness: int | None = None,
     *,
     clear_min_delay: bool = False,
     clear_native_transitions: bool = False,
+    clear_min_brightness: bool = False,
 ) -> dict[str, bool]:
     """Save per-light configuration.
 
@@ -176,8 +178,10 @@ async def async_save_light_config(
         min_delay_ms: Optional minimum delay in milliseconds (50-1000)
         exclude: Optional flag to exclude light from fades
         native_transitions: Optional flag for native transition support
+        min_brightness: Optional minimum brightness value (1-255) that keeps light on
         clear_min_delay: If True and min_delay_ms is None, remove the setting
         clear_native_transitions: If True and native_transitions is None, remove the setting
+        clear_min_brightness: If True and min_brightness is None, remove the setting
 
     Returns:
         Dict with success status
@@ -200,6 +204,11 @@ async def async_save_light_config(
         data[entity_id]["native_transitions"] = native_transitions
     elif clear_native_transitions:
         data[entity_id].pop("native_transitions", None)
+
+    if min_brightness is not None:
+        data[entity_id]["min_brightness"] = min_brightness
+    elif clear_min_brightness:
+        data[entity_id].pop("min_brightness", None)
 
     # Save to disk
     store = hass.data[DOMAIN]["store"]
