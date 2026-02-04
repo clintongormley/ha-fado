@@ -80,9 +80,9 @@ async def test_restore_brightness_on_turn_on(
     entity_id = "light.test_restore"
     stored_brightness = 180
 
-    # Create mock storage with stored brightness (flat map: entity_id -> brightness)
+    # Create mock storage with stored brightness (nested dict format)
     mock_storage_data = {
-        entity_id: stored_brightness,
+        entity_id: {"orig_brightness": stored_brightness},
     }
 
     mock_config_entry.add_to_hass(hass)
@@ -188,9 +188,9 @@ async def test_no_restore_if_already_at_orig(
     entity_id = "light.test_already_correct"
     stored_brightness = 150
 
-    # Create mock storage with stored brightness (flat map: entity_id -> brightness)
+    # Create mock storage with stored brightness (nested dict format)
     mock_storage_data = {
-        entity_id: stored_brightness,
+        entity_id: {"orig_brightness": stored_brightness},
     }
 
     mock_config_entry.add_to_hass(hass)
@@ -242,9 +242,9 @@ async def test_no_restore_for_non_dimmable(
     entity_id = "light.test_non_dimmable"
     stored_brightness = 180
 
-    # Create mock storage with stored brightness (flat map: entity_id -> brightness)
+    # Create mock storage with stored brightness (nested dict format)
     mock_storage_data = {
-        entity_id: stored_brightness,
+        entity_id: {"orig_brightness": stored_brightness},
     }
 
     mock_config_entry.add_to_hass(hass)
@@ -294,9 +294,9 @@ async def test_storage_persists_across_reload(
     entity_id = "light.test_persist"
     stored_brightness = 200
 
-    # Create mock storage with stored brightness (flat map: entity_id -> brightness)
+    # Create mock storage with stored brightness (nested dict format)
     mock_storage_data = {
-        entity_id: stored_brightness,
+        entity_id: {"orig_brightness": stored_brightness},
     }
 
     mock_config_entry.add_to_hass(hass)
@@ -315,7 +315,7 @@ async def test_storage_persists_across_reload(
 
         # Verify storage data is loaded
         assert DOMAIN in hass.data
-        stored_orig = hass.data[DOMAIN]["data"].get(entity_id, 0)
+        stored_orig = hass.data[DOMAIN]["data"].get(entity_id, {}).get("orig_brightness", 0)
         assert stored_orig == stored_brightness
 
         # Unload the integration
@@ -328,7 +328,7 @@ async def test_storage_persists_across_reload(
 
     # Verify storage data is still available after reload
     assert DOMAIN in hass.data
-    stored_orig = hass.data[DOMAIN]["data"].get(entity_id, 0)
+    stored_orig = hass.data[DOMAIN]["data"].get(entity_id, {}).get("orig_brightness", 0)
     assert stored_orig == stored_brightness
 
     # Create dimmable light that is OFF
@@ -370,9 +370,9 @@ async def test_restore_uses_correct_brightness(
     # Use a specific non-round number to verify exact restoration
     stored_brightness = 137
 
-    # Flat map: entity_id -> brightness
+    # Nested dict format: entity_id -> config dict
     mock_storage_data = {
-        entity_id: stored_brightness,
+        entity_id: {"orig_brightness": stored_brightness},
     }
 
     mock_config_entry.add_to_hass(hass)
@@ -418,3 +418,42 @@ async def test_restore_uses_correct_brightness(
     assert restore_call.data.get(ATTR_ENTITY_ID) == entity_id
     # The key assertion: exact value must match
     assert restore_call.data.get(ATTR_BRIGHTNESS) == stored_brightness
+
+
+async def test_no_restore_for_excluded_light(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    service_calls: list[ServiceCall],
+) -> None:
+    """Test that excluded lights don't get brightness restored."""
+    entity_id = "light.excluded"
+
+    # Configure as excluded with stored brightness
+    hass.data[DOMAIN]["data"][entity_id] = {
+        "orig_brightness": 200,
+        "exclude": True,
+    }
+
+    # Start with light off
+    hass.states.async_set(
+        entity_id,
+        STATE_OFF,
+        {ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
+    )
+    await hass.async_block_till_done()
+    service_calls.clear()
+
+    # Turn on at low brightness
+    hass.states.async_set(
+        entity_id,
+        STATE_ON,
+        {
+            ATTR_BRIGHTNESS: 50,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        },
+    )
+    await hass.async_block_till_done()
+
+    # Should NOT have called turn_on to restore brightness
+    turn_on_calls = [c for c in service_calls if c.service == "turn_on"]
+    assert len(turn_on_calls) == 0

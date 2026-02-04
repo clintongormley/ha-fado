@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
+from pathlib import Path
+from typing import Any
 
 import voluptuous as vol
+from homeassistant.components import panel_custom
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_SUPPORTED_COLOR_MODES,
@@ -46,9 +51,14 @@ from homeassistant.helpers.target import (
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
     DOMAIN,
     FADE_CANCEL_TIMEOUT_S,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARNING,
+    OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
     SERVICE_FADE_LIGHTS,
     STORAGE_KEY,
@@ -56,6 +66,7 @@ from .const import (
 from .expected_state import ExpectedState, ExpectedValues
 from .fade_change import FadeChange, FadeStep
 from .fade_params import FadeParams
+from .websocket_api import async_register_websocket_api
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,6 +129,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "store": store,
         "data": storage_data,
         "min_step_delay_ms": entry.options.get(OPTION_MIN_STEP_DELAY_MS, DEFAULT_MIN_STEP_DELAY_MS),
+        "testing_lights": set(),  # Lights currently being autoconfigured
     }
 
     async def handle_fade_lights(call: ServiceCall) -> None:
@@ -143,14 +155,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         handle_light_state_change,
     )
     entry.async_on_unload(tracker.async_remove)
-    entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+    # Register WebSocket API
+    async_register_websocket_api(hass)
+
+    # Register panel (only if HTTP component is available - won't be in tests)
+    if hass.http is not None:
+        # Register static path for frontend files
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    "/fade_lights_panel",
+                    str(Path(__file__).parent / "frontend"),
+                    cache_headers=False,  # Disable caching during development
+                )
+            ]
+        )
+
+        # Register the panel
+        await panel_custom.async_register_panel(
+            hass,
+            frontend_url_path="fade-lights",
+            webcomponent_name="fade-lights-panel",
+            sidebar_title="Fade Lights",
+            sidebar_icon="mdi:lightbulb-variant",
+            module_url="/fade_lights_panel/panel.js",
+            require_admin=False,
+        )
+
+    # Apply stored log level on startup
+    await _apply_stored_log_level(hass, entry)
 
     return True
 
 
-async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
+async def _apply_stored_log_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Apply the stored log level setting."""
+    log_level = entry.options.get(OPTION_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+
+    # Map our level names to Python logging level names
+    level_map = {
+        LOG_LEVEL_WARNING: "warning",
+        LOG_LEVEL_INFO: "info",
+        LOG_LEVEL_DEBUG: "debug",
+    }
+    python_level = level_map.get(log_level, "warning")
+
+    # Use HA's logger service to set the level
+    # Logger service may not be available in tests
+    with contextlib.suppress(Exception):
+        await hass.services.async_call(
+            "logger",
+            "set_level",
+            {f"custom_components.{DOMAIN}": python_level},
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, _entry: ConfigEntry) -> bool:
@@ -256,6 +314,10 @@ async def _fade_light(
     - Delegating to _execute_fade for the actual work
     - Cleaning up tracking state when done (success, cancel, or error)
     """
+    # Get per-light config and determine effective delay
+    light_config = _get_light_config(hass, entity_id)
+    effective_delay = light_config.get("min_delay_ms") or min_step_delay_ms
+
     # Cancel any existing fade for this entity - only one fade per light at a time
     await _cancel_and_wait_for_fade(entity_id)
 
@@ -275,7 +337,7 @@ async def _fade_light(
         ACTIVE_FADES[entity_id] = current_task
 
     try:
-        await _execute_fade(hass, entity_id, fade_params, min_step_delay_ms, cancel_event)
+        await _execute_fade(hass, entity_id, fade_params, effective_delay, cancel_event)
     except asyncio.CancelledError:
         pass  # Normal cancellation, not an error
     finally:
@@ -462,6 +524,7 @@ def _expand_light_groups(hass: HomeAssistant, entity_ids: list[str]) -> list[str
 
     Light groups have an entity_id attribute containing member lights.
     Expands iteratively (not recursively) and deduplicates results.
+    Lights with exclude=True in their config are filtered out.
 
     Example:
         Input: ["light.living_room_group", "light.bedroom"]
@@ -490,7 +553,17 @@ def _expand_light_groups(hass: HomeAssistant, entity_ids: list[str]) -> list[str
         else:
             result.add(entity_id)
 
-    return list(result)
+    # Filter out excluded lights and lights being autoconfigured
+    testing_lights = hass.data.get(DOMAIN, {}).get("testing_lights", set())
+    final_result = []
+    for eid in result:
+        if _get_light_config(hass, eid).get("exclude", False):
+            _LOGGER.debug("%s: Excluded from fade", eid)
+        elif eid in testing_lights:
+            _LOGGER.debug("%s: Excluded from fade (autoconfigure in progress)", eid)
+        else:
+            final_result.append(eid)
+    return final_result
 
 
 def _can_apply_fade_params(state: State, params: FadeParams) -> bool:
@@ -548,6 +621,10 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event[EventStateChang
     assert new_state is not None
 
     entity_id = new_state.entity_id
+
+    # Skip excluded lights entirely
+    if _get_light_config(hass, entity_id).get("exclude", False):
+        return
 
     # Check if this is an expected state change (from our service calls)
     if _match_and_remove_expected(entity_id, new_state):
@@ -986,17 +1063,27 @@ async def _wait_until_stale_events_flushed(
 # =============================================================================
 
 
+def _get_light_config(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
+    """Get per-light configuration.
+
+    Returns the config dict for the light, or empty dict if not configured.
+    """
+    return hass.data.get(DOMAIN, {}).get("data", {}).get(entity_id, {})
+
+
 def _get_orig_brightness(hass: HomeAssistant, entity_id: str) -> int:
     """Get stored original brightness for an entity."""
-    storage_data = hass.data.get(DOMAIN, {}).get("data", {})
-    return storage_data.get(entity_id, 0)
+    return _get_light_config(hass, entity_id).get("orig_brightness", 0)
 
 
 def _store_orig_brightness(hass: HomeAssistant, entity_id: str, level: int) -> None:
     """Store original brightness for an entity."""
     if DOMAIN not in hass.data:
         return
-    hass.data[DOMAIN]["data"][entity_id] = level
+    data = hass.data[DOMAIN]["data"]
+    if entity_id not in data:
+        data[entity_id] = {}
+    data[entity_id]["orig_brightness"] = level
 
 
 async def _save_storage(hass: HomeAssistant) -> None:

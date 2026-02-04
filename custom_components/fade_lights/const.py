@@ -68,6 +68,13 @@ KEY_CURR_BRIGHTNESS = "curr"
 
 # Option keys
 OPTION_MIN_STEP_DELAY_MS = "min_step_delay_ms"
+OPTION_LOG_LEVEL = "log_level"
+
+# Log levels (matching Python logging module)
+LOG_LEVEL_WARNING = "warning"
+LOG_LEVEL_INFO = "info"
+LOG_LEVEL_DEBUG = "debug"
+DEFAULT_LOG_LEVEL = LOG_LEVEL_WARNING
 
 # Defaults (used when options are not set)
 DEFAULT_TRANSITION = 3  # seconds
@@ -123,3 +130,8 @@ MIN_MIREDS_DELTA = 5  # mireds (~150-500 typical range)
 # For hs_to_mireds: 70% of steps in HS phase, 30% in mireds phase
 # For mireds_to_hs: inverted (30% mireds, 70% HS)
 HYBRID_HS_PHASE_RATIO = 0.7
+
+# Autoconfigure feature settings (for measuring optimal min_delay_ms)
+AUTOCONFIGURE_ITERATIONS = 10  # Number of times to test each light
+AUTOCONFIGURE_TIMEOUT_S = 5  # Timeout for each state change wait (seconds)
+AUTOCONFIGURE_MAX_PARALLEL = 5  # Maximum lights to test in parallel
