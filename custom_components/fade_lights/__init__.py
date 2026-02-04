@@ -488,10 +488,10 @@ async def _execute_fade(
     min_step_delay_ms: int,
     cancel_event: asyncio.Event,
 ) -> None:
-    """Execute the fade operation using step-based approach.
+    """Execute the fade operation using FadeChange iterator pattern.
 
-    Generates fade steps for brightness, HS color, and/or color temperature,
-    then applies each step with appropriate timing.
+    Uses _calculate_changes to generate FadeChange phases, then iterates
+    through each phase using the iterator pattern (has_next/next_step).
     """
     state = hass.states.get(entity_id)
     if not state:
@@ -517,23 +517,29 @@ async def _execute_fade(
         await _apply_step(hass, entity_id, FadeStep(brightness=255 if target_brightness > 0 else 0))
         return
 
-    # Get current state
+    # Store original brightness if not already stored
     current_brightness = state.attributes.get(ATTR_BRIGHTNESS)
     start_brightness = int(current_brightness) if current_brightness is not None else 0
+    existing_orig = _get_orig_brightness(hass, entity_id)
+    if existing_orig == 0 and start_brightness > 0:
+        _store_orig_brightness(hass, entity_id, start_brightness)
+
+    # Get current color state for "nothing to fade" detection
     current_hs, current_mireds = _get_current_color_state(state)
 
-    # Determine start and end values
-    end_brightness = None
-    if fade_params.brightness_pct is not None:
-        end_brightness = int(fade_params.brightness_pct / 100 * 255)
-        if fade_params.from_brightness_pct is not None:
-            start_brightness = int(fade_params.from_brightness_pct / 100 * 255)
+    # Determine start and end values for change detection
+    end_brightness = int(fade_params.brightness_pct / 100 * 255) if fade_params.brightness_pct is not None else None
+    effective_start_brightness = (
+        int(fade_params.from_brightness_pct / 100 * 255)
+        if fade_params.from_brightness_pct is not None
+        else start_brightness
+    )
 
-    # HS color
+    # Check HS color
     start_hs = fade_params.from_hs_color if fade_params.from_hs_color is not None else current_hs
     end_hs = fade_params.hs_color
 
-    # Color temp (mireds)
+    # Check mireds
     start_mireds = (
         fade_params.from_color_temp_mireds
         if fade_params.from_color_temp_mireds is not None
@@ -541,15 +547,8 @@ async def _execute_fade(
     )
     end_mireds = fade_params.color_temp_mireds
 
-    # Store original brightness if not already stored (for restoration after fade)
-    existing_orig = _get_orig_brightness(hass, entity_id)
-    if existing_orig == 0 and start_brightness > 0:
-        _store_orig_brightness(hass, entity_id, start_brightness)
-
-    # Check if anything is changing
-    brightness_changing = (
-        fade_params.brightness_pct is not None and start_brightness != end_brightness
-    )
+    # Check if anything is actually changing
+    brightness_changing = fade_params.brightness_pct is not None and effective_start_brightness != end_brightness
     hs_changing = end_hs is not None and start_hs != end_hs
     mireds_changing = end_mireds is not None and start_mireds != end_mireds
 
@@ -557,92 +556,62 @@ async def _execute_fade(
         _LOGGER.debug("%s: Nothing to fade", entity_id)
         return
 
-    # Get current color mode for hybrid transition detection
-    color_mode = state.attributes.get("color_mode")
+    # Set transition_ms in params for _calculate_changes
+    fade_params.transition_ms = transition_ms
 
-    # Determine which step builder to use
-    if start_hs is not None and end_mireds is not None and not _is_on_planckian_locus(start_hs):
-        # Hybrid HS -> mireds transition
-        steps = _build_hs_to_mireds_steps(start_hs, end_mireds, transition_ms, min_step_delay_ms)
-        # If also fading brightness, add it to each step
-        if brightness_changing and end_brightness is not None:
-            num_steps = len(steps)
-            for i, step in enumerate(steps):
-                t = (i + 1) / num_steps
-                step.brightness = round(start_brightness + (end_brightness - start_brightness) * t)
-    elif color_mode == ColorMode.COLOR_TEMP and end_hs is not None:
-        # Hybrid mireds -> HS transition
-        steps = _build_mireds_to_hs_steps(
-            start_mireds if start_mireds is not None else 333,  # Default to ~3000K
-            end_hs,
-            transition_ms,
-            min_step_delay_ms,
-        )
-        # If also fading brightness, add it to each step
-        if brightness_changing and end_brightness is not None:
-            num_steps = len(steps)
-            for i, step in enumerate(steps):
-                t = (i + 1) / num_steps
-                step.brightness = round(start_brightness + (end_brightness - start_brightness) * t)
-    else:
-        # Standard fade using _build_fade_steps
-        steps = _build_fade_steps(
-            start_brightness=start_brightness if brightness_changing else None,
-            end_brightness=end_brightness if brightness_changing else None,
-            start_hs=start_hs if hs_changing else None,
-            end_hs=end_hs if hs_changing else None,
-            start_mireds=start_mireds if mireds_changing else None,
-            end_mireds=end_mireds if mireds_changing else None,
-            transition_ms=transition_ms,
-            min_step_delay_ms=min_step_delay_ms,
-        )
+    # Calculate changes (returns list of FadeChange phases)
+    phases = _calculate_changes(fade_params, state.attributes, min_step_delay_ms)
 
-    if not steps:
-        _LOGGER.debug("%s: No steps to execute", entity_id)
-        return
+    # Sum total steps
+    total_steps = sum(p.step_count() for p in phases)
 
-    # Calculate delay between steps
-    delay_ms = transition_ms / len(steps)
+    _LOGGER.info("%s: Fading in %s phases (%s total steps)", entity_id, len(phases), total_steps)
 
-    _LOGGER.info(
-        "%s: Fading in %s steps (brightness: %s->%s, hs: %s->%s, mireds: %s->%s)",
-        entity_id,
-        len(steps),
-        start_brightness if brightness_changing else "-",
-        end_brightness if brightness_changing else "-",
-        start_hs if hs_changing else "-",
-        end_hs if hs_changing else "-",
-        start_mireds if mireds_changing else "-",
-        end_mireds if mireds_changing else "-",
-    )
+    # Execute each phase
+    for phase_idx, phase in enumerate(phases):
+        phase.reset()
+        delay_ms = phase.delay_ms()
 
-    # Execute fade loop
-    for step in steps:
-        step_start = time.monotonic()
+        while phase.has_next():
+            step_start = time.monotonic()
 
-        if cancel_event.is_set():
-            return
+            if cancel_event.is_set():
+                return
 
-        # Track expected values for manual intervention detection
-        expected = ExpectedValues(
-            brightness=step.brightness,
-            hs_color=step.hs_color,
-            color_temp_mireds=step.color_temp_mireds,
-        )
-        _add_expected_values(entity_id, expected)
+            step = phase.next_step()
 
-        await _apply_step(hass, entity_id, step)
+            # Track expected values for manual intervention detection
+            expected = ExpectedValues(
+                brightness=step.brightness,
+                hs_color=step.hs_color,
+                color_temp_mireds=step.color_temp_mireds,
+            )
+            _add_expected_values(entity_id, expected)
 
-        if cancel_event.is_set():
-            return
+            await _apply_step(hass, entity_id, step)
 
-        await _sleep_remaining_step_time(step_start, delay_ms)
+            if cancel_event.is_set():
+                return
+
+            # Sleep remaining time (skip after last step of last phase)
+            if phase.has_next() or phase_idx < len(phases) - 1:
+                await _sleep_remaining_step_time(step_start, delay_ms)
 
     # Store final brightness after successful fade completion
     if not cancel_event.is_set():
-        final_brightness = (
-            steps[-1].brightness if steps[-1].brightness is not None else end_brightness
-        )
+        # Get final brightness from last phase's last step
+        last_phase = phases[-1]
+        last_phase.reset()
+        final_step = None
+        while last_phase.has_next():
+            final_step = last_phase.next_step()
+
+        final_brightness = final_step.brightness if final_step and final_step.brightness is not None else None
+        if final_brightness is None:
+            # Try to get from params
+            if fade_params.brightness_pct is not None:
+                final_brightness = int(fade_params.brightness_pct / 100 * 255)
+
         if final_brightness is not None and final_brightness > 0:
             _store_orig_brightness(hass, entity_id, final_brightness)
             await _save_storage(hass)
@@ -850,11 +819,13 @@ def _resolve_start_brightness(params: FadeParams, state: dict) -> int | None:
         state: Light attributes dict from state.attributes
 
     Returns:
-        Starting brightness (0-255 scale), or None if not available
+        Starting brightness (0-255 scale), or None if not targeting brightness
     """
     if params.from_brightness_pct is not None:
         return int(params.from_brightness_pct * 255 / 100)
-    return state.get(ATTR_BRIGHTNESS)
+    # When light is off (no brightness in state), treat as 0
+    brightness = state.get(ATTR_BRIGHTNESS)
+    return int(brightness) if brightness is not None else 0
 
 
 def _resolve_end_brightness(params: FadeParams, state: dict) -> int | None:

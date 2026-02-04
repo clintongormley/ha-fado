@@ -36,14 +36,15 @@ class TestResolveStartBrightness:
 
         assert result == 180
 
-    def test_returns_none_when_both_missing(self) -> None:
-        """Test that None is returned when neither source has brightness."""
+    def test_returns_zero_when_both_missing(self) -> None:
+        """Test that 0 is returned when neither source has brightness (light off)."""
         params = FadeParams()
         state = {}
 
         result = _resolve_start_brightness(params, state)
 
-        assert result is None
+        # When light is off (no brightness in state), treat as 0
+        assert result == 0
 
     def test_from_brightness_pct_zero(self) -> None:
         """Test handling of 0% brightness."""
@@ -70,7 +71,8 @@ class TestResolveStartBrightness:
 
         result = _resolve_start_brightness(params, state)
 
-        assert result is None
+        # When light is off (brightness is None), treat as 0
+        assert result == 0
 
 
 class TestResolveEndBrightness:

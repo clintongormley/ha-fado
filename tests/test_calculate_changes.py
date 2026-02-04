@@ -453,7 +453,7 @@ class TestCalculateChangesEdgeCases:
     """Test edge cases and boundary conditions."""
 
     def test_empty_state(self) -> None:
-        """Test with empty state dictionary."""
+        """Test with empty state dictionary (light off)."""
         params = FadeParams(brightness_pct=50, transition_ms=1000)
         state = {}
 
@@ -461,7 +461,8 @@ class TestCalculateChangesEdgeCases:
 
         assert len(changes) == 1
         change = changes[0]
-        assert change.start_brightness is None
+        # When light is off (no brightness in state), start_brightness is 0
+        assert change.start_brightness == 0
         assert change.end_brightness == 127
 
     def test_no_end_values(self) -> None:
