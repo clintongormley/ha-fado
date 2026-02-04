@@ -19,13 +19,15 @@
           "default_brightness_pct": "Fade to brightness",
           "default_transition": "Transition time",
           "auto_brightness_threshold": "Auto-adjust when below",
-          "auto_brightness_target": "Auto-adjust to brightness"
+          "auto_brightness_target": "Auto-adjust to brightness",
+          "step_delay_ms": "Minimum delay between steps"
         },
         "data_description": {
           "default_brightness_pct": "Default brightness level if not specified in the action call (0-100%).",
           "default_transition": "Default time to transition to the new brightness level in seconds (0-3600, which is up to 1 hour).",
           "auto_brightness_threshold": "When you manually turn on a light below this brightness level (0-100%), automatically boost it to your auto-adjust brightness target.",
-          "auto_brightness_target": "When auto-brightness triggers, set lights to this brightness level (0-100%)."
+          "auto_brightness_target": "When auto-brightness triggers, set lights to this brightness level (0-100%).",
+          "step_delay_ms": "The lower this value (in milliseconds), the shorter the pause between each brightness step change and thus the smoother the transition, but too low values may cause transitions to last longer than expected and put unnecessary load on Home Assistant. (Default 100ms)"
         }
       }
     }

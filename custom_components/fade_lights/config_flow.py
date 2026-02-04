@@ -14,12 +14,14 @@ from .const import (
     AUTO_BRIGHTNESS_TARGET,
     AUTO_BRIGHTNESS_THRESHOLD,
     DEFAULT_BRIGHTNESS_PCT,
+    DEFAULT_STEP_DELAY_MS,
     DEFAULT_TRANSITION,
     DOMAIN,
     OPTION_AUTO_BRIGHTNESS_TARGET,
     OPTION_AUTO_BRIGHTNESS_THRESHOLD,
     OPTION_DEFAULT_BRIGHTNESS_PCT,
     OPTION_DEFAULT_TRANSITION,
+    OPTION_STEP_DELAY_MS,
 )
 
 
@@ -101,6 +103,10 @@ class FadeLightsOptionsFlow(OptionsFlow):
                             OPTION_AUTO_BRIGHTNESS_TARGET, AUTO_BRIGHTNESS_TARGET
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+                    vol.Optional(
+                        OPTION_STEP_DELAY_MS,
+                        default=options.get(OPTION_STEP_DELAY_MS, DEFAULT_STEP_DELAY_MS),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=10, max=1000)),
                 }
             ),
         )

@@ -36,12 +36,14 @@ from .const import (
     AUTO_BRIGHTNESS_THRESHOLD,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_FORCE,
+    DEFAULT_STEP_DELAY_MS,
     DEFAULT_TRANSITION,
     DOMAIN,
     OPTION_AUTO_BRIGHTNESS_TARGET,
     OPTION_AUTO_BRIGHTNESS_THRESHOLD,
     OPTION_DEFAULT_BRIGHTNESS_PCT,
     OPTION_DEFAULT_TRANSITION,
+    OPTION_STEP_DELAY_MS,
     SERVICE_FADE_LIGHTS,
     STORAGE_KEY,
     STORAGE_VERSION,
@@ -84,6 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     default_transition = entry.options.get(
         OPTION_DEFAULT_TRANSITION, DEFAULT_TRANSITION
     )
+    step_delay_ms = entry.options.get(OPTION_STEP_DELAY_MS, DEFAULT_STEP_DELAY_MS)
 
     # Register service
     async def handle_fade_lights(call: ServiceCall) -> None:
@@ -115,6 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         brightness_pct,
                         transition_ms,
                         call.context,
+                        step_delay_ms,
                     )
                 )
                 tasks.append(task)
@@ -220,6 +224,7 @@ async def _fade_light(
     brightness_pct: int,
     transition_ms: int,
     context: Any,
+    step_delay_ms: int,
 ) -> None:
     """Fade a single light to the specified brightness."""
     # Cancel any existing fade for this light
@@ -236,7 +241,9 @@ async def _fade_light(
         ACTIVE_FADES[entity_id] = current_task
 
     try:
-        await _execute_fade(hass, entity_id, brightness_pct, transition_ms, context)
+        await _execute_fade(
+            hass, entity_id, brightness_pct, transition_ms, context, step_delay_ms
+        )
     finally:
         # Clean up task reference
         ACTIVE_FADES.pop(entity_id, None)
@@ -248,6 +255,7 @@ async def _execute_fade(
     brightness_pct: int,
     transition_ms: int,
     context: Any,
+    step_delay_ms: int,
 ) -> None:
     """Execute the fade operation."""
     current_level = _get_current_level(hass, entity_id)
@@ -296,7 +304,7 @@ async def _execute_fade(
         return
 
     delay_ms = round(abs(transition_ms / (end_level - start_level)))
-    delay_ms = 100 if delay_ms < 100 else delay_ms
+    delay_ms = step_delay_ms if delay_ms < step_delay_ms else delay_ms
 
     num_steps = math.ceil(transition_ms / (delay_ms + 30)) or 1
     delta = (end_level - start_level) / num_steps
