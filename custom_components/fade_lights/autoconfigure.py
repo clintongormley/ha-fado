@@ -38,12 +38,10 @@ async def async_autoconfigure_light(
 
     This is the main entry point that:
     1. Captures original state
-    2. Sets standard state (brightness 255)
-    3. Runs native transitions test
-    4. Sets standard state again
-    5. Runs delay test (with transitions if supported)
-    6. Restores original state
-    7. Saves results to storage
+    2. Runs native transitions test
+    3. Runs delay test (with transitions if supported)
+    4. Restores original state
+    5. Saves results to storage
 
     Args:
         hass: Home Assistant instance
@@ -68,16 +66,10 @@ async def async_autoconfigure_light(
     result: dict[str, Any] = {"entity_id": entity_id}
 
     try:
-        # Set standard state before native transitions test
-        await _async_set_standard_state(hass, entity_id)
-
         # Run native transitions test first
         transition_result = await _async_test_native_transitions(hass, entity_id)
         if "error" not in transition_result:
             result["native_transitions"] = transition_result["supports_native_transitions"]
-
-        # Set standard state before delay test
-        await _async_set_standard_state(hass, entity_id)
 
         # Run delay test with native transitions enabled if supported
         use_transitions = result.get("native_transitions", False)
@@ -177,8 +169,7 @@ async def _async_test_light_delay(
 ) -> dict[str, Any]:
     """Test a light to determine optimal minimum delay between commands.
 
-    Internal function - assumes light is already at brightness 255.
-    Does not capture/restore state or save to storage.
+    Internal function - does not capture/restore state or save to storage.
     Use async_autoconfigure_light for the full workflow.
 
     Args:
@@ -190,6 +181,8 @@ async def _async_test_light_delay(
         On success: {"entity_id": entity_id, "min_delay_ms": result}
         On failure: {"entity_id": entity_id, "error": "..."}
     """
+    await _async_set_standard_state(hass, entity_id)
+
     timings: list[float] = []
     state_changed_event = asyncio.Event()
     retry_count = 0
@@ -289,8 +282,7 @@ async def _async_test_native_transitions(
 ) -> dict[str, Any]:
     """Test if a light supports native transitions.
 
-    Internal function - assumes light is already at brightness 255.
-    Does not capture/restore state.
+    Internal function - does not capture/restore state.
     Use async_autoconfigure_light for the full workflow.
 
     Args:
@@ -302,6 +294,8 @@ async def _async_test_native_transitions(
         On success: {"entity_id": entity_id, "supports_native_transitions": bool, ...}
         On failure: {"entity_id": entity_id, "error": "..."}
     """
+    await _async_set_standard_state(hass, entity_id)
+
     # Target brightness 10 (light starts at 255 from standard state)
     target_brightness = 10
 
