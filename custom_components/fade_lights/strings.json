@@ -50,6 +50,17 @@
         "from": {
           "name": "Starting values",
           "description": "Override starting values. Accepts brightness_pct and one color parameter."
+        },
+        "easing": {
+          "name": "Easing curve",
+          "description": "Controls how brightness changes over time. 'auto' selects based on fade direction: ease_in (slow start) for fading up, ease_out (slow end) for fading down."
+        },
+        "advanced_fields": {
+          "name": "Advanced options"
+        },
+        "brightness": {
+          "name": "Brightness value",
+          "description": "Target brightness as raw value (1-255). Advanced option."
         }
       }
     }
