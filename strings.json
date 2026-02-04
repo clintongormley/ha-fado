@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Fade Lights",
+        "description": "This integration provides smooth light fading and automatic brightness adjustment for dimmed lights."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single instance is allowed."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Fade lights",
+      "description": "Fades lights to a desired level over a specified transition period.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity ID",
+          "description": "Entity ID of a light or light group."
+        },
+        "brightness_pct": {
+          "name": "Brightness percentage",
+          "description": "Integer value from 0 to 100 representing the desired final brightness level as a percentage."
+        },
+        "transition": {
+          "name": "Transition",
+          "description": "Transition time for fading indicated in HH:MM:SS, MM:SS, or SS format (e.g., 00:05:30 or 5)."
+        },
+        "force": {
+          "name": "Force",
+          "description": "Set to true to force changing the brightness even if it has been changed manually."
+        }
+      }
+    }
+  }
+}
