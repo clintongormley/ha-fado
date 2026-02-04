@@ -20,6 +20,8 @@ from custom_components.fade_lights import (
     ACTIVE_FADES,
     FADE_CANCEL_EVENTS,
     FADE_EXPECTED_STATE,
+    LATEST_INTENDED_STATE,
+    RESTORE_TASKS,
     ExpectedState,
 )
 from custom_components.fade_lights.const import (
@@ -1173,4 +1175,76 @@ async def test_restore_intended_state_when_entity_removed(
         assert len(turn_on_calls) == 0
         assert len(turn_off_calls) == 0
     finally:
+        LATEST_INTENDED_STATE.pop(entity_id, None)
+
+
+async def test_second_manual_event_during_restore_updates_intended_state(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+) -> None:
+    """Test that a second manual event during restore wait updates the intended state.
+
+    This tests the fix where we also check RESTORE_TASKS in the event handler
+    to update LATEST_INTENDED_STATE even after the fade is cancelled.
+
+    When a restore task is running (entity_id in RESTORE_TASKS), any new state
+    change should update LATEST_INTENDED_STATE so the restore uses the latest
+    user intent rather than a stale first event.
+    """
+    from unittest.mock import MagicMock
+
+    entity_id = "light.test_second_manual"
+
+    # Set up the light as OFF (simulating after first manual OFF event)
+    hass.states.async_set(
+        entity_id,
+        STATE_OFF,
+        {
+            ATTR_BRIGHTNESS: None,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        },
+    )
+    await hass.async_block_till_done()
+
+    # Store original brightness
+    hass.data[DOMAIN]["data"][entity_id] = 200
+
+    # Create a mock task to simulate a running restore task
+    # Using MagicMock avoids async timing issues
+    mock_task = MagicMock()
+
+    # Manually set up RESTORE_TASKS to simulate a running restore
+    RESTORE_TASKS[entity_id] = mock_task
+
+    # Set an initial intended state (simulating the first OFF event)
+    initial_off_state = hass.states.get(entity_id)
+    LATEST_INTENDED_STATE[entity_id] = initial_off_state
+
+    try:
+        # Verify initial state
+        assert LATEST_INTENDED_STATE[entity_id].state == STATE_OFF
+
+        # Second manual event - user turns light ON while restore task is "running"
+        # This should update LATEST_INTENDED_STATE because entity_id in RESTORE_TASKS
+        hass.states.async_set(
+            entity_id,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 180,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+            },
+        )
+        await hass.async_block_till_done()
+
+        # The key assertion: LATEST_INTENDED_STATE should be updated to the second event
+        assert entity_id in LATEST_INTENDED_STATE
+        latest = LATEST_INTENDED_STATE[entity_id]
+        assert latest.state == STATE_ON, "Intended state should be ON (latest event)"
+        assert latest.attributes.get(ATTR_BRIGHTNESS) == 180, (
+            "Intended brightness should be 180 from second event"
+        )
+
+    finally:
+        # Clean up
+        RESTORE_TASKS.pop(entity_id, None)
         LATEST_INTENDED_STATE.pop(entity_id, None)
