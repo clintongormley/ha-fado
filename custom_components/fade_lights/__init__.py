@@ -586,7 +586,7 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event) -> None:
 
     # Check if this is an expected state change (from our service calls)
     if _match_and_remove_expected(entity_id, new_state):
-        _LOGGER.debug("(%s) -> State matches expected, removed from tracking", entity_id)
+        _LOGGER.debug("%s: State matches expected, removed from tracking", entity_id)
         return
 
     # During fade: if we get here, state didn't match expected - manual intervention
@@ -608,7 +608,7 @@ def _handle_light_state_change(hass: HomeAssistant, event: Event) -> None:
 
     if _is_brightness_change(old_state, new_state):
         new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
-        _LOGGER.debug("(%s) -> Storing new brightness as original: %s", entity_id, new_brightness)
+        _LOGGER.debug("%s: Storing new brightness as original: %s", entity_id, new_brightness)
         _store_orig_brightness(hass, entity_id, new_brightness)
 
 
@@ -625,7 +625,7 @@ def _should_process_state_change(new_state: State | None) -> bool:
 def _log_state_change(entity_id: str, new_state: State) -> None:
     """Log state change details."""
     _LOGGER.debug(
-        "(%s) -> state=%s, brightness=%s, is_fading=%s",
+        "%s: State change - state=%s, brightness=%s, is_fading=%s",
         entity_id,
         new_state.state,
         new_state.attributes.get(ATTR_BRIGHTNESS),
@@ -654,7 +654,7 @@ def _match_and_remove_expected(entity_id: str, new_state: State) -> bool:
 
     if matched is not None:
         _LOGGER.debug(
-            "(%s) -> Matched expected brightness %s, remaining: %s",
+            "%s: Matched expected brightness %s, remaining: %s",
             entity_id,
             matched,
             list(expected_state.values.keys()),
@@ -692,7 +692,7 @@ def _handle_off_to_on(hass: HomeAssistant, entity_id: str, new_state: State) -> 
     current_brightness = new_state.attributes.get(ATTR_BRIGHTNESS, 0)
 
     _LOGGER.debug(
-        "(%s) -> orig_brightness=%s, current_brightness=%s",
+        "%s: orig_brightness=%s, current_brightness=%s",
         entity_id,
         orig_brightness,
         current_brightness,
@@ -744,29 +744,29 @@ async def _restore_intended_state(
     """
     if DOMAIN not in hass.data:
         return
-    _LOGGER.debug("(%s) -> in _restore_intended_state", entity_id)
+    _LOGGER.debug("%s: In _restore_intended_state", entity_id)
     await _cancel_and_wait_for_fade(entity_id)
 
     intended = _get_intended_brightness(hass, entity_id, old_state, new_state)
-    _LOGGER.debug("(%s) -> got intended brightness (%s)", entity_id, intended)
+    _LOGGER.debug("%s: Got intended brightness (%s)", entity_id, intended)
     if intended is None:
         return
 
     # Store as new original brightness (for future OFF->ON restore)
     if intended > 0:
-        _LOGGER.debug("(%s) -> storing original brightness (%s)", entity_id, intended)
+        _LOGGER.debug("%s: Storing original brightness (%s)", entity_id, intended)
         _store_orig_brightness(hass, entity_id, intended)
 
     # Get current state after fade cleanup
     current_state = hass.states.get(entity_id)
     if not current_state:
-        _LOGGER.debug("(%s) -> no current state found, exiting", entity_id)
+        _LOGGER.debug("%s: No current state found, exiting", entity_id)
         return
 
     current = current_state.attributes.get(ATTR_BRIGHTNESS) or 0
     if current_state.state == STATE_OFF:
         current = 0
-        _LOGGER.debug("(%s) -> got current brightness (%s)", entity_id, current)
+        _LOGGER.debug("%s: Got current brightness (%s)", entity_id, current)
 
     # Restore if current differs from intended
     if intended == 0 and current != 0:
@@ -833,9 +833,9 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
     removed from ACTIVE_FADES using an asyncio.Condition for efficient
     notification instead of polling.
     """
-    _LOGGER.debug("(%s) -> Cancelling fade", entity_id)
+    _LOGGER.debug("%s: Cancelling fade", entity_id)
     if entity_id not in ACTIVE_FADES:
-        _LOGGER.debug("  -> Fade not in ACTIVE_FADES")
+        _LOGGER.debug("%s: Fade not in ACTIVE_FADES", entity_id)
         return
 
     task = ACTIVE_FADES[entity_id]
@@ -843,14 +843,14 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
 
     # Signal cancellation via the cancel event if available
     if entity_id in FADE_CANCEL_EVENTS:
-        _LOGGER.debug("  -> Setting cancel event")
+        _LOGGER.debug("%s: Setting cancel event", entity_id)
         FADE_CANCEL_EVENTS[entity_id].set()
 
     # Cancel the task
     if task.done():
-        _LOGGER.debug("  -> Task already done")
+        _LOGGER.debug("%s: Task already done", entity_id)
     else:
-        _LOGGER.debug("  -> Cancelling task")
+        _LOGGER.debug("%s: Cancelling task", entity_id)
         task.cancel()
 
     # Wait for cleanup using Condition
@@ -861,9 +861,9 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
                     condition.wait_for(lambda: entity_id not in ACTIVE_FADES),
                     timeout=FADE_CANCEL_TIMEOUT_S,
                 )
-                _LOGGER.debug("  -> Task cleanup complete")
+                _LOGGER.debug("%s: Task cleanup complete", entity_id)
             except TimeoutError:
-                _LOGGER.debug("(%s) -> Timed out waiting for fade task cleanup", entity_id)
+                _LOGGER.debug("%s: Timed out waiting for fade task cleanup", entity_id)
 
     await _wait_until_stale_events_flushed(entity_id)
 
@@ -893,7 +893,7 @@ async def _wait_until_stale_events_flushed(
             )
     except TimeoutError:
         _LOGGER.warning(
-            "(%s) Timed out waiting for state events to flush (remaining: %s)",
+            "%s: Timed out waiting for state events to flush (remaining: %s)",
             entity_id,
             list(expected_state.values.keys()),
         )
