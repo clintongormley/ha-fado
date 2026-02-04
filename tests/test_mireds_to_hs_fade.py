@@ -9,7 +9,7 @@ from homeassistant.const import STATE_ON
 
 from custom_components.fade_lights import _execute_fade, _calculate_changes
 from custom_components.fade_lights.fade_change import FadeChange
-from custom_components.fade_lights.models import FadeParams
+from custom_components.fade_lights.fade_params import FadeParams
 
 
 @pytest.fixture

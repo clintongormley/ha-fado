@@ -619,7 +619,7 @@ async def test_fade_entity_not_found_logs_warning(
     import asyncio
 
     from custom_components.fade_lights import _execute_fade
-    from custom_components.fade_lights.models import FadeParams
+    from custom_components.fade_lights.fade_params import FadeParams
 
     entity_id = "light.missing_entity"
     cancel_event = asyncio.Event()
@@ -651,7 +651,7 @@ async def test_fade_cancel_event_before_brightness_apply(
     import asyncio
 
     from custom_components.fade_lights import _execute_fade
-    from custom_components.fade_lights.models import FadeParams
+    from custom_components.fade_lights.fade_params import FadeParams
 
     entity_id = "light.test_cancel_before"
     hass.states.async_set(
@@ -693,7 +693,7 @@ async def test_fade_cancel_event_after_brightness_apply(
     import asyncio
 
     from custom_components.fade_lights import _execute_fade
-    from custom_components.fade_lights.models import FadeParams
+    from custom_components.fade_lights.fade_params import FadeParams
 
     entity_id = "light.test_cancel_after"
     hass.states.async_set(

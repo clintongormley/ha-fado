@@ -11,7 +11,7 @@ from custom_components.fade_lights import (
     _resolve_start_hs,
     _resolve_start_mireds,
 )
-from custom_components.fade_lights.models import FadeParams
+from custom_components.fade_lights.fade_params import FadeParams
 
 
 class TestResolveStartBrightness:
