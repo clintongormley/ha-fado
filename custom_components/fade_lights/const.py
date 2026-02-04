@@ -51,6 +51,11 @@ MIN_STEP_DELAY_MS = 50
 # Brightness tolerance for detecting manual intervention (accounts for device rounding)
 BRIGHTNESS_TOLERANCE = 3
 
+# Color tolerances for detecting manual intervention (accounts for device rounding)
+HUE_TOLERANCE = 5.0  # degrees (0-360 scale)
+SATURATION_TOLERANCE = 3.0  # percentage points (0-100 scale)
+MIREDS_TOLERANCE = 10  # mireds
+
 # Timeout for waiting on fade cancellation (seconds)
 FADE_CANCEL_TIMEOUT_S = 2.0
 
