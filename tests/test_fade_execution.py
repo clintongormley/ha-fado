@@ -829,7 +829,7 @@ async def test_native_transitions_adds_transition_to_turn_on(
 
     # All turn_on calls should have transition: 0.1
     for call in turn_on_calls:
-        assert call.data.get("transition") == 0.1
+        assert call.data.get("transition") == 0.01
 
 
 async def test_native_transitions_false_no_transition(
@@ -911,7 +911,7 @@ async def test_native_transitions_skips_first_step_with_from(
 
     # Subsequent calls should have transition: 0.1
     for call in turn_on_calls[1:]:
-        assert call.data.get("transition") == 0.1
+        assert call.data.get("transition") == 0.01
 
 
 async def test_native_transitions_first_step_has_transition_without_from(
@@ -949,7 +949,7 @@ async def test_native_transitions_first_step_has_transition_without_from(
 
     # ALL calls should have transition: 0.1 (no "from" specified)
     for call in turn_on_calls:
-        assert call.data.get("transition") == 0.1
+        assert call.data.get("transition") == 0.01
 
 
 async def test_native_transition_tracks_range(

@@ -11,7 +11,10 @@ from homeassistant.components.light.const import ColorMode
 from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from custom_components.fade_lights.autoconfigure import async_test_light_delay
+from custom_components.fade_lights.autoconfigure import (
+    _async_test_light_delay,
+    async_autoconfigure_light,
+)
 from custom_components.fade_lights.const import DOMAIN
 
 
@@ -116,7 +119,7 @@ class TestLightDelay:
         service_calls_with_state_update: list[ServiceCall],
     ) -> None:
         """Test normal measurement flow completes successfully."""
-        result = await async_test_light_delay(hass_with_storage, mock_light_on)
+        result = await _async_test_light_delay(hass_with_storage, mock_light_on)
 
         assert "error" not in result
         assert result["entity_id"] == mock_light_on
@@ -135,12 +138,13 @@ class TestLightDelay:
         """Test that correct number of iterations are performed."""
         from custom_components.fade_lights.const import AUTOCONFIGURE_ITERATIONS
 
-        await async_test_light_delay(hass_with_storage, mock_light_on)
+        await _async_test_light_delay(hass_with_storage, mock_light_on)
 
-        # Should have 1 init call + 10 iteration calls + 1 restore call = 12 calls
+        # Should have 1 init call + 10 iteration calls = 11 calls
+        # (restore is done by async_autoconfigure_light, not _async_test_light_delay)
         turn_on_calls = [c for c in service_calls_with_state_update if c.service == "turn_on"]
-        # 1 init + 10 measurement calls + 1 restore call
-        assert len(turn_on_calls) == AUTOCONFIGURE_ITERATIONS + 2
+        # 1 init + 10 measurement calls
+        assert len(turn_on_calls) == AUTOCONFIGURE_ITERATIONS + 1
 
     async def test_alternating_brightness(
         self,
@@ -151,7 +155,7 @@ class TestLightDelay:
         """Test brightness alternates between 10 and 255."""
         from custom_components.fade_lights.const import AUTOCONFIGURE_ITERATIONS
 
-        await async_test_light_delay(hass_with_storage, mock_light_on)
+        await _async_test_light_delay(hass_with_storage, mock_light_on)
 
         turn_on_calls = [c for c in service_calls_with_state_update if c.service == "turn_on"]
 
@@ -172,7 +176,7 @@ class TestLightDelay:
         service_calls_with_state_update: list[ServiceCall],
     ) -> None:
         """Test original state is restored after measurement (light was on)."""
-        await async_test_light_delay(hass_with_storage, mock_light_on)
+        await async_autoconfigure_light(hass_with_storage, mock_light_on)
 
         # Last call should be restore call with original brightness
         turn_on_calls = [c for c in service_calls_with_state_update if c.service == "turn_on"]
@@ -188,7 +192,7 @@ class TestLightDelay:
         service_calls_with_state_update: list[ServiceCall],
     ) -> None:
         """Test original state is restored after measurement (light was off)."""
-        await async_test_light_delay(hass_with_storage, mock_light_off)
+        await async_autoconfigure_light(hass_with_storage, mock_light_off)
 
         # Last call should be turn_off to restore original state
         turn_off_calls = [c for c in service_calls_with_state_update if c.service == "turn_off"]
@@ -203,7 +207,7 @@ class TestLightDelay:
         service_calls_with_state_update: list[ServiceCall],
     ) -> None:
         """Test min_delay_ms is saved to storage."""
-        result = await async_test_light_delay(hass_with_storage, mock_light_on)
+        result = await async_autoconfigure_light(hass_with_storage, mock_light_on)
 
         # Check that storage was updated
         assert mock_light_on in hass_with_storage.data[DOMAIN]["data"]
@@ -221,7 +225,7 @@ class TestLightDelay:
         service_calls_with_state_update: list[ServiceCall],
     ) -> None:
         """Test result is rounded up to nearest 10ms."""
-        result = await async_test_light_delay(hass_with_storage, mock_light_on)
+        result = await _async_test_light_delay(hass_with_storage, mock_light_on)
 
         # Result should be divisible by 10
         assert result["min_delay_ms"] % 10 == 0
@@ -231,7 +235,7 @@ class TestLightDelay:
         hass_with_storage: HomeAssistant,
     ) -> None:
         """Test error returned when entity not found."""
-        result = await async_test_light_delay(hass_with_storage, "light.nonexistent")
+        result = await async_autoconfigure_light(hass_with_storage, "light.nonexistent")
 
         assert "error" in result
         assert result["entity_id"] == "light.nonexistent"
@@ -279,7 +283,7 @@ class TestLightDelayTimeout:
             "custom_components.fade_lights.autoconfigure.AUTOCONFIGURE_TIMEOUT_S",
             0.1,
         ):
-            result = await async_test_light_delay(hass_with_storage, mock_light_on)
+            result = await _async_test_light_delay(hass_with_storage, mock_light_on)
 
         # Should succeed after retry (first call times out, retry succeeds)
         assert "error" not in result
@@ -305,7 +309,7 @@ class TestLightDelayTimeout:
             "custom_components.fade_lights.autoconfigure.AUTOCONFIGURE_TIMEOUT_S",
             0.05,
         ):
-            result = await async_test_light_delay(hass_with_storage, mock_light_on)
+            result = await _async_test_light_delay(hass_with_storage, mock_light_on)
 
         assert "error" in result
         assert result["entity_id"] == mock_light_on
@@ -347,7 +351,7 @@ class TestLightDelayCalculation:
         hass_with_storage.services.async_register("light", "turn_on", mock_turn_on_with_known_delay)
         hass_with_storage.services.async_register("light", "turn_off", mock_turn_off)
 
-        result = await async_test_light_delay(hass_with_storage, mock_light_on)
+        result = await _async_test_light_delay(hass_with_storage, mock_light_on)
 
         assert "error" not in result
         # With 25ms delay, the p90 would be around 25-35ms, which rounds up to 30-40ms

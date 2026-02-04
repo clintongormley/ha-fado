@@ -388,6 +388,9 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
     _easing_func: Callable[[float], float] = field(default=linear, repr=False)
     _easing_name: str = field(default="linear", repr=False)
 
+    # Track last emitted step to skip duplicates caused by easing (private)
+    _last_emitted_step: FadeStep | None = field(default=None, repr=False)
+
     @classmethod
     def resolve(
         cls,
@@ -709,6 +712,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
     def reset(self) -> None:
         """Reset iterator to beginning."""
         self._current_step = 0
+        self._last_emitted_step = None
 
     def has_next(self) -> bool:
         """Check if more steps remain."""
@@ -721,27 +725,55 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         the crossover point. Color temperature is converted from internal
         mireds to kelvin.
 
+        Steps that produce identical values to the previous step are skipped
+        (can happen with easing functions that compress progress at extremes).
+
         Raises:
             StopIteration: If no more steps remain.
         """
-        if not self.has_next():
-            raise StopIteration
-
-        self._current_step += 1
         count = self.step_count()
 
-        # Use t=1.0 for the last step to hit target exactly
-        t = self._current_step / count
+        while self.has_next():
+            self._current_step += 1
 
-        # Handle hybrid transitions
-        if self._hybrid_direction is not None:
-            return self._interpolate_hybrid_step(t)
+            # Use t=1.0 for the last step to hit target exactly
+            t = self._current_step / count
 
-        # Non-hybrid: standard interpolation
-        return FadeStep(
-            brightness=self._interpolate_brightness(t),
-            hs_color=self._interpolate_hs(t),
-            color_temp_kelvin=self._interpolate_color_temp_kelvin(t),
+            # Generate the step
+            if self._hybrid_direction is not None:
+                step = self._interpolate_hybrid_step(t)
+            else:
+                step = FadeStep(
+                    brightness=self._interpolate_brightness(t),
+                    hs_color=self._interpolate_hs(t),
+                    color_temp_kelvin=self._interpolate_color_temp_kelvin(t),
+                )
+
+            # Always emit the last step to hit target exactly
+            is_last_step = self._current_step >= count
+
+            # Skip if identical to last emitted step (unless it's the last step)
+            if not is_last_step and self._last_emitted_step is not None:
+                if self._steps_equal(step, self._last_emitted_step):
+                    _LOGGER.debug(
+                        "Skipping duplicate step %d/%d: %s",
+                        self._current_step,
+                        count,
+                        step,
+                    )
+                    continue
+
+            self._last_emitted_step = step
+            return step
+
+        raise StopIteration
+
+    def _steps_equal(self, step1: FadeStep, step2: FadeStep) -> bool:
+        """Check if two FadeSteps have identical values."""
+        return (
+            step1.brightness == step2.brightness
+            and step1.hs_color == step2.hs_color
+            and step1.color_temp_kelvin == step2.color_temp_kelvin
         )
 
     def _interpolate_hybrid_step(self, t: float) -> FadeStep:

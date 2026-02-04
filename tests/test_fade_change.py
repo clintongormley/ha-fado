@@ -667,3 +667,66 @@ class TestFadeChangeEasing:
         # For linear mireds: 200->240 = 40 mireds change per step
         # At step 1: mireds = 200 + 40 = 240 -> kelvin = 4166
         assert 4100 <= kelvins[0] <= 4200  # Linear, not eased
+
+    def test_easing_skips_duplicate_steps(self) -> None:
+        """Test that steps with identical values due to easing are skipped.
+
+        With aggressive easing, consecutive steps can round to the same value.
+        The iterator should skip these duplicates to avoid redundant service calls.
+        Note: The last step is always emitted to ensure target is hit, so it may
+        duplicate the previous step if the penultimate step already hit target.
+        """
+        from custom_components.fade_lights.easing import ease_in_cubic
+
+        # Very slow fade: 5 unit brightness change over 20 steps (50ms delay over 1000ms)
+        # With ease_in_cubic (aggressive easing), early steps will round to same value
+        change = FadeChange(
+            start_brightness=100,
+            end_brightness=105,  # Only 5 units change
+            transition_ms=1000,
+            min_step_delay_ms=50,  # Would give 20 steps without optimization
+            _easing_func=ease_in_cubic,
+        )
+
+        steps = []
+        while change.has_next():
+            steps.append(change.next_step())
+
+        brightnesses = [s.brightness for s in steps]
+
+        # No consecutive duplicates EXCEPT for the last step (which always emits
+        # to ensure target is hit, even if previous step already reached target)
+        for i in range(1, len(brightnesses) - 1):
+            assert brightnesses[i] != brightnesses[i - 1], (
+                f"Step {i} has same brightness as step {i - 1}: {brightnesses[i]}"
+            )
+
+        # Should have fewer steps than the theoretical 20 due to duplicate skipping
+        # With only 5 units of change spread over 20 steps with aggressive easing,
+        # many steps will round to the same value and be skipped
+        assert len(steps) < 20, f"Should skip some duplicate steps, got {len(steps)}"
+
+        # First and last step should still be correct
+        assert brightnesses[0] is not None
+        assert brightnesses[-1] == 105  # Final target reached
+
+    def test_reset_clears_last_emitted_step(self) -> None:
+        """Test that reset() clears the duplicate tracking state."""
+        change = FadeChange(
+            start_brightness=100,
+            end_brightness=110,
+            transition_ms=500,
+            min_step_delay_ms=100,
+        )
+
+        # Consume some steps
+        change.next_step()
+        change.next_step()
+
+        # Reset should clear state
+        change.reset()
+
+        # Should start fresh (not skip based on previous run's last step)
+        first_step = change.next_step()
+        assert first_step.brightness is not None
+        assert first_step.brightness > 100
