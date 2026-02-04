@@ -140,5 +140,5 @@ AUTOCONFIGURE_MAX_PARALLEL = 5  # Maximum lights to test in parallel
 
 # Notification for unconfigured lights
 NOTIFICATION_ID = "fade_lights_unconfigured"
-REQUIRED_CONFIG_FIELDS = frozenset({"min_delay_ms"})
+REQUIRED_CONFIG_FIELDS = frozenset({"min_delay_ms", "native_transitions"})
 UNCONFIGURED_CHECK_INTERVAL_HOURS = 24

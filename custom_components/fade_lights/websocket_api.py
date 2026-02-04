@@ -319,10 +319,7 @@ async def ws_autoconfigure(
     Both delay testing and native transitions testing are performed.
     """
     # Import here to avoid circular import (autoconfigure imports async_save_light_config)
-    from .autoconfigure import (  # noqa: PLC0415
-        async_test_light_delay,
-        async_test_native_transitions,
-    )
+    from .autoconfigure import async_autoconfigure_light  # noqa: PLC0415
 
     entity_ids = msg["entity_ids"]
 
@@ -373,55 +370,38 @@ async def ws_autoconfigure(
                     )
                 )
 
-                # Run delay test
-                delay_result = await async_test_light_delay(hass, entity_id)
+                # Run full autoconfigure (delay + native transitions, with state restoration)
+                result = await async_autoconfigure_light(hass, entity_id)
 
-                # Check if cancelled before continuing
+                # Check if cancelled before sending result
                 if cancel_event.is_set():
                     return
 
-                if "error" in delay_result:
-                    # Send error event
+                if "error" in result and "min_delay_ms" not in result:
+                    # Both tests failed
                     connection.send_message(
                         websocket_api.event_message(
                             msg["id"],
                             {
                                 "type": "error",
                                 "entity_id": entity_id,
-                                "message": delay_result["error"],
+                                "message": result["error"],
                             },
                         )
                     )
-                    return
-
-                # Run native transitions test
-                transition_result = await async_test_native_transitions(hass, entity_id)
-
-                # Check if cancelled before sending result
-                if cancel_event.is_set():
-                    return
-
-                # Determine native_transitions value (None if error)
-                native_transitions = None
-                if "error" not in transition_result:
-                    native_transitions = transition_result["supports_native_transitions"]
-                    # Save native_transitions to storage
-                    await async_save_light_config(
-                        hass, entity_id, native_transitions=native_transitions
+                else:
+                    # At least one test succeeded
+                    connection.send_message(
+                        websocket_api.event_message(
+                            msg["id"],
+                            {
+                                "type": "result",
+                                "entity_id": entity_id,
+                                "min_delay_ms": result.get("min_delay_ms"),
+                                "native_transitions": result.get("native_transitions"),
+                            },
+                        )
                     )
-
-                # Send result event with both values
-                connection.send_message(
-                    websocket_api.event_message(
-                        msg["id"],
-                        {
-                            "type": "result",
-                            "entity_id": entity_id,
-                            "min_delay_ms": delay_result["min_delay_ms"],
-                            "native_transitions": native_transitions,
-                        },
-                    )
-                )
             except Exception as err:  # noqa: BLE001
                 # Check if cancelled before sending error
                 if cancel_event.is_set():
