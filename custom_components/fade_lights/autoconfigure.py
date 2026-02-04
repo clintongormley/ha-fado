@@ -288,7 +288,8 @@ async def _async_test_native_transitions(
 ) -> dict[str, Any]:
     """Test if a light supports native transitions.
 
-    Internal function - does not capture/restore state.
+    Internal function - assumes light is already at brightness 255.
+    Does not capture/restore state.
     Use async_autoconfigure_light for the full workflow.
 
     Args:
@@ -300,12 +301,8 @@ async def _async_test_native_transitions(
         On success: {"entity_id": entity_id, "supports_native_transitions": bool, ...}
         On failure: {"entity_id": entity_id, "error": "..."}
     """
-    # Get current brightness to determine target (opposite end of spectrum)
-    current_state = hass.states.get(entity_id)
-    current_brightness = 255  # Default if state unavailable
-    if current_state:
-        current_brightness = current_state.attributes.get(ATTR_BRIGHTNESS) or 255
-    target_brightness = 10 if current_brightness > 127 else 255
+    # Target brightness 10 (light starts at 255 from standard state)
+    target_brightness = 10
 
     state_changed_event = asyncio.Event()
 
@@ -407,6 +404,7 @@ async def async_test_native_transitions(
     original_brightness = original_state.attributes.get(ATTR_BRIGHTNESS)
 
     try:
+        await _async_set_standard_state(hass, entity_id)
         return await _async_test_native_transitions(hass, entity_id, transition_s)
     finally:
         await _async_restore_light_state(hass, entity_id, original_on, original_brightness)
