@@ -60,6 +60,10 @@ from .const import (
     DEFAULT_TRANSITION,
     DOMAIN,
     FADE_CANCEL_TIMEOUT_S,
+    MIN_BRIGHTNESS_DELTA,
+    MIN_HUE_DELTA,
+    MIN_MIREDS_DELTA,
+    MIN_SATURATION_DELTA,
     OPTION_MIN_STEP_DELAY_MS,
     PLANCKIAN_LOCUS_HS,
     PLANCKIAN_LOCUS_SATURATION_THRESHOLD,
@@ -707,6 +711,49 @@ def _calculate_next_brightness(
         new_level = 0 if delta < 0 else 2
 
     return new_level
+
+
+def _calculate_step_count(
+    brightness_change: int | None,
+    hue_change: float | None,
+    sat_change: float | None,
+    mireds_change: int | None,
+    transition_ms: int,
+    min_step_delay_ms: int,
+) -> int:
+    """Calculate optimal step count based on change magnitude and time constraints.
+
+    The algorithm:
+    1. Calculate ideal steps per dimension: change / minimum_delta
+    2. Take the maximum across all changing dimensions (smoothest dimension wins)
+    3. Constrain by time: if ideal_steps * min_step_delay_ms > transition_ms, use time-limited steps
+
+    Args:
+        brightness_change: Absolute brightness change (0-255 scale), or None if not changing
+        hue_change: Absolute hue change in degrees (0-360), or None if not changing
+        sat_change: Absolute saturation change (0-100), or None if not changing
+        mireds_change: Absolute mireds change, or None if not changing
+        transition_ms: Total transition time in milliseconds
+        min_step_delay_ms: Minimum delay between steps in milliseconds
+
+    Returns:
+        Optimal number of steps (at least 1)
+    """
+    ideal_steps = []
+
+    if brightness_change is not None and brightness_change > 0:
+        ideal_steps.append(brightness_change // MIN_BRIGHTNESS_DELTA)
+    if hue_change is not None and hue_change > 0:
+        ideal_steps.append(int(hue_change / MIN_HUE_DELTA))
+    if sat_change is not None and sat_change > 0:
+        ideal_steps.append(int(sat_change / MIN_SATURATION_DELTA))
+    if mireds_change is not None and mireds_change > 0:
+        ideal_steps.append(mireds_change // MIN_MIREDS_DELTA)
+
+    ideal = max(ideal_steps) if ideal_steps else 1
+    max_by_time = transition_ms // min_step_delay_ms
+
+    return max(1, min(ideal, max_by_time))
 
 
 async def _apply_brightness(hass: HomeAssistant, entity_id: str, level: int) -> None:
