@@ -638,17 +638,6 @@ async def _cancel_and_wait_for_fade(entity_id: str) -> None:
             _LOGGER.debug("  -> Task disappeared")
             await asyncio.sleep(0.1)
             return
-        """
-        Is this required? Surely it'll be handled by finally?
-        if task.done():
-            _LOGGER.debug("  -> Task done, cleaning up")
-            # Task is done but cleanup hasn't happened yet - do it manually
-            ACTIVE_FADES.pop(entity_id, None)
-            FADE_CANCEL_EVENTS.pop(entity_id, None)
-            FADE_EXPECTED_BRIGHTNESS.pop(entity_id, None)
-            await asyncio.sleep(0.1)
-            return
-        """
         await asyncio.sleep(0.01)
 
     if entity_id in ACTIVE_FADES:
