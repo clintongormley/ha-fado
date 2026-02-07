@@ -26,6 +26,7 @@ from .const import (
     DOMAIN,
     NATIVE_TRANSITION_MS,
 )
+from .coordinator import FadeCoordinator
 from .websocket_api import async_save_light_config
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,9 +54,7 @@ async def _async_turn_off(hass: HomeAssistant, entity_id: str) -> None:
     )
 
 
-async def async_autoconfigure_light(
-    hass: HomeAssistant, entity_id: str
-) -> dict[str, Any]:
+async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
     """Run full autoconfiguration for a light.
 
     This is the main entry point that:
@@ -90,7 +89,10 @@ async def async_autoconfigure_light(
     result: dict[str, Any] = {"entity_id": entity_id}
 
     # Temporarily exclude light to suppress main integration state monitoring
-    light_config = hass.data.setdefault(DOMAIN, {}).setdefault("data", {}).setdefault(entity_id, {})
+    coordinator: FadeCoordinator = hass.data[DOMAIN]
+    if entity_id not in coordinator.data:
+        coordinator.data[entity_id] = {}
+    light_config = coordinator.data[entity_id]
     light_config["exclude"] = True
 
     try:
@@ -120,17 +122,13 @@ async def async_autoconfigure_light(
 
         # Save results to storage
         if "min_delay_ms" in result:
-            await async_save_light_config(
-                hass, entity_id, min_delay_ms=result["min_delay_ms"]
-            )
+            await async_save_light_config(hass, entity_id, min_delay_ms=result["min_delay_ms"])
         if "native_transitions" in result:
             await async_save_light_config(
                 hass, entity_id, native_transitions=result["native_transitions"]
             )
         if "min_brightness" in result:
-            await async_save_light_config(
-                hass, entity_id, min_brightness=result["min_brightness"]
-            )
+            await async_save_light_config(hass, entity_id, min_brightness=result["min_brightness"])
 
     finally:
         # Restore exclude flag before restoring state
@@ -268,7 +266,8 @@ async def _async_test_light_delay(
     result = math.ceil(p90_value / 10) * 10
 
     # Enforce global minimum delay
-    global_min = hass.data.get(DOMAIN, {}).get("min_step_delay_ms", DEFAULT_MIN_STEP_DELAY_MS)
+    coordinator_obj: FadeCoordinator | None = hass.data.get(DOMAIN)
+    global_min = coordinator_obj.min_step_delay_ms if coordinator_obj else DEFAULT_MIN_STEP_DELAY_MS
     if result < global_min:
         result = global_min
 
@@ -277,9 +276,7 @@ async def _async_test_light_delay(
     return {"entity_id": entity_id, "min_delay_ms": result}
 
 
-async def _async_test_min_brightness(
-    hass: HomeAssistant, entity_id: str
-) -> dict[str, Any]:
+async def _async_test_min_brightness(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
     """Test to find the minimum brightness value that keeps the light on.
 
     Some lights use a 1-100 scale internally while Home Assistant uses 1-255.
@@ -430,9 +427,7 @@ async def _async_test_native_transitions(
     try:
         # Send command with transition (light already at 255)
         start_time = time.monotonic()
-        await _async_turn_on(
-            hass, entity_id, brightness=target_brightness, transition=transition_s
-        )
+        await _async_turn_on(hass, entity_id, brightness=target_brightness, transition=transition_s)
 
         # Wait for state change with generous timeout
         timeout = transition_s + 5.0
