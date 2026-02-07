@@ -55,6 +55,7 @@ class FadeLightsPanel extends LitElement {
       ha-card {
         display: block;
         margin-bottom: 16px;
+        overflow-x: auto;
       }
 
       ha-button {
@@ -169,7 +170,6 @@ class FadeLightsPanel extends LitElement {
       .lights-table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
       }
 
       .lights-table th,
@@ -194,6 +194,7 @@ class FadeLightsPanel extends LitElement {
       /* Fixed column widths for consistency */
       .col-light {
         width: auto;
+        min-width: 200px;
       }
 
       .col-delay {
