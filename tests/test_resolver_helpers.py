@@ -23,7 +23,7 @@ class TestResolveStartBrightness:
         params = FadeParams(from_brightness_pct=50)
         state = {ATTR_BRIGHTNESS: 200}
 
-        result = _resolve_start_brightness(params, state)
+        result = _resolve_start_brightness(params, state, min_brightness=1)
 
         # 50% of 255 = 127.5, truncated to 127
         assert result == 127
@@ -33,47 +33,87 @@ class TestResolveStartBrightness:
         params = FadeParams()
         state = {ATTR_BRIGHTNESS: 180}
 
-        result = _resolve_start_brightness(params, state)
+        result = _resolve_start_brightness(params, state, min_brightness=1)
 
         assert result == 180
 
-    def test_returns_zero_when_both_missing(self) -> None:
-        """Test that 0 is returned when neither source has brightness (light off)."""
+    def test_returns_min_brightness_when_light_off(self) -> None:
+        """Test that min_brightness is returned when light is off (no brightness in state)."""
         params = FadeParams()
         state = {}
 
-        result = _resolve_start_brightness(params, state)
+        # With default min_brightness=1, start from 1 not 0
+        result = _resolve_start_brightness(params, state, min_brightness=1)
+        assert result == 1
 
-        # When light is off (no brightness in state), treat as 0
-        assert result == 0
+        # With min_brightness=10, start from 10
+        result = _resolve_start_brightness(params, state, min_brightness=10)
+        assert result == 10
 
-    def test_from_brightness_pct_zero(self) -> None:
-        """Test handling of 0% brightness."""
+    def test_from_brightness_pct_zero_clamped_to_min(self) -> None:
+        """Test handling of 0% brightness (clamped to min_brightness)."""
         params = FadeParams(from_brightness_pct=0)
         state = {ATTR_BRIGHTNESS: 255}
 
-        result = _resolve_start_brightness(params, state)
+        # 0% converts to 0, but gets clamped to min_brightness
+        result = _resolve_start_brightness(params, state, min_brightness=1)
+        assert result == 1
 
-        assert result == 0
+        result = _resolve_start_brightness(params, state, min_brightness=10)
+        assert result == 10
 
     def test_from_brightness_pct_100(self) -> None:
         """Test handling of 100% brightness."""
         params = FadeParams(from_brightness_pct=100)
         state = {ATTR_BRIGHTNESS: 50}
 
-        result = _resolve_start_brightness(params, state)
+        result = _resolve_start_brightness(params, state, min_brightness=1)
 
         assert result == 255
 
-    def test_state_brightness_none(self) -> None:
+    def test_state_brightness_none_returns_min(self) -> None:
         """Test handling of None brightness in state (light off)."""
         params = FadeParams()
         state = {ATTR_BRIGHTNESS: None}
 
-        result = _resolve_start_brightness(params, state)
+        # When light is off (brightness is None), return min_brightness
+        result = _resolve_start_brightness(params, state, min_brightness=1)
+        assert result == 1
 
-        # When light is off (brightness is None), treat as 0
-        assert result == 0
+        result = _resolve_start_brightness(params, state, min_brightness=5)
+        assert result == 5
+
+    def test_from_brightness_raw_used_directly(self) -> None:
+        """Test that from_brightness (raw) is used directly."""
+        params = FadeParams(from_brightness=150)
+        state = {ATTR_BRIGHTNESS: 200}
+
+        result = _resolve_start_brightness(params, state, min_brightness=1)
+
+        assert result == 150  # Raw value used directly
+
+    def test_from_brightness_raw_clamped_to_min(self) -> None:
+        """Test that from_brightness (raw) is clamped to min_brightness."""
+        params = FadeParams(from_brightness=5)
+        state = {ATTR_BRIGHTNESS: 200}
+
+        result = _resolve_start_brightness(params, state, min_brightness=10)
+
+        assert result == 10  # Clamped to min_brightness
+
+    def test_from_brightness_pct_1_special_case(self) -> None:
+        """Test from_brightness_pct=1 maps to min_brightness when higher."""
+        params = FadeParams(from_brightness_pct=1)
+        state = {ATTR_BRIGHTNESS: 200}
+
+        # Normal conversion: 1% of 255 = 2.55 -> truncated to 2
+        # With min_brightness=10, use min_brightness instead
+        result = _resolve_start_brightness(params, state, min_brightness=10)
+        assert result == 10
+
+        # With min_brightness=1, use normal conversion (but clamp to min 1)
+        result = _resolve_start_brightness(params, state, min_brightness=1)
+        assert result == 2
 
 
 class TestResolveEndBrightness:
@@ -83,7 +123,7 @@ class TestResolveEndBrightness:
         """Test that brightness_pct is converted to 0-255 scale."""
         params = FadeParams(brightness_pct=75)
 
-        result = _resolve_end_brightness(params)
+        result = _resolve_end_brightness(params, min_brightness=1)
 
         # 75% of 255 = 191.25, truncated to 191
         assert result == 191
@@ -92,23 +132,26 @@ class TestResolveEndBrightness:
         """Test that None is returned when brightness_pct is not set."""
         params = FadeParams()
 
-        result = _resolve_end_brightness(params)
+        result = _resolve_end_brightness(params, min_brightness=1)
 
         assert result is None
 
-    def test_brightness_pct_zero(self) -> None:
-        """Test handling of 0% end brightness."""
+    def test_brightness_pct_zero_not_clamped(self) -> None:
+        """Test handling of 0% end brightness (not clamped - allows turn off)."""
         params = FadeParams(brightness_pct=0)
 
-        result = _resolve_end_brightness(params)
-
+        # 0 is a special case - not clamped (allows fading to off)
+        result = _resolve_end_brightness(params, min_brightness=1)
         assert result == 0
+
+        result = _resolve_end_brightness(params, min_brightness=10)
+        assert result == 0  # Still 0, not clamped
 
     def test_brightness_pct_100(self) -> None:
         """Test handling of 100% end brightness."""
         params = FadeParams(brightness_pct=100)
 
-        result = _resolve_end_brightness(params)
+        result = _resolve_end_brightness(params, min_brightness=1)
 
         assert result == 255
 
@@ -120,10 +163,47 @@ class TestResolveEndBrightness:
         """
         params = FadeParams()
 
-        result = _resolve_end_brightness(params)
+        result = _resolve_end_brightness(params, min_brightness=1)
 
         # Should return None since no brightness_pct specified
         assert result is None
+
+    def test_brightness_raw_used_directly(self) -> None:
+        """Test that brightness (raw) is used directly."""
+        params = FadeParams(brightness=150)
+
+        result = _resolve_end_brightness(params, min_brightness=1)
+
+        assert result == 150  # Raw value used directly
+
+    def test_brightness_raw_clamped_to_min(self) -> None:
+        """Test that brightness (raw) is clamped to min_brightness."""
+        params = FadeParams(brightness=5)
+
+        result = _resolve_end_brightness(params, min_brightness=10)
+
+        assert result == 10  # Clamped to min_brightness
+
+    def test_brightness_pct_1_special_case(self) -> None:
+        """Test brightness_pct=1 maps to min_brightness when higher."""
+        params = FadeParams(brightness_pct=1)
+
+        # Normal conversion: 1% of 255 = 2.55 -> truncated to 2
+        # With min_brightness=10, use min_brightness instead
+        result = _resolve_end_brightness(params, min_brightness=10)
+        assert result == 10
+
+        # With min_brightness=1, use normal conversion (but clamp to min 1)
+        result = _resolve_end_brightness(params, min_brightness=1)
+        assert result == 2
+
+    def test_low_brightness_clamped_to_min(self) -> None:
+        """Test that low but non-zero brightness is clamped to min_brightness."""
+        params = FadeParams(brightness_pct=2)  # 2% = 5
+
+        result = _resolve_end_brightness(params, min_brightness=10)
+
+        assert result == 10  # Clamped to min_brightness
 
 
 class TestResolveStartHs:

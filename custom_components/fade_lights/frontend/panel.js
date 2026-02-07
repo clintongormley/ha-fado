@@ -197,6 +197,11 @@ class FadeLightsPanel extends LitElement {
         text-align: center;
       }
 
+      .col-min-brightness {
+        width: 100px;
+        text-align: center;
+      }
+
       .col-exclude {
         width: 80px;
         text-align: center;
@@ -208,6 +213,7 @@ class FadeLightsPanel extends LitElement {
       }
 
       .lights-table td.col-delay,
+      .lights-table td.col-min-brightness,
       .lights-table td.col-exclude,
       .lights-table td.col-configure {
         text-align: center;
@@ -434,6 +440,13 @@ class FadeLightsPanel extends LitElement {
   updated(changedProperties) {
     super.updated(changedProperties);
     if (changedProperties.has("hass") && this.hass) {
+      // Cancel any active autoconfigure on reconnect to prevent auto-re-subscription
+      if (this._autoconfigureUnsub) {
+        this._autoconfigureUnsub();
+        this._autoconfigureUnsub = null;
+        this._testing = new Set();
+      }
+
       // Fetch immediately when hass first becomes available and we haven't loaded yet
       if (!this._data && this._loading) {
         this._fetchAll();
@@ -925,7 +938,7 @@ class FadeLightsPanel extends LitElement {
       this._testing = newTesting;
 
       // Update local data with new values
-      this._updateLightConfig(event.entity_id, event.min_delay_ms, event.native_transitions);
+      this._updateLightConfig(event.entity_id, event.min_delay_ms, event.native_transitions, event.min_brightness);
 
       // Uncheck from configure
       const newChecked = new Set(this._configureChecked);
@@ -958,7 +971,7 @@ class FadeLightsPanel extends LitElement {
     }
   }
 
-  _updateLightConfig(entityId, minDelayMs, nativeTransitions) {
+  _updateLightConfig(entityId, minDelayMs, nativeTransitions, minBrightness) {
     // Find and update the light in _data
     if (!this._data?.floors) return;
 
@@ -969,6 +982,9 @@ class FadeLightsPanel extends LitElement {
           light.min_delay_ms = minDelayMs;
           if (nativeTransitions !== undefined) {
             light.native_transitions = nativeTransitions;
+          }
+          if (minBrightness !== undefined) {
+            light.min_brightness = minBrightness;
           }
           this.requestUpdate(); // Trigger re-render
           return;
@@ -1057,6 +1073,7 @@ class FadeLightsPanel extends LitElement {
           <tr>
             <th class="col-light"></th>
             <th class="col-delay">Min Delay (ms)</th>
+            <th class="col-min-brightness">Min Brightness</th>
             <th class="col-native-transitions">Native Transitions</th>
             <th class="col-exclude">Exclude</th>
             <th class="col-configure">
@@ -1114,6 +1131,7 @@ class FadeLightsPanel extends LitElement {
             ${floor.name}
           </div>
         </td>
+        <td class="col-min-brightness"></td>
         <td class="col-native-transitions"></td>
         <td class="col-exclude">
           <ha-checkbox
@@ -1153,6 +1171,7 @@ class FadeLightsPanel extends LitElement {
             ${area.name}
           </div>
         </td>
+        <td class="col-min-brightness"></td>
         <td class="col-native-transitions"></td>
         <td class="col-exclude">
           <ha-checkbox
@@ -1175,7 +1194,7 @@ class FadeLightsPanel extends LitElement {
         ? ""
         : area.lights.length > 0
           ? area.lights.map((light) => this._renderLightRow(light, withFloor))
-          : html`<tr><td colspan="5" class="no-lights">No lights in this area</td></tr>`}
+          : html`<tr><td colspan="6" class="no-lights">No lights in this area</td></tr>`}
     `;
   }
 
@@ -1216,6 +1235,9 @@ class FadeLightsPanel extends LitElement {
                 ${errorMessage ? html`<div class="test-error">${errorMessage}</div>` : ""}
               `
           }
+        </td>
+        <td class="col-min-brightness">
+          ${light.min_brightness != null ? light.min_brightness : ""}
         </td>
         <td class="col-native-transitions">
           <select

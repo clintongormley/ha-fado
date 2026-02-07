@@ -131,6 +131,7 @@ async def async_get_lights(hass: HomeAssistant) -> dict[str, Any]:
                 "min_delay_ms": light_config.get("min_delay_ms"),
                 "exclude": light_config.get("exclude", False),
                 "native_transitions": light_config.get("native_transitions"),
+                "min_brightness": light_config.get("min_brightness"),
             }
         )
 
@@ -164,9 +165,11 @@ async def async_save_light_config(
     min_delay_ms: int | None = None,
     exclude: bool | None = None,
     native_transitions: bool | None = None,
+    min_brightness: int | None = None,
     *,
     clear_min_delay: bool = False,
     clear_native_transitions: bool = False,
+    clear_min_brightness: bool = False,
 ) -> dict[str, bool]:
     """Save per-light configuration.
 
@@ -176,8 +179,10 @@ async def async_save_light_config(
         min_delay_ms: Optional minimum delay in milliseconds (50-1000)
         exclude: Optional flag to exclude light from fades
         native_transitions: Optional flag for native transition support
+        min_brightness: Optional minimum brightness value (1-255) that keeps light on
         clear_min_delay: If True and min_delay_ms is None, remove the setting
         clear_native_transitions: If True and native_transitions is None, remove the setting
+        clear_min_brightness: If True and min_brightness is None, remove the setting
 
     Returns:
         Dict with success status
@@ -201,6 +206,11 @@ async def async_save_light_config(
     elif clear_native_transitions:
         data[entity_id].pop("native_transitions", None)
 
+    if min_brightness is not None:
+        data[entity_id]["min_brightness"] = min_brightness
+    elif clear_min_brightness:
+        data[entity_id].pop("min_brightness", None)
+
     # Save to disk
     store = hass.data[DOMAIN]["store"]
     await store.async_save(data)
@@ -218,6 +228,7 @@ async def async_save_light_config(
         vol.Optional("min_delay_ms"): vol.Any(None, vol.All(int, vol.Range(min=50, max=1000))),
         vol.Optional("exclude"): bool,
         vol.Optional("native_transitions"): vol.Any(None, bool),
+        vol.Optional("min_brightness"): vol.Any(None, vol.All(int, vol.Range(min=1, max=255))),
     }
 )
 @websocket_api.async_response
@@ -232,6 +243,7 @@ async def ws_save_light_config(
     # Determine if we should clear fields
     clear_min_delay = "min_delay_ms" in msg and msg["min_delay_ms"] is None
     clear_native_transitions = "native_transitions" in msg and msg["native_transitions"] is None
+    clear_min_brightness = "min_brightness" in msg and msg["min_brightness"] is None
 
     result = await async_save_light_config(
         hass,
@@ -239,8 +251,10 @@ async def ws_save_light_config(
         min_delay_ms=msg.get("min_delay_ms"),
         exclude=msg.get("exclude"),
         native_transitions=msg.get("native_transitions"),
+        min_brightness=msg.get("min_brightness"),
         clear_min_delay=clear_min_delay,
         clear_native_transitions=clear_native_transitions,
+        clear_min_brightness=clear_min_brightness,
     )
 
     connection.send_result(msg["id"], result)
@@ -399,6 +413,7 @@ async def ws_autoconfigure(
                                 "entity_id": entity_id,
                                 "min_delay_ms": result.get("min_delay_ms"),
                                 "native_transitions": result.get("native_transitions"),
+                                "min_brightness": result.get("min_brightness"),
                             },
                         )
                     )

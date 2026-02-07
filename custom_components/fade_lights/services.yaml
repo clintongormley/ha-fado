@@ -114,6 +114,15 @@ fade_lights:
       name: Advanced options
       collapsed: true
       fields:
+        brightness:
+          name: Brightness value
+          description: Target brightness as raw value (1-255). Advanced option.
+          filter: *brightness_support
+          example: 255
+          selector:
+            number:
+              min: 1
+              max: 255
         rgb_color:
           name: RGB color
           description: Target color as [red, green, blue] values (0-255 each).

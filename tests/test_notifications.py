@@ -54,7 +54,7 @@ class TestGetUnconfiguredLights:
 
     def test_excludes_configured_light(self, hass: HomeAssistant) -> None:
         """Test excludes light with all required fields configured."""
-        hass.data[DOMAIN] = {"data": {"light.bedroom": {"min_delay_ms": 100, "native_transitions": True}}}
+        hass.data[DOMAIN] = {"data": {"light.bedroom": {"min_delay_ms": 100, "min_brightness": 1, "native_transitions": True}}}
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
@@ -181,7 +181,7 @@ class TestNotifyUnconfiguredLights:
         self, hass: HomeAssistant
     ) -> None:
         """Test dismisses notification when no unconfigured lights."""
-        hass.data[DOMAIN] = {"data": {"light.bedroom": {"min_delay_ms": 100, "native_transitions": True}}}
+        hass.data[DOMAIN] = {"data": {"light.bedroom": {"min_delay_ms": 100, "min_brightness": 1, "native_transitions": True}}}
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"

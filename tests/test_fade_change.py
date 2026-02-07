@@ -730,3 +730,304 @@ class TestFadeChangeEasing:
         first_step = change.next_step()
         assert first_step.brightness is not None
         assert first_step.brightness > 100
+
+
+class TestFadeChangeResolveMinBrightness:
+    """Test min_brightness parameter in FadeChange.resolve()."""
+
+    def test_brightness_pct_1_maps_to_min_brightness_when_higher(self) -> None:
+        """Test brightness_pct=1 maps to min_brightness when min_brightness > normal conversion.
+
+        Normal conversion: 1% of 255 = 2.55 -> rounds to 3.
+        When min_brightness > 3, use min_brightness instead (special case).
+        """
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=1, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        # With min_brightness=10, brightness_pct=1 should use min_brightness
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        assert fade.end_brightness == 10  # Uses min_brightness, not 3
+
+    def test_brightness_pct_1_normal_conversion_when_min_brightness_is_1(self) -> None:
+        """Test brightness_pct=1 converts normally when min_brightness is 1.
+
+        Normal conversion: 1% of 255 = 2.55 -> truncated to 2.
+        When min_brightness=1, just use normal conversion (clamped to min 1).
+        """
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=1, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        # With default min_brightness=1, brightness_pct=1 should convert normally
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=1)
+
+        assert fade is not None
+        assert fade.end_brightness == 2  # int(1 * 255 / 100) = 2
+
+    def test_brightness_pct_converts_correctly_to_255_scale(self) -> None:
+        """Test brightness_pct values convert correctly to 0-255 scale."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        # Test various percentages (using int() for truncation)
+        test_cases = [
+            (50, 127),  # 50% -> 127.5 -> 127
+            (100, 255),  # 100% -> 255
+            (25, 63),  # 25% -> 63.75 -> 63
+            (10, 25),  # 10% -> 25.5 -> 25
+        ]
+
+        state = {
+            "brightness": 200,
+            "supported_color_modes": ["brightness"],
+        }
+
+        for pct, expected in test_cases:
+            params = FadeParams(brightness_pct=pct, transition_ms=1000)
+            fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=1)
+
+            assert fade is not None, f"FadeChange should be created for {pct}%"
+            assert fade.end_brightness == expected, (
+                f"brightness_pct={pct} should convert to {expected}, got {fade.end_brightness}"
+            )
+
+    def test_raw_brightness_used_directly(self) -> None:
+        """Test brightness (raw 1-255) values are used directly without conversion."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness=150, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=1)
+
+        assert fade is not None
+        assert fade.end_brightness == 150  # Used directly
+
+    def test_raw_brightness_clamped_to_min_brightness(self) -> None:
+        """Test raw brightness value is clamped to min_brightness floor."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness=5, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        # min_brightness=10 should clamp brightness=5 up to 10
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        assert fade.end_brightness == 10  # Clamped to min_brightness
+
+    def test_brightness_pct_clamped_to_min_brightness_floor(self) -> None:
+        """Test converted brightness_pct value is clamped to min_brightness floor."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        # 5% of 255 = 12.75 -> 12, but min_brightness=20 should clamp it
+        params = FadeParams(brightness_pct=5, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=20)
+
+        assert fade is not None
+        assert fade.end_brightness == 20  # Clamped to min_brightness
+
+    def test_start_brightness_clamped_when_fading_from_off(self) -> None:
+        """Test starting brightness is clamped to min_brightness when light is off."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=50, transition_ms=1000)
+        state = {
+            # Light is off - no brightness in state
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        # Start should be clamped from 0 to min_brightness
+        assert fade.start_brightness == 10
+
+    def test_start_brightness_clamped_when_current_brightness_is_low(self) -> None:
+        """Test starting brightness is clamped when current brightness < min_brightness."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=50, transition_ms=1000)
+        state = {
+            "brightness": 5,  # Current brightness is below min_brightness
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        # Start should be clamped from 5 to min_brightness=10
+        assert fade.start_brightness == 10
+
+    def test_from_brightness_pct_handling(self) -> None:
+        """Test from_brightness_pct is converted and clamped correctly."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        # from_brightness_pct=2 -> 5 (int(2*255/100)=5), but min_brightness=10
+        params = FadeParams(
+            brightness_pct=50,
+            from_brightness_pct=2,
+            transition_ms=1000,
+        )
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        assert fade.start_brightness == 10  # Clamped from 5 to min_brightness
+
+    def test_from_brightness_raw_handling(self) -> None:
+        """Test from_brightness (raw) is used directly and clamped correctly."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(
+            brightness_pct=50,
+            from_brightness=5,  # Raw value below min_brightness
+            transition_ms=1000,
+        )
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        assert fade.start_brightness == 10  # Clamped from 5 to min_brightness
+
+    def test_from_brightness_pct_1_special_case(self) -> None:
+        """Test from_brightness_pct=1 maps to min_brightness when min_brightness > 2."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(
+            brightness_pct=100,
+            from_brightness_pct=1,  # Special case: "dimmest possible"
+            transition_ms=1000,
+        )
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=15)
+
+        assert fade is not None
+        assert fade.start_brightness == 15  # Uses min_brightness for 1%
+
+    def test_both_endpoints_clamped_same_value_returns_none(self) -> None:
+        """Test that when both endpoints clamp to same value, nothing to fade."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(
+            brightness=5,  # Below min_brightness, will clamp to 10
+            from_brightness=3,  # Also below min_brightness, will clamp to 10
+            transition_ms=1000,
+        )
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        # Both should be clamped to min_brightness (10)
+        # Since they're the same after clamping, nothing to fade
+        assert fade is None  # No change when both endpoints are the same
+
+    def test_end_brightness_zero_not_clamped(self) -> None:
+        """Test that end brightness of 0 is NOT clamped (allows fade to off)."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=0, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        # min_brightness=10, but target is 0 (off) - should not clamp
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        assert fade.end_brightness == 0  # Not clamped to min_brightness
+
+    def test_fade_respects_min_brightness_during_interpolation(self) -> None:
+        """Test that fading from min_brightness ensures all steps stay above min."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=100, transition_ms=500)
+        state = {
+            # Light is off
+            "supported_color_modes": ["brightness"],
+        }
+
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
+
+        assert fade is not None
+        assert fade.start_brightness == 10  # Clamped from 0
+        assert fade.end_brightness == 255
+
+        # All interpolated steps should be >= min_brightness
+        while fade.has_next():
+            step = fade.next_step()
+            assert step.brightness is not None
+            assert step.brightness >= 10, f"Step brightness {step.brightness} is below min_brightness"
+
+    def test_default_min_brightness_is_1(self) -> None:
+        """Test that default min_brightness is 1 (backward compatibility)."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        params = FadeParams(brightness_pct=1, transition_ms=1000)
+        state = {
+            "brightness": 100,
+            "supported_color_modes": ["brightness"],
+        }
+
+        # Default min_brightness should be 1, so normal conversion applies
+        fade = FadeChange.resolve(params, state, min_step_delay_ms=100)
+
+        assert fade is not None
+        assert fade.end_brightness == 2  # int(1 * 255 / 100) = 2
+
+    def test_min_brightness_with_stored_brightness_auto_turn_on(self) -> None:
+        """Test min_brightness is used when auto-turning on with stored brightness."""
+        from custom_components.fade_lights.fade_params import FadeParams
+
+        # Only targeting color (no explicit brightness)
+        params = FadeParams(hs_color=(180.0, 50.0), transition_ms=1000)
+        state = {
+            # Light is off (no brightness)
+            "supported_color_modes": ["hs"],
+        }
+
+        fade = FadeChange.resolve(
+            params, state, min_step_delay_ms=100, stored_brightness=0, min_brightness=10
+        )
+
+        assert fade is not None
+        # Start should be clamped to min_brightness since light is off
+        # Auto-turn-on should also use min_brightness as floor
+        assert fade.start_brightness == 10

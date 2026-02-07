@@ -61,9 +61,10 @@ async def async_autoconfigure_light(
     This is the main entry point that:
     1. Captures original state
     2. Runs native transitions test
-    3. Runs delay test (with transitions if supported)
-    4. Restores original state
-    5. Saves results to storage
+    3. Runs min brightness test
+    4. Runs delay test (with transitions if supported)
+    5. Restores original state
+    6. Saves results to storage
 
     Args:
         hass: Home Assistant instance
@@ -73,8 +74,9 @@ async def async_autoconfigure_light(
         {
             "entity_id": entity_id,
             "min_delay_ms": int (or None if error),
+            "min_brightness": int (or None if error),
             "native_transitions": bool (or None if error),
-            "error": str (only if both tests failed),
+            "error": str (only if all tests failed),
         }
     """
     # Capture original state
@@ -87,11 +89,20 @@ async def async_autoconfigure_light(
 
     result: dict[str, Any] = {"entity_id": entity_id}
 
+    # Temporarily exclude light to suppress main integration state monitoring
+    light_config = hass.data.setdefault(DOMAIN, {}).setdefault("data", {}).setdefault(entity_id, {})
+    light_config["exclude"] = True
+
     try:
         # Run native transitions test first
         transition_result = await _async_test_native_transitions(hass, entity_id)
         if "error" not in transition_result:
             result["native_transitions"] = transition_result["supports_native_transitions"]
+
+        # Run min brightness test
+        min_brightness_result = await _async_test_min_brightness(hass, entity_id)
+        if "error" not in min_brightness_result:
+            result["min_brightness"] = min_brightness_result["min_brightness"]
 
         # Run delay test with native transitions enabled if supported
         use_transitions = result.get("native_transitions", False)
@@ -112,8 +123,14 @@ async def async_autoconfigure_light(
             await async_save_light_config(
                 hass, entity_id, native_transitions=result["native_transitions"]
             )
+        if "min_brightness" in result:
+            await async_save_light_config(
+                hass, entity_id, min_brightness=result["min_brightness"]
+            )
 
     finally:
+        # Restore exclude flag before restoring state
+        light_config["exclude"] = False
         # Always restore original state
         await _async_restore_light_state(hass, entity_id, original_on, original_brightness)
 
@@ -254,6 +271,123 @@ async def _async_test_light_delay(
     _LOGGER.info("%s: Measured min_delay_ms=%d (p90=%.1f)", entity_id, result, p90_value)
 
     return {"entity_id": entity_id, "min_delay_ms": result}
+
+
+async def _async_test_min_brightness(
+    hass: HomeAssistant, entity_id: str
+) -> dict[str, Any]:
+    """Test to find the minimum brightness value that keeps the light on.
+
+    Some lights use a 1-100 scale internally while Home Assistant uses 1-255.
+    Setting brightness=1 may be interpreted as brightness=0 (off). This test
+    finds the minimum brightness value that actually turns the light on.
+
+    Internal function - does not capture/restore state.
+    Use async_autoconfigure_light for the full workflow.
+
+    Args:
+        hass: Home Assistant instance
+        entity_id: The light entity ID to test
+
+    Returns:
+        On success: {"entity_id": entity_id, "min_brightness": int}
+        On failure: {"entity_id": entity_id, "error": "..."}
+    """
+    # Start with light off
+    await _async_turn_off(hass, entity_id)
+    await asyncio.sleep(0.5)  # Allow state to settle
+
+    off_state = hass.states.get(entity_id)
+    _LOGGER.debug(
+        "%s: Min brightness test start: state=%s, brightness=%s",
+        entity_id,
+        off_state.state if off_state else None,
+        off_state.attributes.get(ATTR_BRIGHTNESS) if off_state else None,
+    )
+
+    state_changed_event = asyncio.Event()
+
+    @callback
+    def _on_state_changed(event: Event[EventStateChangedData]) -> None:
+        """Handle state changed events for the test light."""
+        new_state = event.data.get("new_state")
+        if new_state and new_state.entity_id == entity_id:
+            state_changed_event.set()
+
+    unsub = hass.bus.async_listen("state_changed", _on_state_changed)
+
+    try:
+        for brightness_value in range(1, 256):
+            state_changed_event.clear()
+
+            _LOGGER.debug(
+                "%s: Min brightness test: sending turn_on brightness=%d",
+                entity_id,
+                brightness_value,
+            )
+            await _async_turn_on(hass, entity_id, brightness=brightness_value)
+
+            # Wait for state change with timeout
+            try:
+                await asyncio.wait_for(
+                    state_changed_event.wait(),
+                    timeout=AUTOCONFIGURE_TIMEOUT_S,
+                )
+            except TimeoutError:
+                _LOGGER.debug(
+                    "%s: Timeout waiting for state change at brightness %d, trying next",
+                    entity_id,
+                    brightness_value,
+                )
+                continue
+
+            # Log immediate state after state change
+            immediate_state = hass.states.get(entity_id)
+            _LOGGER.debug(
+                "%s: After state change: state=%s, brightness=%s",
+                entity_id,
+                immediate_state.state if immediate_state else None,
+                immediate_state.attributes.get(ATTR_BRIGHTNESS) if immediate_state else None,
+            )
+
+            # Let state settle (some lights briefly report ON then revert)
+            await asyncio.sleep(0.5)
+
+            # Check if light is on with valid brightness
+            state = hass.states.get(entity_id)
+            _LOGGER.debug(
+                "%s: After settle: state=%s, brightness=%s",
+                entity_id,
+                state.state if state else None,
+                state.attributes.get(ATTR_BRIGHTNESS) if state else None,
+            )
+            if (
+                state is not None
+                and state.state == STATE_ON
+                and (state.attributes.get(ATTR_BRIGHTNESS) or 0) > 0
+            ):
+                _LOGGER.info(
+                    "%s: Minimum brightness detected as %d",
+                    entity_id,
+                    brightness_value,
+                )
+                return {"entity_id": entity_id, "min_brightness": brightness_value}
+
+            # Light didn't turn on, turn it off and try next value
+            _LOGGER.debug(
+                "%s: Brightness %d did not turn on, trying next",
+                entity_id,
+                brightness_value,
+            )
+            await _async_turn_off(hass, entity_id)
+            await asyncio.sleep(0.1)  # Brief pause before next attempt
+
+    finally:
+        unsub()
+
+    # If we get here, no brightness value worked (shouldn't happen normally)
+    _LOGGER.warning("%s: Could not find minimum brightness", entity_id)
+    return {"entity_id": entity_id, "min_brightness": 1}  # Default fallback
 
 
 async def _async_test_native_transitions(
