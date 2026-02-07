@@ -1000,3 +1000,91 @@ class TestMinBrightness:
             await async_autoconfigure_light(hass_with_storage, mock_light_on)
 
         assert test_order == ["native_transitions", "min_brightness", "delay"]
+
+    async def test_autoconfigure_skips_native_transitions_when_disable(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_light_on: str,
+    ) -> None:
+        """Test autoconfigure skips native transitions test when stored value is 'disable'."""
+        # Set native_transitions to "disable" in storage
+        hass_with_storage.data[DOMAIN]["data"][mock_light_on] = {
+            "native_transitions": "disable"
+        }
+
+        test_order: list[str] = []
+
+        async def mock_native_transitions(hass, entity_id):
+            test_order.append("native_transitions")
+            return {"entity_id": entity_id, "supports_native_transitions": True}
+
+        async def mock_min_brightness(hass, entity_id):
+            test_order.append("min_brightness")
+            return {"entity_id": entity_id, "min_brightness": 1}
+
+        async def mock_delay(hass, entity_id, use_native_transitions=False):
+            test_order.append("delay")
+            assert not use_native_transitions, "Should not use transitions when disabled"
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with (
+            patch(
+                "custom_components.fade_lights.autoconfigure._async_test_native_transitions",
+                side_effect=mock_native_transitions,
+            ),
+            patch(
+                "custom_components.fade_lights.autoconfigure._async_test_min_brightness",
+                side_effect=mock_min_brightness,
+            ),
+            patch(
+                "custom_components.fade_lights.autoconfigure._async_test_light_delay",
+                side_effect=mock_delay,
+            ),
+        ):
+            result = await async_autoconfigure_light(hass_with_storage, mock_light_on)
+
+        # Native transitions test should be skipped
+        assert "native_transitions" not in test_order
+        assert test_order == ["min_brightness", "delay"]
+
+        # Result should preserve "disable" value
+        assert result["native_transitions"] == "disable"
+
+    async def test_autoconfigure_disable_preserved_in_storage(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_light_on: str,
+    ) -> None:
+        """Test 'disable' value is preserved in storage after autoconfigure."""
+        hass_with_storage.data[DOMAIN]["data"][mock_light_on] = {
+            "native_transitions": "disable"
+        }
+
+        async def mock_native_transitions(hass, entity_id):
+            return {"entity_id": entity_id, "supports_native_transitions": True}
+
+        async def mock_min_brightness(hass, entity_id):
+            return {"entity_id": entity_id, "min_brightness": 1}
+
+        async def mock_delay(hass, entity_id, use_native_transitions=False):
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with (
+            patch(
+                "custom_components.fade_lights.autoconfigure._async_test_native_transitions",
+                side_effect=mock_native_transitions,
+            ),
+            patch(
+                "custom_components.fade_lights.autoconfigure._async_test_min_brightness",
+                side_effect=mock_min_brightness,
+            ),
+            patch(
+                "custom_components.fade_lights.autoconfigure._async_test_light_delay",
+                side_effect=mock_delay,
+            ),
+        ):
+            await async_autoconfigure_light(hass_with_storage, mock_light_on)
+
+        # Storage should still have "disable"
+        stored = hass_with_storage.data[DOMAIN]["data"][mock_light_on]
+        assert stored["native_transitions"] == "disable"

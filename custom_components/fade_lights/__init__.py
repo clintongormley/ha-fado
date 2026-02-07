@@ -536,7 +536,7 @@ async def _execute_fade(
     delay_ms = fade.delay_ms()
 
     # Check if light supports native transitions and if "from" was specified
-    native_transitions = light_config.get("native_transitions", False)
+    native_transitions = light_config.get("native_transitions") is True
     has_from = fade_params.has_from_target()
 
     _LOGGER.info(
