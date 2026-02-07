@@ -164,7 +164,7 @@ async def async_save_light_config(
     entity_id: str,
     min_delay_ms: int | None = None,
     exclude: bool | None = None,
-    native_transitions: bool | None = None,
+    native_transitions: bool | str | None = None,
     min_brightness: int | None = None,
     *,
     clear_min_delay: bool = False,
@@ -227,7 +227,7 @@ async def async_save_light_config(
         vol.Required("entity_id"): str,
         vol.Optional("min_delay_ms"): vol.Any(None, vol.All(int, vol.Range(min=50, max=1000))),
         vol.Optional("exclude"): bool,
-        vol.Optional("native_transitions"): vol.Any(None, bool),
+        vol.Optional("native_transitions"): vol.Any(None, bool, "disable"),
         vol.Optional("min_brightness"): vol.Any(None, vol.All(int, vol.Range(min=1, max=255))),
     }
 )

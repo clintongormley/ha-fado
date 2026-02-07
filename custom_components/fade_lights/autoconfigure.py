@@ -94,10 +94,14 @@ async def async_autoconfigure_light(
     light_config["exclude"] = True
 
     try:
-        # Run native transitions test first
-        transition_result = await _async_test_native_transitions(hass, entity_id)
-        if "error" not in transition_result:
-            result["native_transitions"] = transition_result["supports_native_transitions"]
+        # Run native transitions test (skip if user disabled)
+        stored_native = light_config.get("native_transitions")
+        if stored_native == "disable":
+            result["native_transitions"] = "disable"
+        else:
+            transition_result = await _async_test_native_transitions(hass, entity_id)
+            if "error" not in transition_result:
+                result["native_transitions"] = transition_result["supports_native_transitions"]
 
         # Run min brightness test
         min_brightness_result = await _async_test_min_brightness(hass, entity_id)
@@ -105,7 +109,7 @@ async def async_autoconfigure_light(
             result["min_brightness"] = min_brightness_result["min_brightness"]
 
         # Run delay test with native transitions enabled if supported
-        use_transitions = result.get("native_transitions", False)
+        use_transitions = result.get("native_transitions") is True
         delay_result = await _async_test_light_delay(
             hass, entity_id, use_native_transitions=use_transitions
         )

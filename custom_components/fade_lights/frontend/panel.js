@@ -1000,6 +1000,8 @@ class FadeLightsPanel extends LitElement {
       nativeTransitions = true;
     } else if (value === "false") {
       nativeTransitions = false;
+    } else if (value === "disable") {
+      nativeTransitions = "disable";
     }
 
     // Update local data
@@ -1248,6 +1250,7 @@ class FadeLightsPanel extends LitElement {
             <option value="" ?selected=${light.native_transitions === null || light.native_transitions === undefined}></option>
             <option value="true" ?selected=${light.native_transitions === true}>Yes</option>
             <option value="false" ?selected=${light.native_transitions === false}>No</option>
+            <option value="disable" ?selected=${light.native_transitions === "disable"}>Disable</option>
           </select>
         </td>
         <td class="col-exclude">
