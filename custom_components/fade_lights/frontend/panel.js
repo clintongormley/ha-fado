@@ -52,6 +52,11 @@ class FadeLightsPanel extends LitElement {
         margin: 0;
       }
 
+      ha-card {
+        display: block;
+        margin-bottom: 16px;
+      }
+
       ha-button {
         --mdc-theme-primary: var(--primary-color);
       }
@@ -64,11 +69,7 @@ class FadeLightsPanel extends LitElement {
         display: flex;
         align-items: center;
         gap: 16px;
-        margin-bottom: 16px;
         padding: 12px 16px;
-        background: var(--card-background-color, #fff);
-        border-radius: 8px;
-        border: 1px solid var(--divider-color);
       }
 
       .settings-row label {
@@ -147,9 +148,13 @@ class FadeLightsPanel extends LitElement {
       }
 
       .chevron {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.15s ease-in-out;
+        --mdc-icon-size: 24px;
+        color: var(--secondary-text-color);
         margin-right: 8px;
-        transition: transform 0.2s;
-        display: inline-block;
       }
 
       .chevron.collapsed {
@@ -164,13 +169,12 @@ class FadeLightsPanel extends LitElement {
       .lights-table {
         width: 100%;
         border-collapse: collapse;
-        margin: 8px 0;
         table-layout: fixed;
       }
 
       .lights-table th,
       .lights-table td {
-        padding: 4px 8px;
+        padding: 8px 16px;
         border-bottom: 1px solid var(--divider-color);
       }
 
@@ -235,6 +239,8 @@ class FadeLightsPanel extends LitElement {
         color: var(--primary-text-color);
         cursor: pointer;
         user-select: none;
+        height: 48px;
+        padding: 0 16px;
       }
 
       .group-cell {
@@ -375,7 +381,7 @@ class FadeLightsPanel extends LitElement {
         border-radius: 4px;
         background: var(--card-background-color);
         color: var(--primary-text-color);
-        font-size: 12px;
+        font-size: var(--paper-font-caption_-_font-size, 12px);
         cursor: pointer;
         min-width: 80px;
       }
@@ -974,40 +980,44 @@ class FadeLightsPanel extends LitElement {
     return html`
       ${this._refreshing ? html`<div class="refresh-overlay"><div class="spinner"></div></div>` : ""}
       ${this._renderHeader()}
-      <table class="lights-table">
-        <thead>
-          <tr>
-            <th class="col-light"></th>
-            <th class="col-delay">Min Delay (ms)</th>
-            <th class="col-min-brightness">Min Brightness</th>
-            <th class="col-native-transitions">Native Transitions</th>
-            <th class="col-exclude">Exclude</th>
-            <th class="col-configure">
-              <ha-checkbox
-                .checked=${this._getCheckboxState(this._getAllLightIds()) === "all"}
-                .indeterminate=${this._getCheckboxState(this._getAllLightIds()) === "some"}
-                @change=${() => this._handleAllLightsCheckboxChange()}
-              ></ha-checkbox>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          ${this._data.areas.map((area) => this._renderAreaRows(area))}
-        </tbody>
-      </table>
-      <div class="settings-row">
-        <label>Global min delay:</label>
-        <ha-textfield
-          type="number"
-          min="50"
-          max="1000"
-          step="10"
-          suffix="ms"
-          .value=${this._globalMinDelayMs || ""}
-          @change=${(e) => this._handleGlobalDelayChange(e)}
-        ></ha-textfield>
-        <span class="hint">The absolute minimum delay for all lights</span>
-      </div>
+      <ha-card>
+        <table class="lights-table">
+          <thead>
+            <tr>
+              <th class="col-light"></th>
+              <th class="col-delay">Min Delay (ms)</th>
+              <th class="col-min-brightness">Min Brightness</th>
+              <th class="col-native-transitions">Native Transitions</th>
+              <th class="col-exclude">Exclude</th>
+              <th class="col-configure">
+                <ha-checkbox
+                  .checked=${this._getCheckboxState(this._getAllLightIds()) === "all"}
+                  .indeterminate=${this._getCheckboxState(this._getAllLightIds()) === "some"}
+                  @change=${() => this._handleAllLightsCheckboxChange()}
+                ></ha-checkbox>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this._data.areas.map((area) => this._renderAreaRows(area))}
+          </tbody>
+        </table>
+      </ha-card>
+      <ha-card>
+        <div class="settings-row">
+          <label>Global min delay:</label>
+          <ha-textfield
+            type="number"
+            min="50"
+            max="1000"
+            step="10"
+            suffix="ms"
+            .value=${this._globalMinDelayMs || ""}
+            @change=${(e) => this._handleGlobalDelayChange(e)}
+          ></ha-textfield>
+          <span class="hint">The absolute minimum delay for all lights</span>
+        </div>
+      </ha-card>
     `;
   }
 
@@ -1023,7 +1033,7 @@ class FadeLightsPanel extends LitElement {
       <tr class="area-row" @click=${() => this._toggleCollapse(areaKey)}>
         <td colspan="2">
           <div class="group-cell">
-            <span class="chevron ${isCollapsed ? "collapsed" : ""}">▼</span>
+            <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
             <ha-icon class="header-icon" icon="${areaIcon}"></ha-icon>
             ${area.name}
           </div>
