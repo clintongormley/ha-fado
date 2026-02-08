@@ -36,229 +36,56 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Resolution Helper Functions
+# Unit Conversion Utilities
 # =============================================================================
 
 
-def _build_from_step(
-    params: FadeParams, state: dict[str, Any], min_brightness: int
-) -> FadeStep | None:
-    """Build a FadeStep from explicit 'from' values, only if they differ from current state.
+def _pct_to_brightness(pct: int, min_brightness: int) -> int:
+    """Convert brightness percentage (0-100) to raw brightness (0-255).
 
-    Compares each from dimension against the light's actual state.
-    Only includes dimensions where the from value differs, to avoid
-    unnecessary service calls and state-change timeouts.
-
-    Returns None if no from values are specified or all match current state.
+    Special case: 1% means "dimmest possible" and uses min_brightness
+    when it exceeds the normal conversion.
     """
-    brightness: int | None = None
-    hs_color: tuple[float, float] | None = None
-    color_temp_kelvin: int | None = None
-    color_mode = state.get("color_mode")
-
-    # Brightness
-    from_bri: int | None = None
-    if params.from_brightness is not None:
-        from_bri = max(params.from_brightness, min_brightness)
-    elif params.from_brightness_pct is not None:
-        pct = params.from_brightness_pct
-        raw = int(pct * 255 / 100)
-        if pct == 1 and min_brightness > raw:
-            raw = min_brightness
-        from_bri = max(raw, min_brightness)
-
-    if from_bri is not None:
-        actual_bri = state.get(ATTR_BRIGHTNESS)
-        if actual_bri is None or int(actual_bri) != from_bri:
-            brightness = from_bri
-
-    # HS color
-    if params.from_hs_color is not None:
-        if color_mode == ColorMode.COLOR_TEMP:
-            # Different color space — always apply
-            hs_color = params.from_hs_color
-        else:
-            actual_hs = state.get(HA_ATTR_HS_COLOR)
-            if actual_hs is None or tuple(actual_hs) != params.from_hs_color:
-                hs_color = params.from_hs_color
-
-    # Color temperature
-    if params.from_color_temp_kelvin is not None:
-        if color_mode is not None and color_mode != ColorMode.COLOR_TEMP:
-            # Different color space — always apply
-            color_temp_kelvin = params.from_color_temp_kelvin
-        else:
-            actual_kelvin = state.get(HA_ATTR_COLOR_TEMP_KELVIN)
-            if actual_kelvin is None or int(actual_kelvin) != params.from_color_temp_kelvin:
-                color_temp_kelvin = params.from_color_temp_kelvin
-
-    if brightness is None and hs_color is None and color_temp_kelvin is None:
-        return None
-
-    return FadeStep(brightness=brightness, hs_color=hs_color, color_temp_kelvin=color_temp_kelvin)
+    raw = int(pct * 255 / 100)
+    if pct == 1 and min_brightness > raw:
+        return min_brightness
+    return raw
 
 
-def _resolve_start_brightness(
-    params: FadeParams, state: dict[str, Any], min_brightness: int = 1
-) -> int:
-    """Resolve starting brightness from params or current state, with clamping.
+def _kelvin_to_mireds(kelvin: int) -> int:
+    """Convert color temperature from kelvin to mireds."""
+    return int(1_000_000 / kelvin)
 
-    Priority order:
-    1. params.from_brightness (raw 1-255) - used directly
-    2. params.from_brightness_pct (1-100%) - converted to 0-255
-       - Special case: 1% maps to min_brightness when min_brightness > normal conversion
-    3. Current state brightness
-    4. 0 if light is off
 
-    The result is clamped to min_brightness floor (ensuring fade doesn't start from 0).
+def _mireds_to_kelvin(mireds: int) -> int:
+    """Convert color temperature from mireds to kelvin."""
+    return int(1_000_000 / mireds)
+
+
+def _clamp_mireds(mireds: int, min_mireds: int | None, max_mireds: int | None) -> int:
+    """Clamp mireds to the light's supported range.
 
     Args:
-        params: FadeParams with optional from_brightness_pct/from_brightness
-        state: Light attributes dict from state.attributes
-        min_brightness: Minimum brightness floor (1-255)
+        mireds: The mireds value to clamp
+        min_mireds: Minimum mireds (coolest/highest kelvin), or None for no limit
+        max_mireds: Maximum mireds (warmest/lowest kelvin), or None for no limit
 
     Returns:
-        Starting brightness (min_brightness to 255 scale)
+        Clamped mireds value
     """
-    brightness: int
-
-    if params.from_brightness is not None:
-        # Raw brightness value - use directly
-        brightness = params.from_brightness
-    elif params.from_brightness_pct is not None:
-        # Percentage conversion (using int() for truncation to match legacy behavior)
-        pct = params.from_brightness_pct
-        normal_conversion = int(pct * 255 / 100)
-
-        # Special case: brightness_pct=1 means "dimmest possible"
-        # Use min_brightness if it's higher than normal conversion
-        if pct == 1 and min_brightness > normal_conversion:
-            brightness = min_brightness
-        else:
-            brightness = normal_conversion
-    else:
-        # Use state brightness, or 0 if light is off
-        state_brightness = state.get(ATTR_BRIGHTNESS)
-        brightness = int(state_brightness) if state_brightness is not None else 0
-
-    # Clamp to min_brightness floor
-    return max(brightness, min_brightness)
+    if min_mireds is None and max_mireds is None:
+        return mireds
+    result = mireds
+    if min_mireds is not None:
+        result = max(result, min_mireds)
+    if max_mireds is not None:
+        result = min(result, max_mireds)
+    return result
 
 
-def _resolve_end_brightness(params: FadeParams, min_brightness: int = 1) -> int | None:
-    """Resolve ending brightness from params, with clamping.
-
-    Priority order:
-    1. params.brightness (raw 1-255) - used directly
-    2. params.brightness_pct (1-100%) - converted to 0-255
-       - Special case: 1% maps to min_brightness when min_brightness > normal conversion
-
-    The result is clamped to min_brightness floor, EXCEPT when targeting 0
-    (user explicitly wants to turn off the light).
-
-    Args:
-        params: FadeParams with optional brightness_pct/brightness
-        min_brightness: Minimum brightness floor (1-255)
-
-    Returns:
-        Ending brightness (0 or min_brightness to 255 scale), or None if not specified
-    """
-    brightness: int | None = None
-
-    if params.brightness is not None:
-        # Raw brightness value - use directly
-        brightness = params.brightness
-    elif params.brightness_pct is not None:
-        # Percentage conversion (using int() for truncation to match legacy behavior)
-        pct = params.brightness_pct
-        normal_conversion = int(pct * 255 / 100)
-
-        # Special case: brightness_pct=1 means "dimmest possible"
-        # Use min_brightness if it's higher than normal conversion
-        if pct == 1 and min_brightness > normal_conversion:
-            brightness = min_brightness
-        else:
-            brightness = normal_conversion
-
-    if brightness is None:
-        return None
-
-    # Clamp to min_brightness floor, but allow 0 (turn off)
-    if brightness == 0:
-        return 0
-    return max(brightness, min_brightness)
-
-
-def _resolve_start_hs(params: FadeParams, state: dict[str, Any]) -> tuple[float, float] | None:
-    """Resolve starting HS from params.from_hs_color or current state.
-
-    Only returns HS if the light is actually in HS mode (not emulated HS from COLOR_TEMP).
-    If from_color_temp_kelvin is explicitly set, returns None (user wants to start from color_temp).
-
-    Args:
-        params: FadeParams with optional from_hs_color
-        state: Light attributes dict from state.attributes
-
-    Returns:
-        Starting HS color (hue 0-360, saturation 0-100), or None if not available
-    """
-    # If from_color_temp_kelvin is explicitly set, user wants to start from color_temp, not HS
-    if params.from_color_temp_kelvin is not None:
-        return None
-    if params.from_hs_color is not None:
-        return params.from_hs_color
-    # Only use state HS if light is actually in HS mode (not emulated from COLOR_TEMP)
-    color_mode = state.get("color_mode")
-    if color_mode == ColorMode.COLOR_TEMP:
-        return None
-    return state.get(HA_ATTR_HS_COLOR)
-
-
-def _resolve_start_mireds(params: FadeParams, state: dict[str, Any]) -> int | None:
-    """Resolve starting mireds from params.from_color_temp_kelvin or current state.
-
-    FadeParams stores kelvin, but FadeChange needs mireds for linear interpolation.
-    This function handles the kelvin->mireds conversion at the boundary.
-    Only returns mireds if the light is in COLOR_TEMP mode, or if color_mode is unknown.
-    Does NOT return mireds if light is explicitly in HS/RGB mode (those would be emulated).
-    If from_hs_color is explicitly set, returns None (user wants to start from HS).
-
-    Args:
-        params: FadeParams with optional from_color_temp_kelvin
-        state: Light attributes dict from state.attributes
-
-    Returns:
-        Starting color temperature in mireds, or None if not available
-    """
-    # If from_hs_color is explicitly set, user wants to start from HS, not color_temp
-    if params.from_hs_color is not None:
-        return None
-    if params.from_color_temp_kelvin is not None:
-        return int(1_000_000 / params.from_color_temp_kelvin)
-    # Check color_mode to avoid using emulated values
-    color_mode = state.get("color_mode")
-    # If color_mode is explicitly HS or other color mode, don't use color_temp (it's emulated)
-    if color_mode is not None and color_mode != ColorMode.COLOR_TEMP:
-        return None
-    # Either color_mode is COLOR_TEMP or unknown - use kelvin if available
-    kelvin = state.get(HA_ATTR_COLOR_TEMP_KELVIN)
-    if kelvin is not None:
-        return int(1_000_000 / kelvin)
-    return None
-
-
-def _resolve_end_mireds(params: FadeParams) -> int | None:
-    """Resolve ending mireds from params.color_temp_kelvin.
-
-    Args:
-        params: FadeParams with optional color_temp_kelvin
-
-    Returns:
-        Ending color temperature in mireds, or None if not specified
-    """
-    if params.color_temp_kelvin is not None:
-        return int(1_000_000 / params.color_temp_kelvin)
-    return None
+# =============================================================================
+# Light Capability Helpers
+# =============================================================================
 
 
 def _get_supported_color_modes(state_attributes: dict[str, Any]) -> set[ColorMode]:
@@ -328,7 +155,7 @@ def _supports_color_temp(supported_modes: set[ColorMode]) -> bool:
 
 
 # =============================================================================
-# Color Conversion Utilities (Planckian Locus)
+# Planckian Locus Utilities
 # =============================================================================
 
 
@@ -419,25 +246,423 @@ def _mireds_to_hs(mireds: int) -> tuple[float, float]:
     return (38.0, 12.0)  # Neutral white
 
 
-def _clamp_mireds(mireds: int, min_mireds: int | None, max_mireds: int | None) -> int:
-    """Clamp mireds to the light's supported range.
+# =============================================================================
+# Value Resolution
+# =============================================================================
+
+
+def _resolve_start_brightness(
+    params: FadeParams, state: dict[str, Any], min_brightness: int = 1
+) -> int:
+    """Resolve starting brightness from params or current state, with clamping.
+
+    Priority order:
+    1. params.from_brightness (raw 1-255) - used directly
+    2. params.from_brightness_pct (1-100%) - converted to 0-255
+       - Special case: 1% maps to min_brightness when min_brightness > normal conversion
+    3. Current state brightness
+    4. 0 if light is off
+
+    The result is clamped to min_brightness floor (ensuring fade doesn't start from 0).
 
     Args:
-        mireds: The mireds value to clamp
-        min_mireds: Minimum mireds (coolest/highest kelvin), or None for no limit
-        max_mireds: Maximum mireds (warmest/lowest kelvin), or None for no limit
+        params: FadeParams with optional from_brightness_pct/from_brightness
+        state: Light attributes dict from state.attributes
+        min_brightness: Minimum brightness floor (1-255)
 
     Returns:
-        Clamped mireds value
+        Starting brightness (min_brightness to 255 scale)
     """
-    if min_mireds is None and max_mireds is None:
-        return mireds
-    result = mireds
-    if min_mireds is not None:
-        result = max(result, min_mireds)
-    if max_mireds is not None:
-        result = min(result, max_mireds)
+    brightness: int
+
+    if params.from_brightness is not None:
+        # Raw brightness value - use directly
+        brightness = params.from_brightness
+    elif params.from_brightness_pct is not None:
+        brightness = _pct_to_brightness(params.from_brightness_pct, min_brightness)
+    else:
+        # Use state brightness, or 0 if light is off
+        state_brightness = state.get(ATTR_BRIGHTNESS)
+        brightness = int(state_brightness) if state_brightness is not None else 0
+
+    # Clamp to min_brightness floor
+    return max(brightness, min_brightness)
+
+
+def _resolve_end_brightness(params: FadeParams, min_brightness: int = 1) -> int | None:
+    """Resolve ending brightness from params, with clamping.
+
+    Priority order:
+    1. params.brightness (raw 1-255) - used directly
+    2. params.brightness_pct (1-100%) - converted to 0-255
+       - Special case: 1% maps to min_brightness when min_brightness > normal conversion
+
+    The result is clamped to min_brightness floor, EXCEPT when targeting 0
+    (user explicitly wants to turn off the light).
+
+    Args:
+        params: FadeParams with optional brightness_pct/brightness
+        min_brightness: Minimum brightness floor (1-255)
+
+    Returns:
+        Ending brightness (0 or min_brightness to 255 scale), or None if not specified
+    """
+    brightness: int | None = None
+
+    if params.brightness is not None:
+        # Raw brightness value - use directly
+        brightness = params.brightness
+    elif params.brightness_pct is not None:
+        brightness = _pct_to_brightness(params.brightness_pct, min_brightness)
+
+    if brightness is None:
+        return None
+
+    # Clamp to min_brightness floor, but allow 0 (turn off)
+    if brightness == 0:
+        return 0
+    return max(brightness, min_brightness)
+
+
+def _resolve_start_hs(params: FadeParams, state: dict[str, Any]) -> tuple[float, float] | None:
+    """Resolve starting HS from params.from_hs_color or current state.
+
+    Only returns HS if the light is actually in HS mode (not emulated HS from COLOR_TEMP).
+    If from_color_temp_kelvin is explicitly set, returns None (user wants to start from color_temp).
+
+    Args:
+        params: FadeParams with optional from_hs_color
+        state: Light attributes dict from state.attributes
+
+    Returns:
+        Starting HS color (hue 0-360, saturation 0-100), or None if not available
+    """
+    # If from_color_temp_kelvin is explicitly set, user wants to start from color_temp, not HS
+    if params.from_color_temp_kelvin is not None:
+        return None
+    if params.from_hs_color is not None:
+        return params.from_hs_color
+    # Only use state HS if light is actually in HS mode (not emulated from COLOR_TEMP)
+    color_mode = state.get("color_mode")
+    if color_mode == ColorMode.COLOR_TEMP:
+        return None
+    return state.get(HA_ATTR_HS_COLOR)
+
+
+def _resolve_start_mireds(params: FadeParams, state: dict[str, Any]) -> int | None:
+    """Resolve starting mireds from params.from_color_temp_kelvin or current state.
+
+    FadeParams stores kelvin, but FadeChange needs mireds for linear interpolation.
+    This function handles the kelvin->mireds conversion at the boundary.
+    Only returns mireds if the light is in COLOR_TEMP mode, or if color_mode is unknown.
+    Does NOT return mireds if light is explicitly in HS/RGB mode (those would be emulated).
+    If from_hs_color is explicitly set, returns None (user wants to start from HS).
+
+    Args:
+        params: FadeParams with optional from_color_temp_kelvin
+        state: Light attributes dict from state.attributes
+
+    Returns:
+        Starting color temperature in mireds, or None if not available
+    """
+    # If from_hs_color is explicitly set, user wants to start from HS, not color_temp
+    if params.from_hs_color is not None:
+        return None
+    if params.from_color_temp_kelvin is not None:
+        return _kelvin_to_mireds(params.from_color_temp_kelvin)
+    # Check color_mode to avoid using emulated values
+    color_mode = state.get("color_mode")
+    # If color_mode is explicitly HS or other color mode, don't use color_temp (it's emulated)
+    if color_mode is not None and color_mode != ColorMode.COLOR_TEMP:
+        return None
+    # Either color_mode is COLOR_TEMP or unknown - use kelvin if available
+    kelvin = state.get(HA_ATTR_COLOR_TEMP_KELVIN)
+    if kelvin is not None:
+        return _kelvin_to_mireds(kelvin)
+    return None
+
+
+def _resolve_end_mireds(params: FadeParams) -> int | None:
+    """Resolve ending mireds from params.color_temp_kelvin.
+
+    Args:
+        params: FadeParams with optional color_temp_kelvin
+
+    Returns:
+        Ending color temperature in mireds, or None if not specified
+    """
+    if params.color_temp_kelvin is not None:
+        return _kelvin_to_mireds(params.color_temp_kelvin)
+    return None
+
+
+def _from_brightness_if_changed(
+    params: FadeParams, state: dict[str, Any], min_brightness: int
+) -> int | None:
+    """Resolve from-brightness and return it only if it differs from current state."""
+    from_bri: int | None = None
+    if params.from_brightness is not None:
+        from_bri = max(params.from_brightness, min_brightness)
+    elif params.from_brightness_pct is not None:
+        from_bri = max(
+            _pct_to_brightness(params.from_brightness_pct, min_brightness), min_brightness
+        )
+
+    if from_bri is None:
+        return None
+
+    actual_bri = state.get(ATTR_BRIGHTNESS)
+    if actual_bri is None or int(actual_bri) != from_bri:
+        return from_bri
+    return None
+
+
+def _from_hs_if_changed(params: FadeParams, state: dict[str, Any]) -> tuple[float, float] | None:
+    """Resolve from-HS and return it only if it differs from current state."""
+    if params.from_hs_color is None:
+        return None
+
+    color_mode = state.get("color_mode")
+    if color_mode == ColorMode.COLOR_TEMP:
+        # Different color space — always apply
+        return params.from_hs_color
+
+    actual_hs = state.get(HA_ATTR_HS_COLOR)
+    if actual_hs is None or tuple(actual_hs) != params.from_hs_color:
+        return params.from_hs_color
+    return None
+
+
+def _from_color_temp_if_changed(params: FadeParams, state: dict[str, Any]) -> int | None:
+    """Resolve from-color-temp and return it only if it differs from current state."""
+    if params.from_color_temp_kelvin is None:
+        return None
+
+    color_mode = state.get("color_mode")
+    if color_mode is not None and color_mode != ColorMode.COLOR_TEMP:
+        # Different color space — always apply
+        return params.from_color_temp_kelvin
+
+    actual_kelvin = state.get(HA_ATTR_COLOR_TEMP_KELVIN)
+    if actual_kelvin is None or int(actual_kelvin) != params.from_color_temp_kelvin:
+        return params.from_color_temp_kelvin
+    return None
+
+
+def _build_from_step(
+    params: FadeParams, state: dict[str, Any], min_brightness: int
+) -> FadeStep | None:
+    """Build a FadeStep from explicit 'from' values, only if they differ from current state.
+
+    Compares each from dimension against the light's actual state.
+    Only includes dimensions where the from value differs, to avoid
+    unnecessary service calls and state-change timeouts.
+
+    Returns None if no from values are specified or all match current state.
+    """
+    brightness = _from_brightness_if_changed(params, state, min_brightness)
+    hs_color = _from_hs_if_changed(params, state)
+    color_temp_kelvin = _from_color_temp_if_changed(params, state)
+
+    if brightness is None and hs_color is None and color_temp_kelvin is None:
+        return None
+
+    return FadeStep(brightness=brightness, hs_color=hs_color, color_temp_kelvin=color_temp_kelvin)
+
+
+# =============================================================================
+# Resolve Orchestrators (used by FadeChange.resolve)
+# =============================================================================
+
+
+def _resolve_and_filter_colors(
+    params: FadeParams,
+    state_attributes: dict[str, Any],
+    can_hs: bool,
+    can_color_temp: bool,
+    min_mireds: int | None,
+    max_mireds: int | None,
+) -> tuple[
+    tuple[float, float] | None,
+    tuple[float, float] | None,
+    int | None,
+    int | None,
+]:
+    """Resolve, clamp, and filter color values based on light capabilities.
+
+    Resolves start/end HS and mireds from params or state, clamps mireds to
+    the light's range, converts unsupported modes to supported equivalents,
+    and handles the Planckian locus HS-to-mireds optimisation.
+
+    Returns:
+        Tuple of (start_hs, end_hs, start_mireds, end_mireds).
+    """
+    # Resolve from params or state
+    start_hs = _resolve_start_hs(params, state_attributes)
+    end_hs = params.hs_color
+    start_mireds = _resolve_start_mireds(params, state_attributes)
+    end_mireds = _resolve_end_mireds(params)
+
+    # Clamp mireds to light's supported range
+    if start_mireds is not None:
+        start_mireds = _clamp_mireds(start_mireds, min_mireds, max_mireds)
+    if end_mireds is not None:
+        end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
+
+    # Convert unsupported color modes to supported equivalents
+    if end_mireds is not None and not can_color_temp and can_hs:
+        end_hs = _mireds_to_hs(end_mireds)
+        end_mireds = None
+    if end_hs is not None and not can_hs and can_color_temp:
+        if _is_on_planckian_locus(end_hs):
+            end_mireds = _hs_to_mireds(end_hs)
+            end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
+        end_hs = None
+
+    # Filter out unsupported modes entirely
+    if not can_hs:
+        start_hs = None
+        end_hs = None
+    if not can_color_temp:
+        start_mireds = None
+        end_mireds = None
+
+    # Convert HS on Planckian locus to mireds for smooth interpolation
+    if (
+        start_hs is not None
+        and start_mireds is None
+        and end_mireds is not None
+        and _is_on_planckian_locus(start_hs)
+    ):
+        start_mireds = _hs_to_mireds(start_hs)
+        start_mireds = _clamp_mireds(start_mireds, min_mireds, max_mireds)
+        start_hs = None
+        _LOGGER.debug(
+            "FadeChange.resolve: Converted on-locus start_hs to start_mireds=%s",
+            start_mireds,
+        )
+
+    return start_hs, end_hs, start_mireds, end_mireds
+
+
+def _resolve_auto_turn_on_brightness(
+    start_brightness: int,
+    end_brightness: int | None,
+    end_hs: tuple[float, float] | None,
+    end_mireds: int | None,
+    state_attributes: dict[str, Any],
+    min_brightness: int,
+    stored_brightness: int,
+) -> int | None:
+    """Resolve auto-turn-on brightness when fading color from an off state.
+
+    When fading color from an off/dim state without an explicit brightness
+    target, automatically sets end brightness to the stored value (or 255).
+
+    Returns:
+        The resolved end_brightness, or the original value unchanged.
+    """
+    if end_brightness is not None:
+        return end_brightness
+
+    # Only auto-turn-on when targeting a color
+    if end_hs is None and end_mireds is None:
+        return None
+
+    state_brightness = state_attributes.get(ATTR_BRIGHTNESS)
+    light_was_off_or_dim = state_brightness is None or state_brightness < min_brightness
+    if start_brightness != min_brightness or not light_was_off_or_dim:
+        return None
+
+    target_brightness = stored_brightness if stored_brightness > min_brightness else 255
+    result = max(target_brightness, min_brightness)
+    _LOGGER.debug(
+        "FadeChange.resolve: Auto-turn-on from off state, end_brightness=%s",
+        result,
+    )
     return result
+
+
+def _detect_hybrid_transition(
+    start_hs: tuple[float, float] | None,
+    end_hs: tuple[float, float] | None,
+    start_mireds: int | None,
+    end_mireds: int | None,
+    min_mireds: int | None,
+    max_mireds: int | None,
+) -> tuple[str | None, tuple[float, float] | None, int | None]:
+    """Detect if a fade requires a hybrid HS <-> mireds transition.
+
+    Hybrid transitions occur when starting in one color space (HS or mireds)
+    and ending in the other.  The crossover point sits on the Planckian locus.
+
+    Returns:
+        Tuple of (hybrid_direction, crossover_hs, crossover_mireds).
+        hybrid_direction is ``"hs_to_mireds"``, ``"mireds_to_hs"``, or ``None``.
+    """
+    # HS -> mireds: starting with HS color and targeting mireds
+    if (
+        start_hs is not None
+        and end_mireds is not None
+        and end_hs is None
+        and start_mireds is None
+        and not _is_on_planckian_locus(start_hs)
+    ):
+        crossover_hs = _mireds_to_hs(end_mireds)
+        crossover_mireds = _hs_to_mireds(crossover_hs)
+        crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
+        return "hs_to_mireds", crossover_hs, crossover_mireds
+
+    # mireds -> HS: starting with color temp and targeting HS
+    if start_mireds is not None and end_hs is not None and end_mireds is None and start_hs is None:
+        crossover_mireds = _hs_to_mireds(end_hs)
+        crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
+        crossover_hs = _mireds_to_hs(crossover_mireds)
+        return "mireds_to_hs", crossover_hs, crossover_mireds
+
+    return None, None, None
+
+
+def _fill_missing_start_values(
+    start_hs: tuple[float, float] | None,
+    end_hs: tuple[float, float] | None,
+    start_mireds: int | None,
+    end_mireds: int | None,
+    min_mireds: int | None,
+    max_mireds: int | None,
+) -> tuple[tuple[float, float] | None, int | None]:
+    """Fill in missing start values for non-hybrid transitions.
+
+    When starting from an off/unknown state with a color target but no start
+    value, uses reasonable defaults for a visible transition.
+
+    Returns:
+        Tuple of (start_hs, start_mireds) with missing values filled in.
+    """
+    if end_mireds is not None and start_mireds is None:
+        # Use closest boundary (min or max mireds) as start
+        if min_mireds is not None and max_mireds is not None:
+            dist_to_min = abs(end_mireds - min_mireds)
+            dist_to_max = abs(end_mireds - max_mireds)
+            start_mireds = min_mireds if dist_to_min <= dist_to_max else max_mireds
+        elif min_mireds is not None:
+            start_mireds = min_mireds
+        elif max_mireds is not None:
+            start_mireds = max_mireds
+        else:
+            start_mireds = end_mireds
+        _LOGGER.debug(
+            "FadeChange.resolve: No start_mireds, using boundary mireds=%s as start",
+            start_mireds,
+        )
+
+    if end_hs is not None and start_hs is None:
+        start_hs = (0.0, 0.0)
+        _LOGGER.debug(
+            "FadeChange.resolve: No start_hs, using white (0, 0) as start",
+        )
+
+    return start_hs, start_mireds
 
 
 # =============================================================================
@@ -565,8 +790,8 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         # Extract color temp bounds (kelvin -> mireds with inversion)
         min_kelvin = state_attributes.get(HA_ATTR_MIN_COLOR_TEMP_KELVIN)
         max_kelvin = state_attributes.get(HA_ATTR_MAX_COLOR_TEMP_KELVIN)
-        min_mireds = int(1_000_000 / max_kelvin) if max_kelvin else None
-        max_mireds = int(1_000_000 / min_kelvin) if min_kelvin else None
+        min_mireds = _kelvin_to_mireds(max_kelvin) if max_kelvin else None
+        max_mireds = _kelvin_to_mireds(min_kelvin) if min_kelvin else None
 
         # Resolve brightness values (with min_brightness clamping)
         start_brightness = _resolve_start_brightness(params, state_attributes, min_brightness)
@@ -596,75 +821,21 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
                 min_step_delay_ms=min_step_delay_ms,
             )
 
-        # Resolve color values
-        start_hs = _resolve_start_hs(params, state_attributes)
-        end_hs = params.hs_color
-        start_mireds = _resolve_start_mireds(params, state_attributes)
-        end_mireds = _resolve_end_mireds(params)
+        # Resolve, clamp, and filter color values by light capabilities
+        start_hs, end_hs, start_mireds, end_mireds = _resolve_and_filter_colors(
+            params, state_attributes, can_hs, can_color_temp, min_mireds, max_mireds
+        )
 
-        # Clamp mireds to light's supported range
-        if start_mireds is not None:
-            start_mireds = _clamp_mireds(start_mireds, min_mireds, max_mireds)
-        if end_mireds is not None:
-            end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
-
-        # Handle capability filtering - convert unsupported color modes
-        if end_mireds is not None and not can_color_temp and can_hs:
-            # Convert target color temp to equivalent HS on Planckian locus
-            end_hs = _mireds_to_hs(end_mireds)
-            end_mireds = None
-        if end_hs is not None and not can_hs and can_color_temp:
-            # Convert target HS to nearest mireds (if low saturation)
-            if _is_on_planckian_locus(end_hs):
-                end_mireds = _hs_to_mireds(end_hs)
-                end_mireds = _clamp_mireds(end_mireds, min_mireds, max_mireds)
-            end_hs = None
-
-        # Filter out unsupported modes entirely
-        if not can_hs:
-            start_hs = None
-            end_hs = None
-        if not can_color_temp:
-            start_mireds = None
-            end_mireds = None
-
-        # Handle HS on Planckian locus -> mireds transition:
-        # When start_hs is on the locus (low saturation) and we're targeting mireds,
-        # convert start_hs to equivalent start_mireds for smooth interpolation
-        if (
-            start_hs is not None
-            and start_mireds is None
-            and end_mireds is not None
-            and _is_on_planckian_locus(start_hs)
-        ):
-            start_mireds = _hs_to_mireds(start_hs)
-            start_mireds = _clamp_mireds(start_mireds, min_mireds, max_mireds)
-            start_hs = None  # Clear HS since we're doing a pure mireds fade
-            _LOGGER.debug(
-                "FadeChange.resolve: Converted on-locus start_hs to start_mireds=%s",
-                start_mireds,
-            )
-
-        # Auto-turn-on: when fading color from off state without explicit brightness,
-        # automatically fade brightness from min_brightness to stored value (or full brightness)
-        # Note: start_brightness is clamped to min_brightness, so check if it equals min_brightness
-        # and the light was off (no brightness in state) or brightness was below min
-        state_brightness = state_attributes.get(ATTR_BRIGHTNESS)
-        light_was_off_or_dim = state_brightness is None or state_brightness < min_brightness
-        if (
-            start_brightness == min_brightness
-            and light_was_off_or_dim
-            and end_brightness is None
-            and (end_hs is not None or end_mireds is not None)
-        ):
-            # Use stored brightness if available (and above min), otherwise full brightness
-            target_brightness = stored_brightness if stored_brightness > min_brightness else 255
-            # Clamp auto-turn-on target to min_brightness floor
-            end_brightness = max(target_brightness, min_brightness)
-            _LOGGER.debug(
-                "FadeChange.resolve: Auto-turn-on from off state, end_brightness=%s",
-                end_brightness,
-            )
+        # Auto-turn-on brightness when fading color from off state
+        end_brightness = _resolve_auto_turn_on_brightness(
+            start_brightness,
+            end_brightness,
+            end_hs,
+            end_mireds,
+            state_attributes,
+            min_brightness,
+            stored_brightness,
+        )
 
         # Build from_step if explicit from values differ from current state
         from_step = (
@@ -684,66 +855,26 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             # Only a from step, no fade — return FadeChange with just the from_step
             return cls(from_step=from_step)
 
-        # Detect hybrid transitions and configure FadeChange accordingly
-        hybrid_direction = None
-        crossover_hs = None
-        crossover_mireds = None
+        # Detect hybrid transitions (HS <-> mireds crossover)
+        hybrid_direction, crossover_hs, crossover_mireds = _detect_hybrid_transition(
+            start_hs,
+            end_hs,
+            start_mireds,
+            end_mireds,
+            min_mireds,
+            max_mireds,
+        )
 
-        # HS -> mireds: starting with HS color and targeting mireds
-        if (
-            start_hs is not None
-            and end_mireds is not None
-            and end_hs is None
-            and start_mireds is None
-            and not _is_on_planckian_locus(start_hs)
-        ):
-            hybrid_direction = "hs_to_mireds"
-            # Find crossover point on Planckian locus
-            crossover_hs = _mireds_to_hs(end_mireds)
-            crossover_mireds = _hs_to_mireds(crossover_hs)
-            crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
-
-        # mireds -> HS: starting with color temp and targeting HS
-        elif (
-            start_mireds is not None
-            and end_hs is not None
-            and end_mireds is None
-            and start_hs is None
-        ):
-            hybrid_direction = "mireds_to_hs"
-            # Find crossover point on Planckian locus closest to target HS
-            crossover_mireds = _hs_to_mireds(end_hs)
-            crossover_mireds = _clamp_mireds(crossover_mireds, min_mireds, max_mireds)
-            crossover_hs = _mireds_to_hs(crossover_mireds)
-
-        # Handle missing start values for non-hybrid transitions:
-        # When starting from off/unknown state with a color target but no start value,
-        # use the closest boundary as start for a visible transition.
-        # (Hybrid transitions handle this differently.)
+        # Fill in missing start values for non-hybrid transitions
         if not hybrid_direction:
-            if end_mireds is not None and start_mireds is None:
-                # Use closest boundary (min or max mireds) as start for a visible transition
-                if min_mireds is not None and max_mireds is not None:
-                    dist_to_min = abs(end_mireds - min_mireds)
-                    dist_to_max = abs(end_mireds - max_mireds)
-                    start_mireds = min_mireds if dist_to_min <= dist_to_max else max_mireds
-                elif min_mireds is not None:
-                    start_mireds = min_mireds
-                elif max_mireds is not None:
-                    start_mireds = max_mireds
-                else:
-                    # No bounds available, use target as start (no color transition)
-                    start_mireds = end_mireds
-                _LOGGER.debug(
-                    "FadeChange.resolve: No start_mireds, using boundary mireds=%s as start",
-                    start_mireds,
-                )
-            if end_hs is not None and start_hs is None:
-                # For HS with no start, use white (0, 0) as start for visible transition
-                start_hs = (0.0, 0.0)
-                _LOGGER.debug(
-                    "FadeChange.resolve: No start_hs, using white (0, 0) as start",
-                )
+            start_hs, start_mireds = _fill_missing_start_values(
+                start_hs,
+                end_hs,
+                start_mireds,
+                end_mireds,
+                min_mireds,
+                max_mireds,
+            )
 
         # Create FadeChange
         fade = cls(
@@ -797,34 +928,8 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             if brightness_change > 0:
                 ideal_steps.append(brightness_change // MIN_BRIGHTNESS_DELTA)
 
-        # HS color change (for non-hybrid or hybrid HS phases)
-        if self.hybrid_direction == "hs_to_mireds":
-            # HS phase: from start_hs to crossover_hs
-            if self.start_hs is not None and self._crossover_hs is not None:
-                self._add_hs_steps(ideal_steps, self.start_hs, self._crossover_hs)
-            # Mireds phase: from crossover_mireds to end_mireds
-            if self._crossover_mireds is not None and self.end_mireds is not None:
-                mireds_change = abs(self.end_mireds - self._crossover_mireds)
-                if mireds_change > 0:
-                    ideal_steps.append(mireds_change // MIN_MIREDS_DELTA)
-        elif self.hybrid_direction == "mireds_to_hs":
-            # Mireds phase: from start_mireds to crossover_mireds
-            if self.start_mireds is not None and self._crossover_mireds is not None:
-                mireds_change = abs(self._crossover_mireds - self.start_mireds)
-                if mireds_change > 0:
-                    ideal_steps.append(mireds_change // MIN_MIREDS_DELTA)
-            # HS phase: from crossover_hs to end_hs
-            if self._crossover_hs is not None and self.end_hs is not None:
-                self._add_hs_steps(ideal_steps, self._crossover_hs, self.end_hs)
-        else:
-            # Non-hybrid: standard HS and mireds handling
-            if self.start_hs is not None and self.end_hs is not None:
-                self._add_hs_steps(ideal_steps, self.start_hs, self.end_hs)
-
-            if self.start_mireds is not None and self.end_mireds is not None:
-                mireds_change = abs(self.end_mireds - self.start_mireds)
-                if mireds_change > 0:
-                    ideal_steps.append(mireds_change // MIN_MIREDS_DELTA)
+        # Color changes (HS and/or mireds, accounting for hybrid phases)
+        self._add_color_ideal_steps(ideal_steps)
 
         ideal = max(ideal_steps) if ideal_steps else 1
         max_by_time = (
@@ -851,6 +956,40 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         sat_diff = abs(end_hs[1] - start_hs[1])
         if sat_diff > 0:
             ideal_steps.append(int(sat_diff / MIN_SATURATION_DELTA))
+
+    def _add_mireds_steps(
+        self,
+        ideal_steps: list[int],
+        start_mireds: int,
+        end_mireds: int,
+    ) -> None:
+        """Add ideal step count for mireds color change to the list."""
+        mireds_change = abs(end_mireds - start_mireds)
+        if mireds_change > 0:
+            ideal_steps.append(mireds_change // MIN_MIREDS_DELTA)
+
+    def _add_color_ideal_steps(self, ideal_steps: list[int]) -> None:
+        """Compute ideal step counts for color dimensions and append to list."""
+        if self.hybrid_direction == "hs_to_mireds":
+            # HS phase: from start_hs to crossover_hs
+            if self.start_hs is not None and self._crossover_hs is not None:
+                self._add_hs_steps(ideal_steps, self.start_hs, self._crossover_hs)
+            # Mireds phase: from crossover_mireds to end_mireds
+            if self._crossover_mireds is not None and self.end_mireds is not None:
+                self._add_mireds_steps(ideal_steps, self._crossover_mireds, self.end_mireds)
+        elif self.hybrid_direction == "mireds_to_hs":
+            # Mireds phase: from start_mireds to crossover_mireds
+            if self.start_mireds is not None and self._crossover_mireds is not None:
+                self._add_mireds_steps(ideal_steps, self.start_mireds, self._crossover_mireds)
+            # HS phase: from crossover_hs to end_hs
+            if self._crossover_hs is not None and self.end_hs is not None:
+                self._add_hs_steps(ideal_steps, self._crossover_hs, self.end_hs)
+        else:
+            # Non-hybrid: standard HS and mireds handling
+            if self.start_hs is not None and self.end_hs is not None:
+                self._add_hs_steps(ideal_steps, self.start_hs, self.end_hs)
+            if self.start_mireds is not None and self.end_mireds is not None:
+                self._add_mireds_steps(ideal_steps, self.start_mireds, self.end_mireds)
 
     def delay_ms(self) -> float:
         """Calculate delay between steps.
@@ -895,11 +1034,16 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
 
             # Generate the step
             if self.hybrid_direction is not None:
-                step = self._interpolate_hybrid_step(t)
+                crossover_step = self.crossover_step or 0
+                crossover_t = crossover_step / count if count > 0 else 0.5
+                if self.hybrid_direction == "hs_to_mireds":
+                    step = self._interpolate_hs_to_mireds_step(t, crossover_t)
+                else:
+                    step = self._interpolate_mireds_to_hs_step(t, crossover_t)
             else:
                 step = FadeStep(
                     brightness=self._interpolate_brightness(t),
-                    hs_color=self._interpolate_hs(t),
+                    hs_color=self._interpolate_hs_between(self.start_hs, self.end_hs, t),
                     color_temp_kelvin=self._interpolate_color_temp_kelvin(t),
                 )
 
@@ -933,59 +1077,60 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             and step1.color_temp_kelvin == step2.color_temp_kelvin
         )
 
-    def _interpolate_hybrid_step(self, t: float) -> FadeStep:
-        """Interpolate a step for hybrid HS <-> mireds transitions.
+    def _interpolate_hs_to_mireds_step(self, t: float, crossover_t: float) -> FadeStep:
+        """Interpolate a step for HS -> mireds hybrid transition.
+
+        Before the crossover point, interpolates HS color from start to crossover.
+        After the crossover, interpolates mireds from crossover to end.
 
         Args:
             t: Overall interpolation factor (0.0 = start, 1.0 = end)
-
-        Returns:
-            FadeStep with appropriate color attribute based on phase
+            crossover_t: The t value at which the color space switches
         """
         crossover_step = self.crossover_step or 0
-        count = self.step_count()
 
-        # Calculate crossover_t (the t value at crossover)
-        crossover_t = crossover_step / count if count > 0 else 0.5
-
-        if self.hybrid_direction == "hs_to_mireds":
-            # Before/at crossover: emit hs_color
-            if self._current_step <= crossover_step:
-                # Map t to [0, crossover_t] -> [0, 1] for HS interpolation
-                phase_t = t / crossover_t if crossover_t > 0 else 1.0
-                hs_color = self._interpolate_hs_between(self.start_hs, self._crossover_hs, phase_t)
-                return FadeStep(
-                    brightness=self._interpolate_brightness(t),
-                    hs_color=hs_color,
-                )
-            # After crossover: emit color_temp_kelvin
-            # Map t from [crossover_t, 1] -> [0, 1] for mireds interpolation
-            remaining_t = 1.0 - crossover_t
-            phase_t = (t - crossover_t) / remaining_t if remaining_t > 0 else 1.0
-            mireds = self._interpolate_mireds_between(
-                self._crossover_mireds, self.end_mireds, phase_t
-            )
-            kelvin = int(1_000_000 / mireds) if mireds else None
+        # Before/at crossover: emit hs_color
+        if self._current_step <= crossover_step:
+            phase_t = t / crossover_t if crossover_t > 0 else 1.0
+            hs_color = self._interpolate_hs_between(self.start_hs, self._crossover_hs, phase_t)
             return FadeStep(
                 brightness=self._interpolate_brightness(t),
-                color_temp_kelvin=kelvin,
+                hs_color=hs_color,
             )
+        # After crossover: emit color_temp_kelvin
+        remaining_t = 1.0 - crossover_t
+        phase_t = (t - crossover_t) / remaining_t if remaining_t > 0 else 1.0
+        mireds = self._interpolate_mireds_between(self._crossover_mireds, self.end_mireds, phase_t)
+        kelvin = _mireds_to_kelvin(mireds) if mireds else None
+        return FadeStep(
+            brightness=self._interpolate_brightness(t),
+            color_temp_kelvin=kelvin,
+        )
 
-        # mireds_to_hs
+    def _interpolate_mireds_to_hs_step(self, t: float, crossover_t: float) -> FadeStep:
+        """Interpolate a step for mireds -> HS hybrid transition.
+
+        Before the crossover point, interpolates mireds from start to crossover.
+        After the crossover, interpolates HS color from crossover to end.
+
+        Args:
+            t: Overall interpolation factor (0.0 = start, 1.0 = end)
+            crossover_t: The t value at which the color space switches
+        """
+        crossover_step = self.crossover_step or 0
+
         # Before/at crossover: emit color_temp_kelvin
         if self._current_step <= crossover_step:
-            # Map t to [0, crossover_t] -> [0, 1] for mireds interpolation
             phase_t = t / crossover_t if crossover_t > 0 else 1.0
             mireds = self._interpolate_mireds_between(
                 self.start_mireds, self._crossover_mireds, phase_t
             )
-            kelvin = int(1_000_000 / mireds) if mireds else None
+            kelvin = _mireds_to_kelvin(mireds) if mireds else None
             return FadeStep(
                 brightness=self._interpolate_brightness(t),
                 color_temp_kelvin=kelvin,
             )
         # After crossover: emit hs_color
-        # Map t from [crossover_t, 1] -> [0, 1] for HS interpolation
         remaining_t = 1.0 - crossover_t
         phase_t = (t - crossover_t) / remaining_t if remaining_t > 0 else 1.0
         hs_color = self._interpolate_hs_between(self._crossover_hs, self.end_hs, phase_t)
@@ -1053,17 +1198,6 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             brightness = 0 if self.end_brightness < self.start_brightness else 2
         return brightness
 
-    def _interpolate_hs(self, t: float) -> tuple[float, float] | None:
-        """Interpolate HS color at factor t, handling hue wraparound.
-
-        Args:
-            t: Interpolation factor (0.0 = start, 1.0 = end)
-
-        Returns:
-            Interpolated (hue, saturation), or None if HS not set.
-        """
-        return self._interpolate_hs_between(self.start_hs, self.end_hs, t)
-
     def _interpolate_color_temp_kelvin(self, t: float) -> int | None:
         """Interpolate color temperature, returning kelvin.
 
@@ -1079,4 +1213,4 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
         mireds = self._interpolate_mireds_between(self.start_mireds, self.end_mireds, t)
         if mireds is None:
             return None
-        return int(1_000_000 / mireds)
+        return _mireds_to_kelvin(mireds)

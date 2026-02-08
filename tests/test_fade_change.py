@@ -312,7 +312,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(0.5)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 0.5)
         assert result is not None
         assert result[0] == 50.0  # hue
         assert result[1] == 75.0  # saturation
@@ -325,7 +325,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(0.5)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 0.5)
         assert result is not None
         # Halfway between 350 and 20 via 0 is 5.0
         assert result[0] == 5.0
@@ -339,7 +339,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(1.0)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 1.0)
         assert result == (20.0, 80.0)
 
     def test_interpolate_hs_none_when_no_hs(self) -> None:
@@ -350,7 +350,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(0.5)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 0.5)
         assert result is None
 
 
