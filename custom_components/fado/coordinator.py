@@ -25,7 +25,6 @@ from homeassistant.components.light import (
 )
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.light.const import ColorMode
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     SERVICE_TURN_OFF,
@@ -108,13 +107,11 @@ class FadeCoordinator:
     def __init__(
         self,
         hass: HomeAssistant,
-        entry: ConfigEntry,
         store: Store[dict[str, int]],
         data: dict[str, Any],
         min_step_delay_ms: int,
     ) -> None:
         self.hass = hass
-        self.entry = entry
         self.store = store
         self.data = data
         self.min_step_delay_ms = min_step_delay_ms

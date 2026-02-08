@@ -1020,7 +1020,6 @@ async def test_get_intended_brightness_returns_none_when_integration_unloaded(
     mock_hass.data = {}  # DOMAIN not in hass.data
     coordinator = FadeCoordinator(
         hass=mock_hass,
-        entry=MagicMock(),
         store=MagicMock(async_save=AsyncMock()),
         data={},
         min_step_delay_ms=100,
@@ -1101,7 +1100,6 @@ async def test_restore_intended_state_when_domain_not_in_hass(
     mock_hass.states = MagicMock()
     coordinator = FadeCoordinator(
         hass=mock_hass,
-        entry=MagicMock(),
         store=MagicMock(async_save=AsyncMock()),
         data={},
         min_step_delay_ms=100,

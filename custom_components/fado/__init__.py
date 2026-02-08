@@ -72,7 +72,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = FadeCoordinator(
         hass=hass,
-        entry=entry,
         store=store,
         data=storage_data,
         min_step_delay_ms=min_step_delay_ms,

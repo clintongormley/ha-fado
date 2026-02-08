@@ -27,7 +27,6 @@ def hass_with_storage(hass: HomeAssistant) -> HomeAssistant:
     mock_store.async_save = AsyncMock()
     coordinator = FadeCoordinator(
         hass=hass,
-        entry=MagicMock(),
         store=mock_store,
         data={},
         min_step_delay_ms=100,

@@ -20,7 +20,6 @@ def coordinator():
     hass.services.async_call = AsyncMock()
     return FadeCoordinator(
         hass=hass,
-        entry=MagicMock(),
         store=MagicMock(async_save=AsyncMock()),
         data={},
         min_step_delay_ms=100,

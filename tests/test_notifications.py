@@ -23,7 +23,6 @@ def _make_coordinator(hass: HomeAssistant, data: dict | None = None) -> FadeCoor
     mock_store.async_save = AsyncMock()
     coordinator = FadeCoordinator(
         hass=hass,
-        entry=MagicMock(),
         store=mock_store,
         data=data if data is not None else {},
         min_step_delay_ms=100,

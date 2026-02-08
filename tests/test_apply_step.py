@@ -24,7 +24,6 @@ def coordinator(mock_hass):
     """Create a FadeCoordinator with mock hass."""
     return FadeCoordinator(
         hass=mock_hass,
-        entry=MagicMock(),
         store=MagicMock(),
         data={},
         min_step_delay_ms=100,

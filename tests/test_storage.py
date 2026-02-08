@@ -28,7 +28,6 @@ def hass_with_storage(hass: HomeAssistant) -> HomeAssistant:
     }
     coordinator = FadeCoordinator(
         hass=hass,
-        entry=MagicMock(),
         store=mock_store,
         data=storage_data,
         min_step_delay_ms=100,
@@ -126,7 +125,6 @@ class TestCleanupEntityData:
         }
         coordinator = FadeCoordinator(
             hass=hass,
-            entry=MagicMock(),
             store=mock_store,
             data=storage_data,
             min_step_delay_ms=100,
@@ -224,7 +222,6 @@ class TestCleanupEntityData:
         mock_store.async_save = AsyncMock()
         coordinator = FadeCoordinator(
             hass=hass,
-            entry=MagicMock(),
             store=mock_store,
             data={},
             min_step_delay_ms=100,
