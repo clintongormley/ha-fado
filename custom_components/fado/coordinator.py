@@ -139,6 +139,27 @@ class EntityFadeState:
             tasks.append(self.restore_task)
         return tasks
 
+    async def cancel_and_wait(self) -> None:
+        """Cancel the active fade and wait for it to finish."""
+        if self.active_task is None:
+            return
+
+        task = self.active_task
+        condition = self.complete_condition
+
+        self.signal_cancel()
+
+        if not task.done():
+            task.cancel()
+
+        if condition:
+            async with condition:
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(
+                        condition.wait_for(lambda: self.active_task is None),
+                        timeout=FADE_CANCEL_TIMEOUT_S,
+                    )
+
     async def cleanup(self) -> None:
         """Full teardown: cancel tasks, signal events, clear all state."""
         if self.active_task is not None:
@@ -656,43 +677,10 @@ class FadeCoordinator:
     # --------------------------------------------------------------------- #
 
     async def _cancel_and_wait_for_fade(self, entity_id: str) -> None:
-        """Cancel any active fade for entity and wait for cleanup.
-
-        This function cancels an active fade task and waits for it to be fully
-        cleaned up using an asyncio.Condition for efficient notification instead
-        of polling.
-        """
-        _LOGGER.debug("%s: Cancelling fade", entity_id)
+        """Cancel any active fade for entity and wait for cleanup."""
         entity = self.get_entity(entity_id)
-        if entity is None or entity.active_task is None:
-            _LOGGER.debug("%s: No active fade task", entity_id)
-            return
-
-        task = entity.active_task
-        condition = entity.complete_condition
-
-        # Signal cancellation via the cancel event
-        entity.signal_cancel()
-
-        # Cancel the task
-        if task.done():
-            _LOGGER.debug("%s: Task already done", entity_id)
-        else:
-            _LOGGER.debug("%s: Cancelling task", entity_id)
-            task.cancel()
-
-        # Wait for cleanup using Condition
-        if condition:
-            async with condition:
-                try:
-                    await asyncio.wait_for(
-                        condition.wait_for(lambda: entity.active_task is None),
-                        timeout=FADE_CANCEL_TIMEOUT_S,
-                    )
-                    _LOGGER.debug("%s: Task cleanup complete", entity_id)
-                except TimeoutError:
-                    _LOGGER.debug("%s: Timed out waiting for fade task cleanup", entity_id)
-
+        if entity is not None:
+            await entity.cancel_and_wait()
         await self._wait_until_stale_events_flushed(entity_id)
 
     # --------------------------------------------------------------------- #
