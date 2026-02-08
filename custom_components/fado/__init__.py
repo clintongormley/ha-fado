@@ -41,6 +41,7 @@ from .const import (
     SERVICE_FADE_LIGHTS,
     STORAGE_KEY,
     UNCONFIGURED_CHECK_INTERVAL_HOURS,
+    VALID_EASING,
 )
 from .coordinator import FadeCoordinator
 from .notifications import _notify_unconfigured_lights
@@ -86,23 +87,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         """Event handler wrapper."""
         coordinator.handle_state_change(event)
 
-    # Valid easing curve names
-    valid_easing = [
-        "auto",
-        "linear",
-        "ease_in_quad",
-        "ease_in_cubic",
-        "ease_out_quad",
-        "ease_out_cubic",
-        "ease_in_out_sine",
-    ]
-
     hass.services.async_register(
         DOMAIN,
         SERVICE_FADE_LIGHTS,
         handle_fade_lights,
         schema=cv.make_entity_service_schema(
-            {vol.Optional("easing", default="auto"): vol.In(valid_easing)},
+            {vol.Optional("easing", default="auto"): vol.In(VALID_EASING)},
             extra=vol.ALLOW_EXTRA,
         ),
     )

@@ -144,6 +144,17 @@ AUTOCONFIGURE_ITERATIONS = 10  # Number of times to test each light
 AUTOCONFIGURE_TIMEOUT_S = 5  # Timeout for each state change wait (seconds)
 AUTOCONFIGURE_MAX_PARALLEL = 5  # Maximum lights to test in parallel
 
+# Valid easing curve names for the fade_lights service
+VALID_EASING = [
+    "auto",
+    "linear",
+    "ease_in_quad",
+    "ease_in_cubic",
+    "ease_out_quad",
+    "ease_out_cubic",
+    "ease_in_out_sine",
+]
+
 # Notification for unconfigured lights
 NOTIFICATION_ID = "fado_unconfigured"
 REQUIRED_CONFIG_FIELDS = frozenset({"min_delay_ms", "min_brightness", "native_transitions"})
