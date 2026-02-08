@@ -111,7 +111,6 @@ class FadeCoordinator:
         self.store = store
         self.data = data
         self.min_step_delay_ms = min_step_delay_ms
-        self.testing_lights: set[str] = set()
         self._entities: dict[str, EntityFadeState] = {}
 
     # --------------------------------------------------------------------- #
@@ -917,13 +916,11 @@ class FadeCoordinator:
             else:
                 result.add(entity_id)
 
-        # Filter out excluded lights and lights being autoconfigured
+        # Filter out excluded lights
         final_result = []
         for eid in result:
             if self.get_light_config(eid).get("exclude", False):
                 _LOGGER.debug("%s: Excluded from fade", eid)
-            elif eid in self.testing_lights:
-                _LOGGER.debug("%s: Excluded from fade (autoconfigure in progress)", eid)
             else:
                 final_result.append(eid)
         return final_result
@@ -1008,9 +1005,6 @@ class FadeCoordinator:
 
         # Remove entity from tracking
         self._entities.pop(entity_id, None)
-
-        # Remove from testing lights set
-        self.testing_lights.discard(entity_id)
 
         # Remove from persistent storage
         if entity_id in self.data:

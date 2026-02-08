@@ -345,10 +345,6 @@ async def ws_autoconfigure(
     # Create semaphore to limit parallel testing
     semaphore = asyncio.Semaphore(AUTOCONFIGURE_MAX_PARALLEL)
 
-    # Get testing_lights set for exclusion during autoconfigure
-    coordinator: FadeCoordinator = hass.data[DOMAIN]
-    testing_lights = coordinator.testing_lights
-
     async def test_light(entity_id: str) -> None:
         """Test a single light and send events."""
         # Check if cancelled before waiting for semaphore
@@ -361,8 +357,6 @@ async def ws_autoconfigure(
             if cancel_event.is_set():
                 return
 
-            # Add to testing set to exclude from fades during test
-            testing_lights.add(entity_id)
             try:
                 # Send started event after acquiring semaphore (actual testing begins)
                 connection.send_message(
@@ -373,6 +367,7 @@ async def ws_autoconfigure(
                 )
 
                 # Run full autoconfigure (delay + native transitions, with state restoration)
+                # Note: autoconfigure sets exclude=True on the light config during testing
                 result = await async_autoconfigure_light(hass, entity_id)
 
                 # Check if cancelled before sending result
@@ -420,9 +415,6 @@ async def ws_autoconfigure(
                         },
                     )
                 )
-            finally:
-                # Always remove from testing set when done
-                testing_lights.discard(entity_id)
 
     # Spawn tasks for all lights
     tasks = [test_light(entity_id) for entity_id in filtered_entities]

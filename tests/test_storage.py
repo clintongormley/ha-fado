@@ -111,7 +111,7 @@ class TestCleanupEntityData:
 
     @pytest.fixture
     def hass_with_full_state(self, hass: HomeAssistant) -> HomeAssistant:
-        """Set up hass with storage and testing_lights data."""
+        """Set up hass with storage data."""
         mock_store = MagicMock()
         mock_store.async_save = AsyncMock()
         storage_data = {
@@ -131,7 +131,6 @@ class TestCleanupEntityData:
             data=storage_data,
             min_step_delay_ms=100,
         )
-        coordinator.testing_lights = {"light.test", "light.other"}
         hass.data[DOMAIN] = coordinator
         return hass
 
@@ -145,16 +144,6 @@ class TestCleanupEntityData:
         assert "light.test" not in coordinator.data
         assert "light.other" in coordinator.data
         coordinator.store.async_save.assert_called_once()
-
-    async def test_cleanup_removes_from_testing_lights(
-        self, hass_with_full_state: HomeAssistant
-    ) -> None:
-        """Test that cleanup removes entity from testing_lights set."""
-        coordinator: FadeCoordinator = hass_with_full_state.data[DOMAIN]
-        await coordinator.cleanup_entity("light.test")
-
-        assert "light.test" not in coordinator.testing_lights
-        assert "light.other" in coordinator.testing_lights
 
     async def test_cleanup_cancels_active_fade(self, hass_with_full_state: HomeAssistant) -> None:
         """Test that cleanup cancels active fade task."""
