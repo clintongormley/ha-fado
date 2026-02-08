@@ -69,6 +69,10 @@ class FadeCoordinator:
     storage, and all fade/restore/notification logic.
     """
 
+    # --------------------------------------------------------------------- #
+    # Initialisation & lifecycle
+    # --------------------------------------------------------------------- #
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -86,20 +90,6 @@ class FadeCoordinator:
         self.data = await self.store.async_load() or {}
 
     # --------------------------------------------------------------------- #
-    # Entity helpers
-    # --------------------------------------------------------------------- #
-
-    def get_entity(self, entity_id: str) -> EntityFadeState | None:
-        """Return the EntityFadeState for *entity_id*, or ``None``."""
-        return self._entities.get(entity_id)
-
-    def get_or_create_entity(self, entity_id: str) -> EntityFadeState:
-        """Return (or create) the EntityFadeState for *entity_id*."""
-        if entity_id not in self._entities:
-            self._entities[entity_id] = EntityFadeState()
-        return self._entities[entity_id]
-
-    # --------------------------------------------------------------------- #
     # Service handler: fade_lights
     # --------------------------------------------------------------------- #
 
@@ -114,19 +104,28 @@ class FadeCoordinator:
             _LOGGER.debug("No fade parameters specified, nothing to do")
             return
 
-        # Resolve targets to entity IDs
+        entity_ids = self._resolve_fade_targets(call, fade_params)
+        if not entity_ids:
+            return
+
+        tasks = [
+            asyncio.create_task(self._fade_light(entity_id, fade_params, self.min_step_delay_ms))
+            for entity_id in entity_ids
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    def _resolve_fade_targets(self, call: ServiceCall, fade_params: FadeParams) -> list[str]:
+        """Resolve, expand, and filter targets for a fade_lights service call.
+
+        Returns entity IDs that are available and support the requested fade parameters.
+        """
         target_selection = TargetSelection(call.data)
         selected = async_extract_referenced_entity_ids(self.hass, target_selection)
         all_entity_ids = selected.referenced | selected.indirectly_referenced
 
-        # Expand groups, filter to light domain, and remove excluded lights
         expanded_entities = self._expand_light_groups(list(all_entity_ids))
 
-        if not expanded_entities:
-            _LOGGER.debug("No light entities found in target")
-            return
-
-        tasks = []
+        result = []
         for entity_id in expanded_entities:
             state = self.hass.states.get(entity_id)
             if not state or state.state == "unavailable":
@@ -138,34 +137,55 @@ class FadeCoordinator:
                     entity_id,
                 )
                 continue
-            tasks.append(
-                asyncio.create_task(
-                    self._fade_light(
-                        entity_id,
-                        fade_params,
-                        self.min_step_delay_ms,
-                    )
-                )
-            )
+            result.append(entity_id)
+        return result
 
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+    def _expand_light_groups(self, entity_ids: list[str]) -> list[str]:
+        """Expand light groups to individual light entities.
+
+        Light groups have an entity_id attribute containing member lights.
+        Expands iteratively (not recursively) and deduplicates results.
+        Lights with exclude=True in their config are filtered out.
+
+        Example:
+            Input: ["light.living_room_group", "light.bedroom"]
+            If light.living_room_group contains [light.lamp, light.ceiling]
+            Output: ["light.lamp", "light.ceiling", "light.bedroom"]
+        """
+        pending = list(entity_ids)
+        result: set[str] = set()
+        light_prefix = f"{LIGHT_DOMAIN}."
+
+        while pending:
+            entity_id = pending.pop()
+            state = self.hass.states.get(entity_id)
+
+            if state is None:
+                _LOGGER.warning("%s: Entity not found, skipping", entity_id)
+                continue
+
+            # Check if this is a group (has entity_id attribute with member lights)
+            if ATTR_ENTITY_ID in state.attributes:
+                group_members = state.attributes[ATTR_ENTITY_ID]
+                if isinstance(group_members, str):
+                    group_members = [group_members]
+                # Filter to lights only (groups can technically contain non-lights)
+                pending.extend(m for m in group_members if m.startswith(light_prefix))
+            elif entity_id.startswith(light_prefix):
+                result.add(entity_id)
+
+        # Filter out excluded lights
+        final_result = []
+        for eid in result:
+            if self.get_light_config(eid).get("exclude", False):
+                _LOGGER.debug("%s: Excluded from fade", eid)
+            else:
+                final_result.append(eid)
+        return final_result
 
     # --------------------------------------------------------------------- #
     # State change handler
     # --------------------------------------------------------------------- #
-
-    def _should_process_state_change(self, new_state: State | None) -> bool:
-        """Check if this state change should be processed."""
-        if not new_state:
-            return False
-        if new_state.domain != LIGHT_DOMAIN:
-            return False
-        # Ignore group helpers (lights that contain other lights)
-        if new_state.attributes.get(ATTR_ENTITY_ID) is not None:
-            return False
-        # Skip excluded lights
-        return not self.get_light_config(new_state.entity_id).get("exclude", False)
 
     @callback
     def handle_state_change(self, event: Event[EventStateChangedData]) -> None:
@@ -186,35 +206,7 @@ class FadeCoordinator:
             return
 
         # During fade or restore: if we get here, state didn't match expected - manual intervention
-        entity = self.get_entity(entity_id)
-        is_during_fade = entity is not None and entity.is_fading
-        is_during_restore = entity is not None and entity.is_restoring
-        if is_during_fade or is_during_restore:
-            # Manual intervention detected - add to intended state queue
-            old_brightness = old_state.attributes.get(ATTR_BRIGHTNESS) if old_state else None
-            _LOGGER.info(
-                "%s: Manual intervention detected (state=%s, brightness=%s->%s)",
-                entity_id,
-                new_state.state,
-                old_brightness,
-                new_state.attributes.get(ATTR_BRIGHTNESS),
-            )
-
-            ent = self.get_or_create_entity(entity_id)
-
-            # Initialize queue with old_state if this is the first manual event
-            if not ent.intended_queue:
-                ent.intended_queue = [old_state] if old_state else []
-
-            # Append the new intended state
-            ent.intended_queue.append(new_state)
-
-            # Only spawn restore task if one isn't already running
-            if not ent.is_restoring:
-                task = self.hass.async_create_task(self._restore_intended_state(entity_id))
-                ent.restore_task = task
-            else:
-                _LOGGER.debug("%s: Restore task already running, queued intended state", entity_id)
+        if self._handle_manual_intervention(entity_id, old_state, new_state):
             return
 
         # Normal state handling (no active fade)
@@ -229,6 +221,18 @@ class FadeCoordinator:
                     "%s: Storing new brightness as original: %s", entity_id, new_brightness
                 )
                 self.store_orig_brightness(entity_id, new_brightness)
+
+    def _should_process_state_change(self, new_state: State | None) -> bool:
+        """Check if this state change should be processed."""
+        if not new_state:
+            return False
+        if new_state.domain != LIGHT_DOMAIN:
+            return False
+        # Ignore group helpers (lights that contain other lights)
+        if new_state.attributes.get(ATTR_ENTITY_ID) is not None:
+            return False
+        # Skip excluded lights
+        return not self.get_light_config(new_state.entity_id).get("exclude", False)
 
     # --------------------------------------------------------------------- #
     # Fade execution
@@ -283,16 +287,7 @@ class FadeCoordinator:
             _LOGGER.warning("%s: Entity not found", entity_id)
             return
 
-        # Store original brightness for restoration after OFF->ON
-        # Update if: (1) nothing stored yet, or (2) user changed brightness since last fade
-        current_brightness = state.attributes.get(ATTR_BRIGHTNESS)
-        start_brightness = int(current_brightness) if current_brightness is not None else 0
-        existing_orig = self.get_orig_brightness(entity_id)
-        if start_brightness > 0 and start_brightness != existing_orig:
-            self.store_orig_brightness(entity_id, start_brightness)
-
-        # Get stored brightness for auto-turn-on when fading color from off
-        stored_brightness = start_brightness if start_brightness > 0 else existing_orig
+        stored_brightness = self._update_and_get_stored_brightness(entity_id, state)
 
         # Get per-light minimum brightness from config (detected by autoconfigure)
         light_config = self.get_light_config(entity_id)
@@ -480,56 +475,6 @@ class FadeCoordinator:
             )
 
     # --------------------------------------------------------------------- #
-    # Expected state tracking & matching
-    # --------------------------------------------------------------------- #
-
-    def _match_and_remove_expected(self, entity_id: str, new_state: State) -> bool:
-        """Check if state matches expected, remove if found, notify if empty.
-
-        Returns True if this was an expected state change (caller should ignore it).
-        """
-        entity = self.get_entity(entity_id)
-        expected_state = entity.expected_state if entity else None
-        if not expected_state or expected_state.is_empty:
-            return False
-
-        # Build ExpectedValues from the new state
-        if new_state.state == STATE_OFF:
-            actual = ExpectedValues(brightness=0)
-        else:
-            brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
-            if brightness is None:
-                return False
-
-            # Extract color attributes
-            hs_raw = new_state.attributes.get(HA_ATTR_HS_COLOR)
-            hs_color = (float(hs_raw[0]), float(hs_raw[1])) if hs_raw else None
-
-            # Read kelvin directly from state attributes
-            kelvin_raw = new_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
-            color_temp_kelvin = int(kelvin_raw) if kelvin_raw else None
-
-            actual = ExpectedValues(
-                brightness=brightness,
-                hs_color=hs_color,
-                color_temp_kelvin=color_temp_kelvin,
-            )
-
-        matched = expected_state.match_and_remove(actual)
-        return matched is not None
-
-    def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:
-        """Register expected values before making a service call."""
-        entity = self.get_or_create_entity(entity_id)
-        if entity.expected_state is None:
-            entity.expected_state = ExpectedState(entity_id=entity_id)
-        entity.expected_state.add(values)
-
-    def _add_expected_brightness(self, entity_id: str, brightness: int) -> None:
-        """Register an expected brightness value (convenience wrapper)."""
-        self._add_expected_values(entity_id, ExpectedValues(brightness=brightness))
-
-    # --------------------------------------------------------------------- #
     # OFF -> ON handling
     # --------------------------------------------------------------------- #
 
@@ -563,19 +508,61 @@ class FadeCoordinator:
         brightness: int,
     ) -> None:
         """Restore original brightness and wait for confirmation."""
-        self._add_expected_brightness(entity_id, brightness)
-        await self.hass.services.async_call(
-            LIGHT_DOMAIN,
+        await self._expected_call_and_wait(
+            entity_id,
             SERVICE_TURN_ON,
             {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: brightness},
-            blocking=True,
+            ExpectedValues(brightness=brightness),
         )
-        entity = self.get_or_create_entity(entity_id)
-        await entity.wait_for_expected_state_flush()
 
     # --------------------------------------------------------------------- #
     # Manual intervention / restore intended state
     # --------------------------------------------------------------------- #
+
+    def _handle_manual_intervention(
+        self,
+        entity_id: str,
+        old_state: State | None,
+        new_state: State,
+    ) -> bool:
+        """Detect and handle manual intervention during a fade or restore.
+
+        If a fade or restore is active and the state change was unexpected,
+        queues the intended state and spawns a restore task if needed.
+
+        Returns True if manual intervention was detected (caller should stop processing).
+        """
+        entity = self.get_entity(entity_id)
+        is_during_fade = entity is not None and entity.is_fading
+        is_during_restore = entity is not None and entity.is_restoring
+        if not is_during_fade and not is_during_restore:
+            return False
+
+        old_brightness = old_state.attributes.get(ATTR_BRIGHTNESS) if old_state else None
+        _LOGGER.info(
+            "%s: Manual intervention detected (state=%s, brightness=%s->%s)",
+            entity_id,
+            new_state.state,
+            old_brightness,
+            new_state.attributes.get(ATTR_BRIGHTNESS),
+        )
+
+        ent = self.get_or_create_entity(entity_id)
+
+        # Initialize queue with old_state if this is the first manual event
+        if not ent.intended_queue:
+            ent.intended_queue = [old_state] if old_state else []
+
+        # Append the new intended state
+        ent.intended_queue.append(new_state)
+
+        # Only spawn restore task if one isn't already running
+        if not ent.is_restoring:
+            task = self.hass.async_create_task(self._restore_intended_state(entity_id))
+            ent.restore_task = task
+        else:
+            _LOGGER.debug("%s: Restore task already running, queued intended state", entity_id)
+        return True
 
     async def _restore_intended_state(
         self,
@@ -634,12 +621,41 @@ class FadeCoordinator:
                     break
 
                 await self._restore_single_intended(
-                    entity_id, entity, intended_state, intended_brightness, current_state
+                    entity_id, intended_state, intended_brightness, current_state
                 )
         finally:
             entity = self.get_entity(entity_id)
             if entity is not None:
                 entity.restore_task = None
+
+    def _get_intended_brightness(
+        self,
+        entity_id: str,
+        old_state: State | None,
+        new_state: State,
+    ) -> int | None:
+        """Determine the intended brightness from a manual intervention.
+
+        Returns:
+            0: Light should be OFF
+            >0: Light should be ON at this brightness
+            None: Could not determine (integration unloaded)
+        """
+        if DOMAIN not in self.hass.data:
+            return None
+
+        if new_state.state == STATE_OFF:
+            return 0
+
+        new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
+
+        if old_state and old_state.state == STATE_OFF:
+            # OFF -> ON: restore to original brightness
+            orig = self.get_orig_brightness(entity_id)
+            return orig if orig > 0 else new_brightness
+
+        # ON -> ON: use the brightness from the event
+        return new_brightness
 
     def _maybe_store_intended_brightness(
         self,
@@ -670,7 +686,6 @@ class FadeCoordinator:
     async def _restore_single_intended(
         self,
         entity_id: str,
-        entity: EntityFadeState,
         intended_state: State,
         intended_brightness: int,
         current_state: State,
@@ -684,14 +699,12 @@ class FadeCoordinator:
         if intended_brightness == 0:
             if current_brightness != 0:
                 _LOGGER.info("%s: Restoring to off as intended", entity_id)
-                self._add_expected_brightness(entity_id, 0)
-                await self.hass.services.async_call(
-                    LIGHT_DOMAIN,
+                await self._expected_call_and_wait(
+                    entity_id,
                     SERVICE_TURN_OFF,
                     {ATTR_ENTITY_ID: entity_id},
-                    blocking=True,
+                    ExpectedValues(brightness=0),
                 )
-                await entity.wait_for_expected_state_flush()
             else:
                 _LOGGER.debug("%s: already off, nothing to restore", entity_id)
             return
@@ -703,21 +716,16 @@ class FadeCoordinator:
 
         if len(service_data) > 1:  # More than just entity_id
             _LOGGER.info("%s: Restoring intended state: %s", entity_id, service_data)
-            self._add_expected_values(
+            await self._expected_call_and_wait(
                 entity_id,
+                SERVICE_TURN_ON,
+                service_data,
                 ExpectedValues(
                     brightness=service_data.get(ATTR_BRIGHTNESS),
                     hs_color=service_data.get(HA_ATTR_HS_COLOR),
                     color_temp_kelvin=service_data.get(HA_ATTR_COLOR_TEMP_KELVIN),
                 ),
             )
-            await self.hass.services.async_call(
-                LIGHT_DOMAIN,
-                SERVICE_TURN_ON,
-                service_data,
-                blocking=True,
-            )
-            await entity.wait_for_expected_state_flush()
         else:
             _LOGGER.debug("%s: already in intended state, nothing to restore", entity_id)
 
@@ -749,81 +757,87 @@ class FadeCoordinator:
 
         return service_data
 
-    def _get_intended_brightness(
+    # --------------------------------------------------------------------- #
+    # Expected state tracking & matching
+    # --------------------------------------------------------------------- #
+
+    def _match_and_remove_expected(self, entity_id: str, new_state: State) -> bool:
+        """Check if state matches expected, remove if found, notify if empty.
+
+        Returns True if this was an expected state change (caller should ignore it).
+        """
+        entity = self.get_entity(entity_id)
+        expected_state = entity.expected_state if entity else None
+        if not expected_state or expected_state.is_empty:
+            return False
+
+        # Build ExpectedValues from the new state
+        if new_state.state == STATE_OFF:
+            actual = ExpectedValues(brightness=0)
+        else:
+            brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
+            if brightness is None:
+                return False
+
+            # Extract color attributes
+            hs_raw = new_state.attributes.get(HA_ATTR_HS_COLOR)
+            hs_color = (float(hs_raw[0]), float(hs_raw[1])) if hs_raw else None
+
+            # Read kelvin directly from state attributes
+            kelvin_raw = new_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
+            color_temp_kelvin = int(kelvin_raw) if kelvin_raw else None
+
+            actual = ExpectedValues(
+                brightness=brightness,
+                hs_color=hs_color,
+                color_temp_kelvin=color_temp_kelvin,
+            )
+
+        matched = expected_state.match_and_remove(actual)
+        return matched is not None
+
+    def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:
+        """Register expected values before making a service call."""
+        entity = self.get_or_create_entity(entity_id)
+        if entity.expected_state is None:
+            entity.expected_state = ExpectedState(entity_id=entity_id)
+        entity.expected_state.add(values)
+
+    def _add_expected_brightness(self, entity_id: str, brightness: int) -> None:
+        """Register an expected brightness value (convenience wrapper)."""
+        self._add_expected_values(entity_id, ExpectedValues(brightness=brightness))
+
+    async def _expected_call_and_wait(
         self,
         entity_id: str,
-        old_state: State | None,
-        new_state: State,
-    ) -> int | None:
-        """Determine the intended brightness from a manual intervention.
-
-        Returns:
-            0: Light should be OFF
-            >0: Light should be ON at this brightness
-            None: Could not determine (integration unloaded)
-        """
-        if DOMAIN not in self.hass.data:
-            return None
-
-        if new_state.state == STATE_OFF:
-            return 0
-
-        new_brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
-
-        if old_state and old_state.state == STATE_OFF:
-            # OFF -> ON: restore to original brightness
-            orig = self.get_orig_brightness(entity_id)
-            return orig if orig > 0 else new_brightness
-
-        # ON -> ON: use the brightness from the event
-        return new_brightness
+        service: str,
+        data: dict,
+        expected: ExpectedValues,
+    ) -> None:
+        """Register expected values, call a light service, and wait for state flush."""
+        self._add_expected_values(entity_id, expected)
+        await self.hass.services.async_call(
+            LIGHT_DOMAIN,
+            service,
+            data,
+            blocking=True,
+        )
+        entity = self.get_or_create_entity(entity_id)
+        await entity.wait_for_expected_state_flush()
 
     # --------------------------------------------------------------------- #
-    # Light group expansion
+    # Entity state management
     # --------------------------------------------------------------------- #
 
-    def _expand_light_groups(self, entity_ids: list[str]) -> list[str]:
-        """Expand light groups to individual light entities.
+    def get_entity(self, entity_id: str) -> EntityFadeState | None:
+        """Return the EntityFadeState for *entity_id*, or ``None``."""
+        return self._entities.get(entity_id)
 
-        Light groups have an entity_id attribute containing member lights.
-        Expands iteratively (not recursively) and deduplicates results.
-        Lights with exclude=True in their config are filtered out.
-
-        Example:
-            Input: ["light.living_room_group", "light.bedroom"]
-            If light.living_room_group contains [light.lamp, light.ceiling]
-            Output: ["light.lamp", "light.ceiling", "light.bedroom"]
-        """
-        pending = list(entity_ids)
-        result: set[str] = set()
-        light_prefix = f"{LIGHT_DOMAIN}."
-
-        while pending:
-            entity_id = pending.pop()
-            state = self.hass.states.get(entity_id)
-
-            if state is None:
-                _LOGGER.warning("%s: Entity not found, skipping", entity_id)
-                continue
-
-            # Check if this is a group (has entity_id attribute with member lights)
-            if ATTR_ENTITY_ID in state.attributes:
-                group_members = state.attributes[ATTR_ENTITY_ID]
-                if isinstance(group_members, str):
-                    group_members = [group_members]
-                # Filter to lights only (groups can technically contain non-lights)
-                pending.extend(m for m in group_members if m.startswith(light_prefix))
-            elif entity_id.startswith(light_prefix):
-                result.add(entity_id)
-
-        # Filter out excluded lights
-        final_result = []
-        for eid in result:
-            if self.get_light_config(eid).get("exclude", False):
-                _LOGGER.debug("%s: Excluded from fade", eid)
-            else:
-                final_result.append(eid)
-        return final_result
+    def get_or_create_entity(self, entity_id: str) -> EntityFadeState:
+        """Return (or create) the EntityFadeState for *entity_id*."""
+        if entity_id not in self._entities:
+            self._entities[entity_id] = EntityFadeState()
+        return self._entities[entity_id]
 
     # --------------------------------------------------------------------- #
     # Storage helpers
@@ -851,6 +865,21 @@ class FadeCoordinator:
         if entity_id not in self.data:
             self.data[entity_id] = {}
         self.data[entity_id]["orig_brightness"] = level
+
+    def _update_and_get_stored_brightness(self, entity_id: str, state: State) -> int:
+        """Store original brightness if changed and return the stored value.
+
+        Updates the stored original brightness if the light is on and the
+        brightness has changed since last stored. Returns the best known
+        brightness (current if on, otherwise previously stored) for use as
+        fallback when fading color from an off state.
+        """
+        current_brightness = state.attributes.get(ATTR_BRIGHTNESS)
+        start_brightness = int(current_brightness) if current_brightness is not None else 0
+        existing_orig = self.get_orig_brightness(entity_id)
+        if start_brightness > 0 and start_brightness != existing_orig:
+            self.store_orig_brightness(entity_id, start_brightness)
+        return start_brightness if start_brightness > 0 else existing_orig
 
     async def save_storage(self) -> None:
         """Save storage data to disk."""
