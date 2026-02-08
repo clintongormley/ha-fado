@@ -28,7 +28,6 @@ def coordinator(mock_hass):
     coord = FadeCoordinator(
         hass=mock_hass,
         store=MagicMock(async_save=AsyncMock()),
-        data={},
         min_step_delay_ms=100,
     )
     mock_hass.data = {DOMAIN: coord}

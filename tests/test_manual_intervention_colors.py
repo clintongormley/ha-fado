@@ -21,7 +21,6 @@ def coordinator():
     return FadeCoordinator(
         hass=hass,
         store=MagicMock(async_save=AsyncMock()),
-        data={},
         min_step_delay_ms=100,
     )
 

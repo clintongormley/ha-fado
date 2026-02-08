@@ -66,16 +66,14 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Fado from a config entry."""
     store: Store[dict[str, int]] = Store(hass, 1, STORAGE_KEY)
-    storage_data = await store.async_load() or {}
-
     min_step_delay_ms = entry.options.get(OPTION_MIN_STEP_DELAY_MS, DEFAULT_MIN_STEP_DELAY_MS)
 
     coordinator = FadeCoordinator(
         hass=hass,
         store=store,
-        data=storage_data,
         min_step_delay_ms=min_step_delay_ms,
     )
+    await coordinator.async_load()
 
     hass.data[DOMAIN] = coordinator
 

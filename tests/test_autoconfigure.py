@@ -28,7 +28,6 @@ def hass_with_storage(hass: HomeAssistant) -> HomeAssistant:
     coordinator = FadeCoordinator(
         hass=hass,
         store=mock_store,
-        data={},
         min_step_delay_ms=100,
     )
     hass.data[DOMAIN] = coordinator

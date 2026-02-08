@@ -29,9 +29,9 @@ def hass_with_storage(hass: HomeAssistant) -> HomeAssistant:
     coordinator = FadeCoordinator(
         hass=hass,
         store=mock_store,
-        data=storage_data,
         min_step_delay_ms=100,
     )
+    coordinator.data = storage_data
     hass.data[DOMAIN] = coordinator
     return hass
 
@@ -126,9 +126,9 @@ class TestCleanupEntityData:
         coordinator = FadeCoordinator(
             hass=hass,
             store=mock_store,
-            data=storage_data,
             min_step_delay_ms=100,
         )
+        coordinator.data = storage_data
         hass.data[DOMAIN] = coordinator
         return hass
 
@@ -223,7 +223,6 @@ class TestCleanupEntityData:
         coordinator = FadeCoordinator(
             hass=hass,
             store=mock_store,
-            data={},
             min_step_delay_ms=100,
         )
         hass.data[DOMAIN] = coordinator

@@ -238,7 +238,6 @@ class TestExecuteFadeWithBounds:
         return FadeCoordinator(
             hass=mock_hass,
             store=MagicMock(async_save=AsyncMock()),
-            data={},
             min_step_delay_ms=100,
         )
 

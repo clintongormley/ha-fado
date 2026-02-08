@@ -24,9 +24,10 @@ def _make_coordinator(hass: HomeAssistant, data: dict | None = None) -> FadeCoor
     coordinator = FadeCoordinator(
         hass=hass,
         store=mock_store,
-        data=data if data is not None else {},
         min_step_delay_ms=100,
     )
+    if data is not None:
+        coordinator.data = data
     hass.data[DOMAIN] = coordinator
     return coordinator
 
