@@ -938,8 +938,8 @@ class TestFadeChangeResolveMinBrightness:
         assert fade is not None
         assert fade.start_brightness == 15  # Uses min_brightness for 1%
 
-    def test_both_endpoints_clamped_same_value_returns_none(self) -> None:
-        """Test that when both endpoints clamp to same value, nothing to fade."""
+    def test_both_endpoints_clamped_same_value_returns_from_step(self) -> None:
+        """When both endpoints clamp to same value, from_step returned if state differs."""
         from custom_components.fado.fade_params import FadeParams
 
         params = FadeParams(
@@ -954,9 +954,12 @@ class TestFadeChangeResolveMinBrightness:
 
         fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
 
-        # Both should be clamped to min_brightness (10)
-        # Since they're the same after clamping, nothing to fade
-        assert fade is None  # No change when both endpoints are the same
+        # Both should be clamped to min_brightness (10), so no fade (from==to)
+        # But from (10) != actual state (100), so a from_step is returned
+        assert fade is not None
+        assert fade.from_step is not None
+        assert fade.from_step.brightness == 10
+        assert not fade.has_fade
 
     def test_end_brightness_zero_not_clamped(self) -> None:
         """Test that end brightness of 0 is NOT clamped (allows fade to off)."""

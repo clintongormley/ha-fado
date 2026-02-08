@@ -40,6 +40,64 @@ _LOGGER = logging.getLogger(__name__)
 # =============================================================================
 
 
+def _build_from_step(
+    params: FadeParams, state: dict[str, Any], min_brightness: int
+) -> FadeStep | None:
+    """Build a FadeStep from explicit 'from' values, only if they differ from current state.
+
+    Compares each from dimension against the light's actual state.
+    Only includes dimensions where the from value differs, to avoid
+    unnecessary service calls and state-change timeouts.
+
+    Returns None if no from values are specified or all match current state.
+    """
+    brightness: int | None = None
+    hs_color: tuple[float, float] | None = None
+    color_temp_kelvin: int | None = None
+    color_mode = state.get("color_mode")
+
+    # Brightness
+    from_bri: int | None = None
+    if params.from_brightness is not None:
+        from_bri = max(params.from_brightness, min_brightness)
+    elif params.from_brightness_pct is not None:
+        pct = params.from_brightness_pct
+        raw = int(pct * 255 / 100)
+        if pct == 1 and min_brightness > raw:
+            raw = min_brightness
+        from_bri = max(raw, min_brightness)
+
+    if from_bri is not None:
+        actual_bri = state.get(ATTR_BRIGHTNESS)
+        if actual_bri is None or int(actual_bri) != from_bri:
+            brightness = from_bri
+
+    # HS color
+    if params.from_hs_color is not None:
+        if color_mode == ColorMode.COLOR_TEMP:
+            # Different color space — always apply
+            hs_color = params.from_hs_color
+        else:
+            actual_hs = state.get(HA_ATTR_HS_COLOR)
+            if actual_hs is None or tuple(actual_hs) != params.from_hs_color:
+                hs_color = params.from_hs_color
+
+    # Color temperature
+    if params.from_color_temp_kelvin is not None:
+        if color_mode is not None and color_mode != ColorMode.COLOR_TEMP:
+            # Different color space — always apply
+            color_temp_kelvin = params.from_color_temp_kelvin
+        else:
+            actual_kelvin = state.get(HA_ATTR_COLOR_TEMP_KELVIN)
+            if actual_kelvin is None or int(actual_kelvin) != params.from_color_temp_kelvin:
+                color_temp_kelvin = params.from_color_temp_kelvin
+
+    if brightness is None and hs_color is None and color_temp_kelvin is None:
+        return None
+
+    return FadeStep(brightness=brightness, hs_color=hs_color, color_temp_kelvin=color_temp_kelvin)
+
+
 def _resolve_start_brightness(
     params: FadeParams, state: dict[str, Any], min_brightness: int = 1
 ) -> int:
@@ -452,6 +510,19 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
     # Track last emitted step to skip duplicates caused by easing (private)
     _last_emitted_step: FadeStep | None = field(default=None, repr=False)
 
+    # Optional pre-step: applies explicit "from" values before the fade begins.
+    # Set when the user provides from values that differ from the light's actual state.
+    from_step: FadeStep | None = field(default=None, repr=False)
+
+    @property
+    def has_fade(self) -> bool:
+        """Whether there are fade steps to iterate (start/end differ on some dimension)."""
+        return (
+            self.start_brightness is not None
+            or self.start_hs is not None
+            or self.start_mireds is not None
+        )
+
     @classmethod
     def resolve(
         cls,
@@ -595,13 +666,23 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
                 end_brightness,
             )
 
-        # Check if anything is changing
+        # Build from_step if explicit from values differ from current state
+        from_step = (
+            _build_from_step(params, state_attributes, min_brightness)
+            if params.has_from_target()
+            else None
+        )
+
+        # Check if anything is changing (from → to interpolation)
         brightness_changing = end_brightness is not None and start_brightness != end_brightness
         hs_changing = end_hs is not None and start_hs != end_hs
         mireds_changing = end_mireds is not None and start_mireds != end_mireds
 
         if not brightness_changing and not hs_changing and not mireds_changing:
-            return None  # Nothing to fade
+            if from_step is None:
+                return None  # Nothing to do at all
+            # Only a from step, no fade — return FadeChange with just the from_step
+            return cls(from_step=from_step)
 
         # Detect hybrid transitions and configure FadeChange accordingly
         hybrid_direction = None
@@ -679,6 +760,7 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             _crossover_mireds=crossover_mireds,
             _easing_func=easing_func,
             easing_name=easing_name,
+            from_step=from_step,
         )
 
         # Calculate crossover step if hybrid
