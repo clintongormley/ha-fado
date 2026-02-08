@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.components import persistent_notification
-from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
+from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 

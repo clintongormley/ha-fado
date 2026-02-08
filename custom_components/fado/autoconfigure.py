@@ -18,6 +18,7 @@ from homeassistant.const import (
     STATE_ON,
 )
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     AUTOCONFIGURE_ITERATIONS,
@@ -149,7 +150,7 @@ async def _async_restore_light_state(
             await _async_turn_on(hass, entity_id, brightness=original_brightness)
         else:
             await _async_turn_off(hass, entity_id)
-    except Exception:  # noqa: BLE001
+    except HomeAssistantError:
         _LOGGER.warning("%s: Failed to restore original state", entity_id)
 
 

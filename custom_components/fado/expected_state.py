@@ -296,7 +296,7 @@ class ExpectedState:
         # Check saturation (simple range)
         min_sat = min(from_sat, to_sat)
         max_sat = max(from_sat, to_sat)
-        if not (min_sat <= actual_sat <= max_sat):
+        if not min_sat <= actual_sat <= max_sat:
             return False
 
         # Check hue (handle wraparound)
