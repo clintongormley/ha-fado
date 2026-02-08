@@ -277,12 +277,7 @@ class FadeCoordinator:
         min_step_delay_ms: int,
         cancel_event: asyncio.Event,
     ) -> None:
-        """Execute the fade operation using FadeChange iterator pattern.
-
-        Uses _resolve_fade to create a single FadeChange that handles all fade types
-        including hybrid transitions internally. The iterator generates steps
-        seamlessly across mode switches.
-        """
+        """Execute the fade operation using FadeChange iterator pattern."""
         state = self.hass.states.get(entity_id)
         if not state:
             _LOGGER.warning("%s: Entity not found", entity_id)
@@ -312,33 +307,33 @@ class FadeCoordinator:
             _LOGGER.debug("%s: Nothing to fade", entity_id)
             return
 
-        total_steps = fade.step_count()
+        # Phase 1: Apply from step if present (sets starting state immediately)
+        await self._apply_from_step(entity_id, fade)
+
+        # Phase 2: Execute fade steps (if there's an actual fade to do)
+        if fade.has_fade:
+            native_transitions = light_config.get("native_transitions") is True
+            self._log_fade_start(entity_id, fade, native_transitions)
+            await self._run_fade_loop(entity_id, fade, cancel_event, native_transitions)
+
+        await self._finalize_fade(entity_id, fade, cancel_event)
+
+    async def _apply_from_step(self, entity_id: str, fade: FadeChange) -> None:
+        """Apply the from step if present (sets starting state immediately)."""
+        if fade.from_step is None:
+            return
+        _LOGGER.debug("%s: Applying from step: %s", entity_id, fade.from_step)
+        await self._track_and_apply_step(entity_id, fade.from_step)
+
+    async def _run_fade_loop(
+        self,
+        entity_id: str,
+        fade: FadeChange,
+        cancel_event: asyncio.Event,
+        native_transitions: bool,
+    ) -> None:
+        """Iterate through fade steps, applying each with expected state tracking."""
         delay_ms = fade.delay_ms()
-
-        # Check if light supports native transitions and if "from" was specified
-        native_transitions = light_config.get("native_transitions") is True
-        has_from = fade_params.has_from_target()
-
-        _LOGGER.info(
-            "%s: Fading in %s steps, (brightness=%s->%s, hs=%s->%s, mireds=%s->%s, "
-            "easing=%s, hybrid=%s, crossover_step=%s, delay_ms=%s, native_transitions=%s)",
-            entity_id,
-            total_steps,
-            fade.start_brightness,
-            fade.end_brightness,
-            fade.start_hs,
-            fade.end_hs,
-            fade.start_mireds,
-            fade.end_mireds,
-            fade.easing_name,
-            fade.hybrid_direction,
-            fade.crossover_step,
-            delay_ms,
-            native_transitions,
-        )
-
-        # Execute fade steps
-        step_num = 0
         prev_step: FadeStep | None = None
 
         while fade.has_next():
@@ -348,34 +343,12 @@ class FadeCoordinator:
                 return
 
             step = fade.next_step()
-            step_num += 1
-
-            # Determine if using transition for THIS step
-            use_transition = native_transitions and not (step_num == 1 and has_from)
-
-            # Build expected values - track ranges when using transitions
-            if use_transition and prev_step is not None:
-                # Range-based: track transition from prev_step -> step
-                expected = ExpectedValues(
-                    brightness=step.brightness,
-                    from_brightness=prev_step.brightness,
-                    hs_color=step.hs_color,
-                    from_hs_color=prev_step.hs_color,
-                    color_temp_kelvin=step.color_temp_kelvin,
-                    from_color_temp_kelvin=prev_step.color_temp_kelvin,
-                )
-            else:
-                # Point-based: no from values
-                expected = ExpectedValues(
-                    brightness=step.brightness,
-                    hs_color=step.hs_color,
-                    color_temp_kelvin=step.color_temp_kelvin,
-                )
-            self._add_expected_values(entity_id, expected)
-
-            await self._apply_step(entity_id, step, use_transition=use_transition)
-
-            # Save for next iteration
+            await self._track_and_apply_step(
+                entity_id,
+                step,
+                prev_step=prev_step if native_transitions else None,
+                use_transition=native_transitions,
+            )
             prev_step = step
 
             if cancel_event.is_set():
@@ -385,12 +358,17 @@ class FadeCoordinator:
             if fade.has_next():
                 await _sleep_remaining_step_time(step_start, delay_ms)
 
-        # Wait for any late events and clear expected state
+    async def _finalize_fade(
+        self,
+        entity_id: str,
+        fade: FadeChange,
+        cancel_event: asyncio.Event,
+    ) -> None:
+        """Flush expected state and store final brightness after fade completion."""
         entity = self.get_entity(entity_id)
         if entity:
             await entity.flush_and_clear_expected_state()
 
-        # Store final brightness after successful fade completion
         if not cancel_event.is_set():
             final_brightness = fade.end_brightness
 
@@ -403,6 +381,57 @@ class FadeCoordinator:
             else:
                 _LOGGER.info("%s: Fade complete", entity_id)
 
+    def _log_fade_start(self, entity_id: str, fade: FadeChange, native_transitions: bool) -> None:
+        """Log fade parameters at start of fade loop."""
+        _LOGGER.info(
+            "%s: Fading in %s steps, (brightness=%s->%s, hs=%s->%s, mireds=%s->%s, "
+            "easing=%s, hybrid=%s, crossover_step=%s, delay_ms=%s, native_transitions=%s)",
+            entity_id,
+            fade.step_count(),
+            fade.start_brightness,
+            fade.end_brightness,
+            fade.start_hs,
+            fade.end_hs,
+            fade.start_mireds,
+            fade.end_mireds,
+            fade.easing_name,
+            fade.hybrid_direction,
+            fade.crossover_step,
+            fade.delay_ms(),
+            native_transitions,
+        )
+
+    async def _track_and_apply_step(
+        self,
+        entity_id: str,
+        step: FadeStep,
+        *,
+        prev_step: FadeStep | None = None,
+        use_transition: bool = False,
+    ) -> None:
+        """Register expected values for a step and apply it to the light.
+
+        When prev_step is provided, range-based expected values are registered
+        (for native transitions). Otherwise, point-based values are used.
+        """
+        if prev_step is not None:
+            expected = ExpectedValues(
+                brightness=step.brightness,
+                from_brightness=prev_step.brightness,
+                hs_color=step.hs_color,
+                from_hs_color=prev_step.hs_color,
+                color_temp_kelvin=step.color_temp_kelvin,
+                from_color_temp_kelvin=prev_step.color_temp_kelvin,
+            )
+        else:
+            expected = ExpectedValues(
+                brightness=step.brightness,
+                hs_color=step.hs_color,
+                color_temp_kelvin=step.color_temp_kelvin,
+            )
+        self._add_expected_values(entity_id, expected)
+        await self._apply_step(entity_id, step, use_transition=use_transition)
+
     async def _apply_step(
         self,
         entity_id: str,
@@ -410,15 +439,9 @@ class FadeCoordinator:
         *,
         use_transition: bool = False,
     ) -> None:
-        """Apply a fade step to a light.
+        """Apply a fade step to a light via service call.
 
-        Handles brightness, hs_color, and color_temp_kelvin in a single service call.
         If brightness is 0, turns off the light. If step is empty, does nothing.
-
-        Args:
-            entity_id: Light entity ID
-            step: The fade step to apply
-            use_transition: If True, add transition: 0.1 to smooth the step
         """
         # Build service data based on what's in the step
         service_data: dict = {ATTR_ENTITY_ID: entity_id}
@@ -569,10 +592,6 @@ class FadeCoordinator:
         The queue structure is: [old_state, intended_1, intended_2, ...]
         - First entry is the state before the first manual intervention
         - Subsequent entries are intended states from manual interventions
-
-        When processing, we compare adjacent states to determine transitions
-        (e.g., OFF->ON vs ON->ON) and only store original brightness when
-        the previous state had non-zero brightness.
         """
         try:
             _LOGGER.debug(
@@ -585,7 +604,6 @@ class FadeCoordinator:
             # Loop until no more intended states are queued
             # (handles case where another manual event arrives during restore)
             while True:
-                # Get the queue for this entity
                 queue = entity.intended_queue
 
                 # Need at least 2 entries: previous state + intended state
@@ -594,13 +612,9 @@ class FadeCoordinator:
                     entity.intended_queue = []
                     break
 
-                # Get the most recent intended state (last in queue)
+                # Pop the most recent pair and keep intended as new "previous"
                 intended_state = queue[-1]
-                # Get the previous state (second to last) for comparison
                 previous_state = queue[-2]
-
-                # Remove intended_state and all previous states from queue
-                # Keep only the intended_state as the new "previous" for any future events
                 entity.intended_queue = [intended_state]
 
                 intended_brightness = self._get_intended_brightness(
@@ -610,115 +624,130 @@ class FadeCoordinator:
                 if intended_brightness is None:
                     break
 
-                # Store as new original brightness only if:
-                # - Previous state had non-zero brightness (was ON, not coming from OFF)
-                # - Intended brightness is > 0 (not turning off)
-                # - Brightness is actually changing
-                # This ensures we track the user's intended brightness for OFF->ON restoration
-                previous_brightness = (
-                    previous_state.attributes.get(ATTR_BRIGHTNESS, 0)
-                    if previous_state and previous_state.state != STATE_OFF
-                    else 0
+                self._maybe_store_intended_brightness(
+                    entity_id, previous_state, intended_brightness
                 )
-                if (
-                    previous_brightness > 0
-                    and intended_brightness > 0
-                    and intended_brightness != previous_brightness
-                ):
-                    _LOGGER.debug(
-                        "%s: Storing original brightness (%s) from transition %s->%s",
-                        entity_id,
-                        intended_brightness,
-                        previous_brightness,
-                        intended_brightness,
-                    )
-                    self.store_orig_brightness(entity_id, intended_brightness)
 
-                # Get current state after fade cleanup
                 current_state = self.hass.states.get(entity_id)
                 if not current_state:
                     _LOGGER.debug("%s: No current state found, exiting", entity_id)
                     break
 
-                current_brightness = current_state.attributes.get(ATTR_BRIGHTNESS) or 0
-                if current_state.state == STATE_OFF:
-                    current_brightness = 0
-
-                # Handle OFF case
-                if intended_brightness == 0:
-                    if current_brightness != 0:
-                        _LOGGER.info("%s: Restoring to off as intended", entity_id)
-                        self._add_expected_brightness(entity_id, 0)
-                        await self.hass.services.async_call(
-                            LIGHT_DOMAIN,
-                            SERVICE_TURN_OFF,
-                            {ATTR_ENTITY_ID: entity_id},
-                            blocking=True,
-                        )
-                        await entity.wait_for_expected_state_flush()
-                    else:
-                        _LOGGER.debug("%s: already off, nothing to restore", entity_id)
-                    continue  # Check for more intended states
-
-                # Handle ON case - check brightness and colors
-                # Build service data for restoration
-                service_data: dict = {ATTR_ENTITY_ID: entity_id}
-                need_restore = False
-
-                # Check brightness
-                if current_brightness != intended_brightness:
-                    service_data[ATTR_BRIGHTNESS] = intended_brightness
-                    need_restore = True
-
-                # Get intended colors from manual intervention (intended_state)
-                intended_hs = intended_state.attributes.get(HA_ATTR_HS_COLOR)
-                intended_kelvin = intended_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
-
-                # Get current colors
-                current_hs = current_state.attributes.get(HA_ATTR_HS_COLOR)
-                current_kelvin = current_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
-
-                # Check HS color
-                if intended_hs and intended_hs != current_hs:
-                    service_data[HA_ATTR_HS_COLOR] = intended_hs
-                    need_restore = True
-
-                # Check color temp (mutually exclusive with HS)
-                if (
-                    intended_kelvin
-                    and intended_kelvin != current_kelvin
-                    and HA_ATTR_HS_COLOR not in service_data
-                ):
-                    service_data[HA_ATTR_COLOR_TEMP_KELVIN] = intended_kelvin
-                    need_restore = True
-
-                if need_restore:
-                    _LOGGER.info("%s: Restoring intended state: %s", entity_id, service_data)
-
-                    # Track expected values (ExpectedValues uses kelvin)
-                    self._add_expected_values(
-                        entity_id,
-                        ExpectedValues(
-                            brightness=service_data.get(ATTR_BRIGHTNESS),
-                            hs_color=service_data.get(HA_ATTR_HS_COLOR),
-                            color_temp_kelvin=service_data.get(HA_ATTR_COLOR_TEMP_KELVIN),
-                        ),
-                    )
-
-                    await self.hass.services.async_call(
-                        LIGHT_DOMAIN,
-                        SERVICE_TURN_ON,
-                        service_data,
-                        blocking=True,
-                    )
-                    await entity.wait_for_expected_state_flush()
-                else:
-                    _LOGGER.debug("%s: already in intended state, nothing to restore", entity_id)
+                await self._restore_single_intended(
+                    entity_id, entity, intended_state, intended_brightness, current_state
+                )
         finally:
-            # Clean up restore task tracking
             entity = self.get_entity(entity_id)
             if entity is not None:
                 entity.restore_task = None
+
+    def _maybe_store_intended_brightness(
+        self,
+        entity_id: str,
+        previous_state: State | None,
+        intended_brightness: int,
+    ) -> None:
+        """Store intended brightness as original if this is an ON->ON brightness change."""
+        previous_brightness = (
+            previous_state.attributes.get(ATTR_BRIGHTNESS, 0)
+            if previous_state and previous_state.state != STATE_OFF
+            else 0
+        )
+        if (
+            previous_brightness > 0
+            and intended_brightness > 0
+            and intended_brightness != previous_brightness
+        ):
+            _LOGGER.debug(
+                "%s: Storing original brightness (%s) from transition %s->%s",
+                entity_id,
+                intended_brightness,
+                previous_brightness,
+                intended_brightness,
+            )
+            self.store_orig_brightness(entity_id, intended_brightness)
+
+    async def _restore_single_intended(
+        self,
+        entity_id: str,
+        entity: EntityFadeState,
+        intended_state: State,
+        intended_brightness: int,
+        current_state: State,
+    ) -> None:
+        """Restore a single intended state, comparing against current state."""
+        current_brightness = current_state.attributes.get(ATTR_BRIGHTNESS) or 0
+        if current_state.state == STATE_OFF:
+            current_brightness = 0
+
+        # Handle OFF case
+        if intended_brightness == 0:
+            if current_brightness != 0:
+                _LOGGER.info("%s: Restoring to off as intended", entity_id)
+                self._add_expected_brightness(entity_id, 0)
+                await self.hass.services.async_call(
+                    LIGHT_DOMAIN,
+                    SERVICE_TURN_OFF,
+                    {ATTR_ENTITY_ID: entity_id},
+                    blocking=True,
+                )
+                await entity.wait_for_expected_state_flush()
+            else:
+                _LOGGER.debug("%s: already off, nothing to restore", entity_id)
+            return
+
+        # Handle ON case — build service data for anything that differs
+        service_data = self._build_restore_service_data(
+            entity_id, intended_state, intended_brightness, current_state, current_brightness
+        )
+
+        if len(service_data) > 1:  # More than just entity_id
+            _LOGGER.info("%s: Restoring intended state: %s", entity_id, service_data)
+            self._add_expected_values(
+                entity_id,
+                ExpectedValues(
+                    brightness=service_data.get(ATTR_BRIGHTNESS),
+                    hs_color=service_data.get(HA_ATTR_HS_COLOR),
+                    color_temp_kelvin=service_data.get(HA_ATTR_COLOR_TEMP_KELVIN),
+                ),
+            )
+            await self.hass.services.async_call(
+                LIGHT_DOMAIN,
+                SERVICE_TURN_ON,
+                service_data,
+                blocking=True,
+            )
+            await entity.wait_for_expected_state_flush()
+        else:
+            _LOGGER.debug("%s: already in intended state, nothing to restore", entity_id)
+
+    @staticmethod
+    def _build_restore_service_data(
+        entity_id: str,
+        intended_state: State,
+        intended_brightness: int,
+        current_state: State,
+        current_brightness: int,
+    ) -> dict:
+        """Build service data dict with only the attributes that need restoring."""
+        service_data: dict = {ATTR_ENTITY_ID: entity_id}
+
+        if current_brightness != intended_brightness:
+            service_data[ATTR_BRIGHTNESS] = intended_brightness
+
+        intended_hs = intended_state.attributes.get(HA_ATTR_HS_COLOR)
+        current_hs = current_state.attributes.get(HA_ATTR_HS_COLOR)
+        if intended_hs and intended_hs != current_hs:
+            service_data[HA_ATTR_HS_COLOR] = intended_hs
+
+        # Color temp is mutually exclusive with HS
+        if HA_ATTR_HS_COLOR not in service_data:
+            intended_kelvin = intended_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
+            current_kelvin = current_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
+            if intended_kelvin and intended_kelvin != current_kelvin:
+                service_data[HA_ATTR_COLOR_TEMP_KELVIN] = intended_kelvin
+
+        return service_data
 
     def _get_intended_brightness(
         self,

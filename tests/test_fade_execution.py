@@ -910,12 +910,13 @@ async def test_native_transitions_skips_first_step_with_from(
     )
 
     turn_on_calls = _get_turn_on_calls(service_calls)
-    assert len(turn_on_calls) >= 2
+    assert len(turn_on_calls) >= 3  # from step + at least 2 fade steps
 
-    # First call should NOT have transition (jumping to "from" position)
+    # First call is the from-step (applied separately, no transition)
     assert "transition" not in turn_on_calls[0].data
+    assert turn_on_calls[0].data.get("brightness") == 51  # 20% of 255
 
-    # Subsequent calls should have transition: 0.1
+    # All fade steps should have transition
     for call in turn_on_calls[1:]:
         assert call.data.get("transition") == 0.01
 
