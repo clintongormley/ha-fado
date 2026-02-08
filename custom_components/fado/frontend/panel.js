@@ -317,6 +317,26 @@ class FadoPanel extends LitElement {
         color: var(--secondary-text-color);
       }
 
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 16px;
+        color: var(--secondary-text-color);
+      }
+
+      .empty-state ha-icon {
+        --mdc-icon-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .empty-state .empty-message {
+        font-size: 20px;
+        font-weight: 400;
+      }
+
       .testing-spinner {
         display: flex;
         justify-content: center;
@@ -976,6 +996,19 @@ class FadoPanel extends LitElement {
 
     if (!this._data || !this._data.areas) {
       return html`${this._renderHeader()}<p>No lights found.</p>`;
+    }
+
+    const totalLights = this._data.areas.reduce((sum, area) => sum + area.lights.length, 0);
+    if (totalLights === 0) {
+      return html`
+        <div class="header-row">
+          <h1>Fado</h1>
+        </div>
+        <div class="empty-state">
+          <ha-icon icon="mdi:lightbulb-off-outline"></ha-icon>
+          <div class="empty-message">No active lights available</div>
+        </div>
+      `;
     }
 
     return html`
