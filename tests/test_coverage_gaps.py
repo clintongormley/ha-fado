@@ -5,10 +5,10 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light.const import ColorMode
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
@@ -176,91 +176,172 @@ class TestExpectedValuesStr:
         assert "empty" in result
 
 
-class TestFadeParamsValidationErrors:
-    """Test FadeParams validation error paths."""
+class TestSchemaValidation:
+    """Test voluptuous schema validation for the fade_lights service."""
 
-    def test_unknown_top_level_parameter(self) -> None:
-        """Test error for unknown top-level parameter (line 162)."""
-        with pytest.raises(ServiceValidationError, match="Unknown parameter"):
-            FadeParams.from_service_data(
+    async def test_rejects_unknown_top_level_parameter(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects unknown top-level parameters."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
                     ATTR_BRIGHTNESS_PCT: 50,
-                    "invalid_top_level_param": "value",  # Unknown param at top level
-                }
+                    "invalid_top_level_param": "value",
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_unknown_from_parameter(self) -> None:
-        """Test error for unknown parameter in 'from' dict (line 173)."""
-        with pytest.raises(ServiceValidationError, match="Unknown parameter.*'from'"):
-            FadeParams.from_service_data(
+    async def test_rejects_unknown_from_parameter(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects unknown parameters in from: block."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
                     ATTR_BRIGHTNESS_PCT: 50,
                     ATTR_FROM: {
                         ATTR_BRIGHTNESS_PCT: 0,
-                        "invalid_param": "value",  # Unknown param in from
+                        "invalid_param": "value",
                     },
-                }
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_brightness_out_of_range(self) -> None:
-        """Test error for brightness outside 0-100 (line 195)."""
-        with pytest.raises(ServiceValidationError, match="Brightness must be between"):
-            FadeParams.from_service_data(
+    async def test_rejects_brightness_pct_out_of_range(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects brightness_pct above 100."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_BRIGHTNESS_PCT: 150,  # > 100 is invalid
-                }
+                    ATTR_BRIGHTNESS_PCT: 150,
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_rgbw_value_out_of_range(self) -> None:
-        """Test error for RGBW value outside 0-255 (line 224)."""
-        with pytest.raises(ServiceValidationError, match="RGBW"):
-            FadeParams.from_service_data(
+    async def test_rejects_rgbw_value_out_of_range(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects RGBW values outside 0-255."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_RGBW_COLOR: [100, 200, 300, 50],  # 300 is invalid
-                }
+                    ATTR_RGBW_COLOR: [100, 200, 300, 50],
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_rgbww_value_out_of_range(self) -> None:
-        """Test error for RGBWW value outside 0-255 (line 232)."""
-        with pytest.raises(ServiceValidationError, match="RGBWW"):
-            FadeParams.from_service_data(
+    async def test_rejects_rgbww_value_out_of_range(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects RGBWW values outside 0-255."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_RGBWW_COLOR: [100, 200, 50, 300, 50],  # 300 is invalid
-                }
+                    ATTR_RGBWW_COLOR: [100, 200, 50, 300, 50],
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_xy_value_out_of_range(self) -> None:
-        """Test error for XY value outside 0-1 (line 240)."""
-        with pytest.raises(ServiceValidationError, match="XY"):
-            FadeParams.from_service_data(
+    async def test_rejects_xy_value_out_of_range(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects XY values outside 0-1."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_XY_COLOR: [0.5, 1.5],  # 1.5 is invalid
-                }
+                    ATTR_XY_COLOR: [0.5, 1.5],
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_rgbw_negative_value(self) -> None:
-        """Test error for negative RGBW value."""
-        with pytest.raises(ServiceValidationError, match="RGBW"):
-            FadeParams.from_service_data(
+    async def test_rejects_rgbw_negative_value(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects negative RGBW values."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_RGBW_COLOR: [-1, 200, 100, 50],  # -1 is invalid
-                }
+                    ATTR_RGBW_COLOR: [-1, 200, 100, 50],
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_rgbww_negative_value(self) -> None:
-        """Test error for negative RGBWW value."""
-        with pytest.raises(ServiceValidationError, match="RGBWW"):
-            FadeParams.from_service_data(
+    async def test_rejects_rgbww_negative_value(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects negative RGBWW values."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_RGBWW_COLOR: [100, -10, 50, 50, 50],  # -10 is invalid
-                }
+                    ATTR_RGBWW_COLOR: [100, -10, 50, 50, 50],
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )
 
-    def test_xy_negative_value(self) -> None:
-        """Test error for negative XY value."""
-        with pytest.raises(ServiceValidationError, match="XY"):
-            FadeParams.from_service_data(
+    async def test_rejects_xy_negative_value(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        """Test schema rejects negative XY values."""
+        with pytest.raises(vol.Invalid):
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
                 {
-                    ATTR_XY_COLOR: [-0.1, 0.5],  # -0.1 is invalid
-                }
+                    ATTR_XY_COLOR: [-0.1, 0.5],
+                },
+                target={"entity_id": mock_light_entity},
+                blocking=True,
             )

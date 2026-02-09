@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
+import voluptuous as vol
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
@@ -31,7 +31,7 @@ class TestColorParameterValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects calls with multiple color parameters."""
-        with pytest.raises(ServiceValidationError, match="Only one color parameter"):
+        with pytest.raises(vol.Invalid, match="exclusion"):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -50,7 +50,7 @@ class TestColorParameterValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects hs_color with rgb_color."""
-        with pytest.raises(ServiceValidationError, match="Only one color parameter"):
+        with pytest.raises(vol.Invalid, match="exclusion"):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -318,7 +318,7 @@ class TestFromParameter:
         mock_light_entity: str,
     ) -> None:
         """Test from: parameter validates only one color param."""
-        with pytest.raises(ServiceValidationError, match="Only one color parameter"):
+        with pytest.raises(vol.Invalid, match="exclusion"):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -344,7 +344,7 @@ class TestValueRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects hue outside 0-360."""
-        with pytest.raises(ServiceValidationError, match="[Hh]ue"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -362,7 +362,7 @@ class TestValueRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects saturation outside 0-100."""
-        with pytest.raises(ServiceValidationError, match="[Ss]aturation"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -380,7 +380,7 @@ class TestValueRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects RGB values outside 0-255."""
-        with pytest.raises(ServiceValidationError, match="RGB"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -398,7 +398,7 @@ class TestValueRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects color temp outside reasonable range."""
-        with pytest.raises(ServiceValidationError, match="[Cc]olor temp"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
