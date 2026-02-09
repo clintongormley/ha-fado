@@ -102,9 +102,10 @@ class ExpectedState:
         self.values = [(v, ts) for v, ts in self.values if now - ts <= STALE_THRESHOLD]
 
         _LOGGER.debug(
-            "%s: -> after prune count=%d",
+            "%s: -> after prune count=%d values=[%s]",
             self.entity_id,
             len(self.values),
+            ", ".join(str(v) for v, _ in self.values),
         )
 
         if self._condition is None:
@@ -142,9 +143,10 @@ class ExpectedState:
             The matched ExpectedValues, or None if no match.
         """
         _LOGGER.debug(
-            "%s: match_and_remove%s count=%d",
+            "%s: match_and_remove%s old=%s count=%d",
             self.entity_id,
             actual,
+            old,
             len(self.values),
         )
 
