@@ -63,6 +63,29 @@ class ExpectedValues:
                 parts.append(f"color_temp_kelvin={self.color_temp_kelvin}")
         return "(" + (", ".join(parts) if parts else "empty") + ")"
 
+    @staticmethod
+    def format_transition(old: ExpectedValues | None, actual: ExpectedValues) -> str:
+        """Format old->actual as a transition string for logging."""
+        parts = []
+        if actual.brightness is not None:
+            if old is not None and old.brightness is not None:
+                parts.append(f"brightness={old.brightness}->{actual.brightness}")
+            else:
+                parts.append(f"brightness={actual.brightness}")
+        if actual.hs_color is not None:
+            if old is not None and old.hs_color is not None:
+                parts.append(f"hs_color={old.hs_color}->{actual.hs_color}")
+            else:
+                parts.append(f"hs_color={actual.hs_color}")
+        if actual.color_temp_kelvin is not None:
+            if old is not None and old.color_temp_kelvin is not None:
+                parts.append(
+                    f"color_temp_kelvin={old.color_temp_kelvin}->{actual.color_temp_kelvin}"
+                )
+            else:
+                parts.append(f"color_temp_kelvin={actual.color_temp_kelvin}")
+        return "(" + (", ".join(parts) if parts else "empty") + ")"
+
 
 @dataclass
 class ExpectedState:
@@ -143,10 +166,9 @@ class ExpectedState:
             The matched ExpectedValues, or None if no match.
         """
         _LOGGER.debug(
-            "%s: match_and_remove%s old=%s count=%d",
+            "%s: match_and_remove %s count=%d",
             self.entity_id,
-            actual,
-            old,
+            ExpectedValues.format_transition(old, actual),
             len(self.values),
         )
 

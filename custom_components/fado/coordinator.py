@@ -458,8 +458,6 @@ class FadeCoordinator:
         if use_transition:
             service_data["transition"] = NATIVE_TRANSITION_MS / 1000
 
-        _LOGGER.debug("%s", service_data)
-
         # Only call service if there's something to set (beyond entity_id)
         if len(service_data) > 1:
             await self.hass.services.async_call(
