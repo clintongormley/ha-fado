@@ -3,7 +3,7 @@
 DOMAIN = "fado"
 
 # Services
-SERVICE_FADO = "fado"
+SERVICE_FADE_LIGHTS = "fade_lights"
 
 # Service attributes
 ATTR_BRIGHTNESS = "brightness"
@@ -100,8 +100,8 @@ KELVIN_TOLERANCE = 100  # kelvin
 # Timeout for waiting on fade cancellation (seconds)
 FADE_CANCEL_TIMEOUT_S = 2.0
 
-# Time before an expected brightness value is considered stale (seconds)
-STALE_THRESHOLD = 5.0
+# Time before an expected state value is considered stale (seconds)
+STALE_THRESHOLD = 3.0
 
 # Planckian locus lookup table: mireds -> (hue, saturation)
 # Approximates the curve of blackbody radiation through HS color space.
@@ -143,6 +143,17 @@ NATIVE_TRANSITION_MS = 10  # Transition time added to turn_on for native_transit
 AUTOCONFIGURE_ITERATIONS = 10  # Number of times to test each light
 AUTOCONFIGURE_TIMEOUT_S = 5  # Timeout for each state change wait (seconds)
 AUTOCONFIGURE_MAX_PARALLEL = 5  # Maximum lights to test in parallel
+
+# Valid easing curve names for the fade_lights service
+VALID_EASING = [
+    "auto",
+    "linear",
+    "ease_in_quad",
+    "ease_in_cubic",
+    "ease_out_quad",
+    "ease_out_cubic",
+    "ease_in_out_sine",
+]
 
 # Notification for unconfigured lights
 NOTIFICATION_ID = "fado_unconfigured"

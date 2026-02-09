@@ -312,7 +312,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(0.5)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 0.5)
         assert result is not None
         assert result[0] == 50.0  # hue
         assert result[1] == 75.0  # saturation
@@ -325,7 +325,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(0.5)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 0.5)
         assert result is not None
         # Halfway between 350 and 20 via 0 is 5.0
         assert result[0] == 5.0
@@ -339,7 +339,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(1.0)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 1.0)
         assert result == (20.0, 80.0)
 
     def test_interpolate_hs_none_when_no_hs(self) -> None:
@@ -350,7 +350,7 @@ class TestFadeChangeInterpolateHS:
             transition_ms=1000,
             min_step_delay_ms=100,
         )
-        result = change._interpolate_hs(0.5)
+        result = change._interpolate_hs_between(change.start_hs, change.end_hs, 0.5)
         assert result is None
 
 
@@ -556,7 +556,7 @@ class TestFadeChangeEasing:
         # First diff: steps[0].brightness - 0 (start)
         # Since brightness 1 is skipped to 2, first step is at eased position
         first_step_brightness = brightnesses[0]
-        last_diff = brightnesses[-1] - brightnesses[-2]
+        brightnesses[-1] - brightnesses[-2]
 
         # ease_out_quad at t=0.2 gives 0.36, so first step ~36 brightness
         # Linear would give 20. So ease_out should have larger first step.
@@ -938,8 +938,8 @@ class TestFadeChangeResolveMinBrightness:
         assert fade is not None
         assert fade.start_brightness == 15  # Uses min_brightness for 1%
 
-    def test_both_endpoints_clamped_same_value_returns_none(self) -> None:
-        """Test that when both endpoints clamp to same value, nothing to fade."""
+    def test_both_endpoints_clamped_same_value_returns_from_step(self) -> None:
+        """When both endpoints clamp to same value, from_step returned if state differs."""
         from custom_components.fado.fade_params import FadeParams
 
         params = FadeParams(
@@ -954,9 +954,12 @@ class TestFadeChangeResolveMinBrightness:
 
         fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
 
-        # Both should be clamped to min_brightness (10)
-        # Since they're the same after clamping, nothing to fade
-        assert fade is None  # No change when both endpoints are the same
+        # Both should be clamped to min_brightness (10), so no fade (from==to)
+        # But from (10) != actual state (100), so a from_step is returned
+        assert fade is not None
+        assert fade.from_step is not None
+        assert fade.from_step.brightness == 10
+        assert not fade.has_fade
 
     def test_end_brightness_zero_not_clamped(self) -> None:
         """Test that end brightness of 0 is NOT clamped (allows fade to off)."""
@@ -994,7 +997,9 @@ class TestFadeChangeResolveMinBrightness:
         while fade.has_next():
             step = fade.next_step()
             assert step.brightness is not None
-            assert step.brightness >= 10, f"Step brightness {step.brightness} is below min_brightness"
+            assert step.brightness >= 10, (
+                f"Step brightness {step.brightness} is below min_brightness"
+            )
 
     def test_default_min_brightness_is_1(self) -> None:
         """Test that default min_brightness is 1 (backward compatibility)."""
