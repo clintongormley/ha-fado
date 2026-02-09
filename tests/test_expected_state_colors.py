@@ -349,6 +349,64 @@ class TestExpectedStateColorMatching:
         assert matched is None
 
 
+class TestExpectedValuesFormatting:
+    """Test ExpectedValues __str__ and format_transition."""
+
+    def test_str_brightness_only(self) -> None:
+        assert str(ExpectedValues(brightness=100)) == "(brightness=100)"
+
+    def test_str_brightness_with_from(self) -> None:
+        assert str(ExpectedValues(brightness=100, from_brightness=10)) == "(brightness=10->100)"
+
+    def test_str_hs_color_only(self) -> None:
+        assert str(ExpectedValues(hs_color=(180.0, 50.0))) == "(hs_color=(180.0, 50.0))"
+
+    def test_str_hs_color_with_from(self) -> None:
+        ev = ExpectedValues(hs_color=(180.0, 50.0), from_hs_color=(100.0, 30.0))
+        assert str(ev) == "(hs_color=(100.0, 30.0)->(180.0, 50.0))"
+
+    def test_str_kelvin_only(self) -> None:
+        assert str(ExpectedValues(color_temp_kelvin=4000)) == "(color_temp_kelvin=4000)"
+
+    def test_str_kelvin_with_from(self) -> None:
+        ev = ExpectedValues(color_temp_kelvin=6500, from_color_temp_kelvin=2700)
+        assert str(ev) == "(color_temp_kelvin=2700->6500)"
+
+    def test_str_empty(self) -> None:
+        assert str(ExpectedValues()) == "(empty)"
+
+    def test_str_multi_dimension(self) -> None:
+        ev = ExpectedValues(brightness=200, hs_color=(120.0, 80.0))
+        assert str(ev) == "(brightness=200, hs_color=(120.0, 80.0))"
+
+    def test_format_transition_with_old(self) -> None:
+        old = ExpectedValues(brightness=28, hs_color=(240.0, 100.0))
+        actual = ExpectedValues(brightness=41, hs_color=(240.0, 100.0))
+        result = ExpectedValues.format_transition(old, actual)
+        assert result == "(brightness=28->41, hs_color=(240.0, 100.0)->(240.0, 100.0))"
+
+    def test_format_transition_without_old(self) -> None:
+        actual = ExpectedValues(brightness=41)
+        result = ExpectedValues.format_transition(None, actual)
+        assert result == "(brightness=41)"
+
+    def test_format_transition_old_missing_dimension(self) -> None:
+        old = ExpectedValues(brightness=28)
+        actual = ExpectedValues(brightness=41, hs_color=(180.0, 50.0))
+        result = ExpectedValues.format_transition(old, actual)
+        assert result == "(brightness=28->41, hs_color=(180.0, 50.0))"
+
+    def test_format_transition_kelvin(self) -> None:
+        old = ExpectedValues(color_temp_kelvin=3000)
+        actual = ExpectedValues(color_temp_kelvin=4500)
+        result = ExpectedValues.format_transition(old, actual)
+        assert result == "(color_temp_kelvin=3000->4500)"
+
+    def test_format_transition_empty(self) -> None:
+        result = ExpectedValues.format_transition(None, ExpectedValues())
+        assert result == "(empty)"
+
+
 class TestOldStateValidation:
     """Test that range matches require old state to be consistent with the transition."""
 
@@ -566,3 +624,100 @@ class TestOldStateValidation:
         matched = expected_state.match_and_remove(actual)
         assert matched is not None
         assert len(expected_state.values) == 0
+
+
+class TestEdgeCases:
+    """Test edge cases for match logic coverage."""
+
+    def test_brightness_zero_exact_match_with_from(self) -> None:
+        """Fade to off with native transition: brightness=0 target with from_brightness."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(brightness=0, from_brightness=50))
+
+        actual = ExpectedValues(brightness=0)
+        old = ExpectedValues(brightness=30)
+
+        matched = expected_state.match_and_remove(actual, old=old)
+        assert matched is not None
+        assert len(expected_state.values) == 0  # Exact match
+
+    def test_brightness_zero_point_match(self) -> None:
+        """Fade to off without from_*: brightness=0 point match."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(brightness=0))
+
+        actual = ExpectedValues(brightness=0)
+        matched = expected_state.match_and_remove(actual)
+        assert matched is not None
+        assert len(expected_state.values) == 0
+
+    def test_brightness_zero_point_no_match(self) -> None:
+        """Point match brightness=0 does not match non-zero actual."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(brightness=0))
+
+        actual = ExpectedValues(brightness=50)
+        matched = expected_state.match_and_remove(actual)
+        assert matched is None
+
+    def test_from_brightness_actual_outside_range_returns_none(self) -> None:
+        """Native transition rejects actual outside range even with consistent old."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(brightness=100, from_brightness=50))
+
+        actual = ExpectedValues(brightness=200)  # Above range, not within tolerance
+        old = ExpectedValues(brightness=60)
+
+        matched = expected_state.match_and_remove(actual, old=old)
+        assert matched is None
+
+    def test_actual_brightness_none_returns_none(self) -> None:
+        """Actual brightness=None returns no match."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(brightness=100))
+
+        actual = ExpectedValues()  # No brightness
+        matched = expected_state.match_and_remove(actual)
+        assert matched is None
+
+    def test_actual_hs_none_returns_none(self) -> None:
+        """Actual hs_color=None returns no match when expected tracks HS."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(hs_color=(180.0, 50.0)))
+
+        actual = ExpectedValues()  # No hs_color
+        matched = expected_state.match_and_remove(actual)
+        assert matched is None
+
+    def test_actual_kelvin_none_returns_none(self) -> None:
+        """Actual color_temp_kelvin=None returns no match when expected tracks kelvin."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(color_temp_kelvin=4000))
+
+        actual = ExpectedValues()  # No color_temp_kelvin
+        matched = expected_state.match_and_remove(actual)
+        assert matched is None
+
+    def test_hs_native_transition_actual_outside_range(self) -> None:
+        """HS native transition rejects actual outside range even with consistent old."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(hs_color=(150.0, 80.0), from_hs_color=(100.0, 50.0)))
+
+        # Actual is way outside the from->to range (hue=250, sat=20)
+        actual = ExpectedValues(hs_color=(250.0, 20.0))
+        old = ExpectedValues(hs_color=(120.0, 60.0))  # Old is within range
+
+        matched = expected_state.match_and_remove(actual, old=old)
+        assert matched is None
+
+    def test_kelvin_native_transition_actual_outside_range(self) -> None:
+        """Kelvin native transition rejects actual outside range even with consistent old."""
+        expected_state = ExpectedState(entity_id="light.test")
+        expected_state.add(ExpectedValues(color_temp_kelvin=6500, from_color_temp_kelvin=2700))
+
+        # Actual is outside range (8000K) and not within tolerance of target
+        actual = ExpectedValues(color_temp_kelvin=8000)
+        old = ExpectedValues(color_temp_kelvin=3000)  # Old is within range
+
+        matched = expected_state.match_and_remove(actual, old=old)
+        assert matched is None
