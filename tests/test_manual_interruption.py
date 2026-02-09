@@ -351,6 +351,18 @@ async def test_manual_change_during_fade_updates_orig(
             ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
         },
     )
+    # Flush initial state_changed event before registering listener
+    await hass.async_block_till_done()
+
+    # Event listener to detect when the fade makes its first light.turn_on call
+    fade_started = asyncio.Event()
+
+    def on_fade_state_change(event):
+        """Detect when the fade changes the light state."""
+        if event.data.get("entity_id") == entity_id:
+            fade_started.set()
+
+    unsub = hass.bus.async_listen("state_changed", on_fade_state_change)
 
     # Start a fade
     fade_task = hass.async_create_task(
@@ -366,8 +378,9 @@ async def test_manual_change_during_fade_updates_orig(
         )
     )
 
-    # Wait for the fade to start
-    await asyncio.sleep(0.2)
+    # Wait for the fade to actually start (event-based, no arbitrary sleep)
+    await asyncio.wait_for(fade_started.wait(), timeout=5)
+    unsub()
 
     # Verify orig brightness was stored at fade start
     coordinator: FadeCoordinator = hass.data[DOMAIN]
@@ -386,8 +399,10 @@ async def test_manual_change_during_fade_updates_orig(
     )
     await hass.async_block_till_done()
 
-    # Give a moment for the state change handler to process
-    await asyncio.sleep(0.1)
+    # Wait for the restore task to finish processing the intervention
+    entity = coordinator.get_entity(entity_id)
+    if entity and entity.restore_task:
+        await asyncio.wait_for(entity.restore_task, timeout=5)
 
     # Original brightness should now be 150 (the manual change), not 200
     # This is the user's new intended brightness level
