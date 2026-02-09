@@ -36,17 +36,6 @@ fade_lights:
     entity:
       domain: light
   fields:
-    brightness_pct:
-      name: Brightness percentage
-      description: Target brightness level as a percentage (0-100).
-      filter: *brightness_support
-      example: 75
-      selector:
-        number:
-          min: 0
-          max: 100
-          mode: slider
-          unit_of_measurement: "%"
     transition:
       name: Transition time
       description: Transition time for fading in seconds.
@@ -59,32 +48,13 @@ fade_lights:
           step: 0.1
           mode: box
           unit_of_measurement: "s"
-    easing:
-      name: Easing curve
-      description: >-
-        Controls how brightness changes over time. 'auto' selects based on fade
-        direction: ease_in (slow start) for fading up, ease_out (slow end) for
-        fading down.
-      filter: *brightness_support
-      default: auto
-      example: "auto"
+    rgb_color:
+      name: Color
+      description: Target color as [red, green, blue] values (0-255 each).
+      filter: *color_support
+      example: "[255, 128, 0]"
       selector:
-        select:
-          options:
-            - label: Auto (recommended)
-              value: auto
-            - label: Linear (no easing)
-              value: linear
-            - label: Ease in (slow start)
-              value: ease_in_quad
-            - label: Ease in cubic (slower start)
-              value: ease_in_cubic
-            - label: Ease out (slow end)
-              value: ease_out_quad
-            - label: Ease out cubic (slower end)
-              value: ease_out_cubic
-            - label: Ease in-out sine (smooth S-curve)
-              value: ease_in_out_sine
+        color_rgb:
     color_temp_kelvin:
       name: Color temperature
       description: Target color temperature in Kelvin.
@@ -95,41 +65,53 @@ fade_lights:
           unit: kelvin
           min: 2000
           max: 6500
-    hs_color:
-      name: HS color
-      description: Target color as [hue (0-360), saturation (0-100)].
-      filter: *color_support
-      example: "[200, 80]"
-      selector:
-        object:
-    from:
-      name: Starting values
-      description: Override starting values instead of using current state.
+    brightness_pct:
+      name: Brightness
+      description: Target brightness level as a percentage (0-100).
       filter: *brightness_support
-      collapsed: true
-      example: "{ brightness_pct: 0, color_temp_kelvin: 2700 }"
+      example: 75
       selector:
-        object:
+        number:
+          min: 0
+          max: 100
+          mode: slider
+          unit_of_measurement: "%"
     advanced_fields:
       name: Advanced options
       collapsed: true
       fields:
-        brightness:
-          name: Brightness value
-          description: Target brightness as raw value (1-255). Advanced option.
+        easing:
+          name: Easing curve
+          description: >-
+            Controls how brightness changes over time. 'auto' selects based on fade
+            direction: ease_in (slow start) for fading up, ease_out (slow end) for
+            fading down.
           filter: *brightness_support
-          example: 255
+          example: "auto"
           selector:
-            number:
-              min: 1
-              max: 255
-        rgb_color:
-          name: RGB color
-          description: Target color as [red, green, blue] values (0-255 each).
-          filter: *color_support
-          example: "[255, 128, 0]"
+            select:
+              options:
+                - label: Auto (recommended)
+                  value: auto
+                - label: Linear (no easing)
+                  value: linear
+                - label: Ease in (slow start)
+                  value: ease_in_quad
+                - label: Ease in cubic (slower start)
+                  value: ease_in_cubic
+                - label: Ease out (slow end)
+                  value: ease_out_quad
+                - label: Ease out cubic (slower end)
+                  value: ease_out_cubic
+                - label: Ease in-out sine (smooth S-curve)
+                  value: ease_in_out_sine
+        from:
+          name: Starting values
+          description: Override starting values instead of using current state.
+          filter: *brightness_support
+          example: "{ brightness_pct: 0, color_temp_kelvin: 2700 }"
           selector:
-            color_rgb:
+            object:
         rgbw_color:
           name: RGBW color
           description: Target color as [red, green, blue, white] values (0-255 each).
@@ -144,6 +126,13 @@ fade_lights:
           example: "[255, 128, 0, 50, 30]"
           selector:
             object:
+        hs_color:
+          name: HS color
+          description: Target color as [hue (0-360), saturation (0-100)].
+          filter: *color_support
+          example: "[200, 80]"
+          selector:
+            object:
         xy_color:
           name: XY color
           description: Target color as CIE xy coordinates [x, y] (0-1 each).
@@ -151,3 +140,12 @@ fade_lights:
           example: "[0.3, 0.4]"
           selector:
             object:
+        brightness:
+          name: Brightness value
+          description: Target brightness as raw value (1-255).
+          filter: *brightness_support
+          example: 255
+          selector:
+            number:
+              min: 1
+              max: 255
