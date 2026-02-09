@@ -89,6 +89,25 @@ class FadeCoordinator:
         """Load persistent data from store."""
         self.data = await self.store.async_load() or {}
 
+    async def async_prune_stale_storage(self) -> None:
+        """Remove storage entries for entities that no longer exist.
+
+        Should be called after HA has fully started (all entities registered).
+        """
+        from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
+
+        registry = er.async_get(self.hass)
+        stale = [
+            eid
+            for eid in self.data
+            if not registry.async_get(eid) and self.hass.states.get(eid) is None
+        ]
+        if stale:
+            for eid in stale:
+                del self.data[eid]
+            await self.store.async_save(self.data)
+            _LOGGER.info("Pruned %d stale storage entries: %s", len(stale), stale)
+
     # --------------------------------------------------------------------- #
     # Service handler: fade_lights
     # --------------------------------------------------------------------- #
