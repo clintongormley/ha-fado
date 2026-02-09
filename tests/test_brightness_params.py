@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
+import voluptuous as vol
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
@@ -28,9 +28,7 @@ class TestBrightnessAndBrightnessPctMutualExclusion:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects calls with both brightness and brightness_pct."""
-        with pytest.raises(
-            ServiceValidationError, match="Cannot specify both brightness_pct and brightness"
-        ):
+        with pytest.raises(vol.Invalid, match="exclusion"):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -49,10 +47,7 @@ class TestBrightnessAndBrightnessPctMutualExclusion:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects from: with both brightness and brightness_pct."""
-        with pytest.raises(
-            ServiceValidationError,
-            match="Cannot specify both brightness_pct and brightness in 'from:'",
-        ):
+        with pytest.raises(vol.Invalid, match="exclusion"):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -65,34 +60,6 @@ class TestBrightnessAndBrightnessPctMutualExclusion:
                 },
                 target={"entity_id": mock_light_entity},
                 blocking=True,
-            )
-
-    def test_rejects_both_via_from_service_data(self) -> None:
-        """Test from_service_data rejects both brightness params."""
-        with pytest.raises(
-            ServiceValidationError, match="Cannot specify both brightness_pct and brightness"
-        ):
-            FadeParams.from_service_data(
-                {
-                    ATTR_BRIGHTNESS_PCT: 50,
-                    ATTR_BRIGHTNESS: 128,
-                }
-            )
-
-    def test_rejects_both_in_from_via_from_service_data(self) -> None:
-        """Test from_service_data rejects both brightness params in from:."""
-        with pytest.raises(
-            ServiceValidationError,
-            match="Cannot specify both brightness_pct and brightness in 'from:'",
-        ):
-            FadeParams.from_service_data(
-                {
-                    ATTR_BRIGHTNESS_PCT: 100,
-                    ATTR_FROM: {
-                        ATTR_BRIGHTNESS_PCT: 0,
-                        ATTR_BRIGHTNESS: 0,
-                    },
-                }
             )
 
 
@@ -149,7 +116,7 @@ class TestBrightnessRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects brightness below 1."""
-        with pytest.raises(ServiceValidationError, match="[Bb]rightness.*between 1 and 255"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -167,7 +134,7 @@ class TestBrightnessRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects brightness above 255."""
-        with pytest.raises(ServiceValidationError, match="[Bb]rightness.*between 1 and 255"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -185,7 +152,7 @@ class TestBrightnessRangeValidation:
         mock_light_entity: str,
     ) -> None:
         """Test service rejects from: brightness below 1."""
-        with pytest.raises(ServiceValidationError, match="from:.*[Bb]rightness.*between 1 and 255"):
+        with pytest.raises(vol.Invalid):
             await hass.services.async_call(
                 DOMAIN,
                 SERVICE_FADE_LIGHTS,
@@ -235,16 +202,6 @@ class TestBrightnessRangeValidation:
             blocking=True,
         )
 
-    def test_from_service_data_rejects_brightness_below_1(self) -> None:
-        """Test from_service_data rejects brightness below 1."""
-        with pytest.raises(ServiceValidationError, match="[Bb]rightness.*between 1 and 255"):
-            FadeParams.from_service_data({ATTR_BRIGHTNESS: 0})
-
-    def test_from_service_data_rejects_brightness_above_255(self) -> None:
-        """Test from_service_data rejects brightness above 255."""
-        with pytest.raises(ServiceValidationError, match="[Bb]rightness.*between 1 and 255"):
-            FadeParams.from_service_data({ATTR_BRIGHTNESS: 256})
-
     def test_from_service_data_accepts_valid_brightness(self) -> None:
         """Test from_service_data accepts valid brightness values."""
         params = FadeParams.from_service_data({ATTR_BRIGHTNESS: 128})
@@ -290,7 +247,6 @@ class TestBrightnessAsKnownParameter:
 
     def test_brightness_is_valid_main_param(self) -> None:
         """Test brightness is accepted as a main parameter."""
-        # Should not raise ServiceValidationError for unknown parameter
         params = FadeParams.from_service_data({ATTR_BRIGHTNESS: 128})
         assert params.brightness == 128
 

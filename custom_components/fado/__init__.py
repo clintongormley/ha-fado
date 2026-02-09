@@ -31,6 +31,17 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    ATTR_BRIGHTNESS,
+    ATTR_BRIGHTNESS_PCT,
+    ATTR_COLOR_TEMP_KELVIN,
+    ATTR_EASING,
+    ATTR_FROM,
+    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_RGBW_COLOR,
+    ATTR_RGBWW_COLOR,
+    ATTR_TRANSITION,
+    ATTR_XY_COLOR,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
     DOMAIN,
@@ -49,6 +60,62 @@ from .notifications import _notify_unconfigured_lights
 from .websocket_api import async_register_websocket_api
 
 _LOGGER = logging.getLogger(__name__)
+
+# =============================================================================
+# Service Schema
+# =============================================================================
+
+# Shared validators for reuse in main and from: schemas
+_BRIGHTNESS_PCT = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
+_BRIGHTNESS_RAW = vol.All(vol.Coerce(int), vol.Range(min=1, max=255))
+_HS_COLOR = vol.ExactSequence(
+    [
+        vol.All(vol.Coerce(float), vol.Range(min=0, max=360)),
+        vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+    ]
+)
+_RGB_CHANNEL = vol.All(vol.Coerce(int), vol.Range(min=0, max=255))
+_RGB_COLOR = vol.ExactSequence([_RGB_CHANNEL] * 3)
+_RGBW_COLOR = vol.ExactSequence([_RGB_CHANNEL] * 4)
+_RGBWW_COLOR = vol.ExactSequence([_RGB_CHANNEL] * 5)
+_XY_COLOR = vol.ExactSequence(
+    [
+        vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+        vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+    ]
+)
+_COLOR_TEMP_KELVIN = vol.All(vol.Coerce(int), vol.Range(min=1000, max=40000))
+
+# Schema for the from: parameter (starting values)
+_FROM_SCHEMA = vol.Schema(
+    {
+        vol.Exclusive(ATTR_BRIGHTNESS_PCT, "brightness"): _BRIGHTNESS_PCT,
+        vol.Exclusive(ATTR_BRIGHTNESS, "brightness"): _BRIGHTNESS_RAW,
+        vol.Exclusive(ATTR_HS_COLOR, "color"): _HS_COLOR,
+        vol.Exclusive(ATTR_RGB_COLOR, "color"): _RGB_COLOR,
+        vol.Exclusive(ATTR_RGBW_COLOR, "color"): _RGBW_COLOR,
+        vol.Exclusive(ATTR_RGBWW_COLOR, "color"): _RGBWW_COLOR,
+        vol.Exclusive(ATTR_XY_COLOR, "color"): _XY_COLOR,
+        vol.Exclusive(ATTR_COLOR_TEMP_KELVIN, "color"): _COLOR_TEMP_KELVIN,
+    }
+)
+
+# Full service schema (replaces the minimal ALLOW_EXTRA schema)
+FADE_LIGHTS_SCHEMA = cv.make_entity_service_schema(
+    {
+        vol.Exclusive(ATTR_BRIGHTNESS_PCT, "brightness"): _BRIGHTNESS_PCT,
+        vol.Exclusive(ATTR_BRIGHTNESS, "brightness"): _BRIGHTNESS_RAW,
+        vol.Optional(ATTR_TRANSITION): vol.All(vol.Coerce(float), vol.Range(min=0, max=3600)),
+        vol.Optional(ATTR_EASING, default="auto"): vol.In(VALID_EASING),
+        vol.Exclusive(ATTR_HS_COLOR, "color"): _HS_COLOR,
+        vol.Exclusive(ATTR_RGB_COLOR, "color"): _RGB_COLOR,
+        vol.Exclusive(ATTR_RGBW_COLOR, "color"): _RGBW_COLOR,
+        vol.Exclusive(ATTR_RGBWW_COLOR, "color"): _RGBWW_COLOR,
+        vol.Exclusive(ATTR_XY_COLOR, "color"): _XY_COLOR,
+        vol.Exclusive(ATTR_COLOR_TEMP_KELVIN, "color"): _COLOR_TEMP_KELVIN,
+        vol.Optional(ATTR_FROM): _FROM_SCHEMA,
+    }
+)
 
 
 # =============================================================================
@@ -92,10 +159,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         SERVICE_FADE_LIGHTS,
         handle_fade_lights,
-        schema=cv.make_entity_service_schema(
-            {vol.Optional("easing", default="auto"): vol.In(VALID_EASING)},
-            extra=vol.ALLOW_EXTRA,
-        ),
+        schema=FADE_LIGHTS_SCHEMA,
     )
 
     # Track only light domain state changes (more efficient than listening to all events)
