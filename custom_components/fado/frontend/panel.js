@@ -19,6 +19,7 @@ class FadoPanel extends LitElement {
       _testErrors: { type: Object },
       _globalMinDelayMs: { type: Number },
       _logLevel: { type: String },
+      _entryId: { type: String },
     };
   }
 
@@ -416,6 +417,17 @@ class FadoPanel extends LitElement {
         opacity: 0.5;
         cursor: not-allowed;
       }
+
+      .settings-row a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-size: var(--paper-font-body1_-_font-size, 14px);
+        cursor: pointer;
+      }
+
+      .settings-row a:hover {
+        text-decoration: underline;
+      }
     `;
   }
 
@@ -430,6 +442,7 @@ class FadoPanel extends LitElement {
     this._testErrors = new Map();
     this._globalMinDelayMs = 100;
     this._logLevel = "warning";
+    this._entryId = null;
   }
 
   connectedCallback() {
@@ -518,6 +531,7 @@ class FadoPanel extends LitElement {
       const result = await this.hass.callWS({ type: "fado/get_settings" });
       this._globalMinDelayMs = result.default_min_delay_ms;
       this._logLevel = result.log_level || "warning";
+      this._entryId = result.entry_id || null;
     } catch (err) {
       console.error("Failed to fetch settings:", err);
     }
@@ -951,6 +965,26 @@ class FadoPanel extends LitElement {
     });
   }
 
+  async _downloadDiagnostics() {
+    if (!this._entryId) return;
+    try {
+      const resp = await fetch(
+        `/api/diagnostics/config_entry/${this._entryId}`,
+        { headers: { Authorization: `Bearer ${this.hass.auth.data.access_token}` } }
+      );
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fado-${this._entryId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download diagnostics:", err);
+    }
+  }
+
   _renderHeader() {
     const isTesting = this._isTesting();
     return html`
@@ -1051,6 +1085,13 @@ class FadoPanel extends LitElement {
           ></ha-textfield>
           <span class="hint">The absolute minimum delay for all lights</span>
         </div>
+        ${this._entryId ? html`
+          <div class="settings-row">
+            <a href="#" @click=${(e) => { e.preventDefault(); this._downloadDiagnostics(); }}>
+              <ha-icon icon="mdi:download" style="--mdc-icon-size: 18px; vertical-align: middle; margin-right: 4px;"></ha-icon>Download diagnostics
+            </a>
+          </div>
+        ` : ""}
       </ha-card>
     `;
   }

@@ -486,6 +486,7 @@ async def ws_get_settings(
         {
             "default_min_delay_ms": default_min_delay_ms,
             "log_level": log_level,
+            "entry_id": entry.entry_id,
         },
     )
 

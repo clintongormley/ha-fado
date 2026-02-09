@@ -12,6 +12,7 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import (
     Event,
     EventStateChangedData,
@@ -180,6 +181,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Check for unconfigured lights and notify
     await _notify_unconfigured_lights(hass)
+
+    # Prune stale storage after HA has fully started (all entities registered)
+    async def _prune_on_start(_event: Event) -> None:
+        await coordinator.async_prune_stale_storage()
+
+    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _prune_on_start))
 
     return True
 
