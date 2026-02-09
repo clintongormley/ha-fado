@@ -299,7 +299,13 @@ class ExpectedState:
             if not (
                 old is not None
                 and old.hs_color is not None
-                and self._hs_range_match(expected.from_hs_color, expected.hs_color, old.hs_color)
+                and self._hs_range_match(
+                    expected.from_hs_color,
+                    expected.hs_color,
+                    old.hs_color,
+                    hue_tolerance=HUE_TOLERANCE,
+                    sat_tolerance=SATURATION_TOLERANCE,
+                )
             ):
                 return None
 
@@ -344,29 +350,35 @@ class ExpectedState:
         from_hs: tuple[float, float],
         to_hs: tuple[float, float],
         actual_hs: tuple[float, float],
+        *,
+        hue_tolerance: float = 0.0,
+        sat_tolerance: float = 0.0,
     ) -> bool:
-        """Check if actual HS is within transition range from_hs -> to_hs."""
+        """Check if actual HS is within transition range from_hs -> to_hs.
+
+        Tolerance expands the range boundaries (used for old state validation
+        where HA rounds reported values).
+        """
         from_hue, from_sat = from_hs
         to_hue, to_sat = to_hs
         actual_hue, actual_sat = actual_hs
 
         # Check saturation (simple range)
-        min_sat = min(from_sat, to_sat)
-        max_sat = max(from_sat, to_sat)
+        min_sat = min(from_sat, to_sat) - sat_tolerance
+        max_sat = max(from_sat, to_sat) + sat_tolerance
         if not min_sat <= actual_sat <= max_sat:
             return False
 
         # Check hue (handle wraparound)
         hue_diff = abs(from_hue - to_hue)
         if hue_diff > 180:  # Wraparound case
-            # Accept if actual is in either range
             min_hue = min(from_hue, to_hue)
             max_hue = max(from_hue, to_hue)
-            # Accept values outside the "gap"
-            return actual_hue >= max_hue or actual_hue <= min_hue
+            # Accept values outside the "gap" (with tolerance)
+            return actual_hue >= max_hue - hue_tolerance or actual_hue <= min_hue + hue_tolerance
         else:  # No wraparound
-            min_hue = min(from_hue, to_hue)
-            max_hue = max(from_hue, to_hue)
+            min_hue = min(from_hue, to_hue) - hue_tolerance
+            max_hue = max(from_hue, to_hue) + hue_tolerance
             return min_hue <= actual_hue <= max_hue
 
     def _kelvin_match(
