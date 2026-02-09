@@ -79,7 +79,7 @@ async def test_match_and_remove_expected_removes_matched_value(
     )
 
     state = hass.states.get(entity_id)
-    result = coordinator._match_and_remove_expected(entity_id, state)
+    result = coordinator._match_and_remove_expected(entity_id, None, state)
 
     assert result is True
     assert not _has_brightness(entity.expected_state, 100)
@@ -106,7 +106,7 @@ async def test_match_and_remove_expected_with_tolerance(
     )
 
     state = hass.states.get(entity_id)
-    result = coordinator._match_and_remove_expected(entity_id, state)
+    result = coordinator._match_and_remove_expected(entity_id, None, state)
 
     assert result is True
     assert not _has_brightness(entity.expected_state, 100)
@@ -133,7 +133,7 @@ async def test_match_and_remove_expected_off_state(
     )
 
     state = hass.states.get(entity_id)
-    result = coordinator._match_and_remove_expected(entity_id, state)
+    result = coordinator._match_and_remove_expected(entity_id, None, state)
 
     assert result is True
     assert not _has_brightness(entity.expected_state, 0)
@@ -172,7 +172,7 @@ async def test_match_and_remove_expected_notifies_condition(
     await asyncio.sleep(0.01)  # Let wait_task start
 
     state = hass.states.get(entity_id)
-    coordinator._match_and_remove_expected(entity_id, state)
+    coordinator._match_and_remove_expected(entity_id, None, state)
 
     await asyncio.sleep(0.05)  # Let notification propagate
 
@@ -345,7 +345,7 @@ async def test_match_and_remove_expected_returns_false_for_on_with_no_brightness
     )
 
     state = hass.states.get(entity_id)
-    result = coordinator._match_and_remove_expected(entity_id, state)
+    result = coordinator._match_and_remove_expected(entity_id, None, state)
 
     # Should return False since brightness is None for ON state
     assert result is False

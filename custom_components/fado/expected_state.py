@@ -121,7 +121,12 @@ class ExpectedState:
 
         return self._condition
 
-    def match_and_remove(self, actual: ExpectedValues) -> ExpectedValues | None:
+    def match_and_remove(
+        self,
+        actual: ExpectedValues,
+        *,
+        old: ExpectedValues | None = None,
+    ) -> ExpectedValues | None:
         """Match actual values against expected values.
 
         Only removes from queue on exact match (final target reached).
@@ -129,6 +134,9 @@ class ExpectedState:
 
         Args:
             actual: The actual values from the light state
+            old: The previous values from the light state (used to validate
+                native transition matches — the old state must be consistent
+                with the expected transition range)
 
         Returns:
             The matched ExpectedValues, or None if no match.
@@ -145,7 +153,7 @@ class ExpectedState:
         match_type: str | None = None
 
         for i, (expected, _) in enumerate(self.values):
-            match_result = self._values_match(expected, actual)
+            match_result = self._values_match(expected, actual, old)
             if match_result is not None:
                 matched_index = i
                 matched_value = expected
@@ -188,7 +196,12 @@ class ExpectedState:
 
         return matched_value
 
-    def _values_match(self, expected: ExpectedValues, actual: ExpectedValues) -> str | None:
+    def _values_match(
+        self,
+        expected: ExpectedValues,
+        actual: ExpectedValues,
+        old: ExpectedValues | None,
+    ) -> str | None:
         """Check if actual values match expected values.
 
         Returns:
@@ -200,21 +213,21 @@ class ExpectedState:
 
         # Check brightness if tracked
         if expected.brightness is not None:
-            brightness_match = self._brightness_match(expected, actual)
+            brightness_match = self._brightness_match(expected, actual, old)
             if brightness_match is None:
                 return None
             match_types.append(brightness_match)
 
         # Check HS color if tracked
         if expected.hs_color is not None:
-            hs_match = self._hs_match(expected, actual)
+            hs_match = self._hs_match(expected, actual, old)
             if hs_match is None:
                 return None
             match_types.append(hs_match)
 
         # Check color temp if tracked
         if expected.color_temp_kelvin is not None:
-            kelvin_match = self._kelvin_match(expected, actual)
+            kelvin_match = self._kelvin_match(expected, actual, old)
             if kelvin_match is None:
                 return None
             match_types.append(kelvin_match)
@@ -224,41 +237,85 @@ class ExpectedState:
             return "range"
         return "exact"
 
-    def _brightness_match(self, expected: ExpectedValues, actual: ExpectedValues) -> str | None:
+    def _brightness_match(
+        self,
+        expected: ExpectedValues,
+        actual: ExpectedValues,
+        old: ExpectedValues | None,
+    ) -> str | None:
         """Check if brightness matches. Returns match type or None."""
         if actual.brightness is None or expected.brightness is None:
             return None
 
-        # Phase 1: Exact match with tolerance (prioritize target)
+        # For native transitions, old state must be consistent with the
+        # transition range. This prevents stale expected values from matching
+        # unrelated events (e.g. off→on, or manual brightness change).
+        if expected.from_brightness is not None:
+            min_val = min(expected.from_brightness, expected.brightness)
+            max_val = max(expected.from_brightness, expected.brightness)
+            if not (
+                old is not None
+                and old.brightness is not None
+                and min_val - BRIGHTNESS_TOLERANCE
+                <= old.brightness
+                <= max_val + BRIGHTNESS_TOLERANCE
+            ):
+                return None
+
+            # Exact match (target within tolerance)
+            if expected.brightness == 0:
+                if actual.brightness == 0:
+                    return "exact"
+            elif abs(expected.brightness - actual.brightness) <= BRIGHTNESS_TOLERANCE:
+                return "exact"
+
+            # Range match (intermediate value)
+            if min_val <= actual.brightness <= max_val:
+                return "range"
+
+            return None
+
+        # Point match (no transition range — just check target with tolerance)
         if expected.brightness == 0:
             if actual.brightness == 0:
                 return "exact"
         elif abs(expected.brightness - actual.brightness) <= BRIGHTNESS_TOLERANCE:
             return "exact"
 
-        # Phase 2: Range match (only if transitioning)
-        if expected.from_brightness is not None:
-            min_val = min(expected.from_brightness, expected.brightness)
-            max_val = max(expected.from_brightness, expected.brightness)
-            if min_val <= actual.brightness <= max_val:
-                return "range"
-
         return None
 
-    def _hs_match(self, expected: ExpectedValues, actual: ExpectedValues) -> str | None:
+    def _hs_match(
+        self,
+        expected: ExpectedValues,
+        actual: ExpectedValues,
+        old: ExpectedValues | None,
+    ) -> str | None:
         """Check if HS color matches. Returns match type or None."""
         if actual.hs_color is None or expected.hs_color is None:
             return None
 
-        # Phase 1: Exact match with tolerance (prioritize target)
+        # For native transitions, old state must be consistent with the range.
+        if expected.from_hs_color is not None:
+            if not (
+                old is not None
+                and old.hs_color is not None
+                and self._hs_range_match(expected.from_hs_color, expected.hs_color, old.hs_color)
+            ):
+                return None
+
+            # Exact match (target within tolerance)
+            if self._hs_exact_match(expected.hs_color, actual.hs_color):
+                return "exact"
+
+            # Range match (intermediate value)
+            if self._hs_range_match(expected.from_hs_color, expected.hs_color, actual.hs_color):
+                return "range"
+
+            return None
+
+        # Point match (no transition range)
         if self._hs_exact_match(expected.hs_color, actual.hs_color):
             return "exact"
-
-        # Phase 2: Range match (only if transitioning)
-        if expected.from_hs_color is not None and self._hs_range_match(
-            expected.from_hs_color, expected.hs_color, actual.hs_color
-        ):
-            return "range"
 
         return None
 
@@ -312,21 +369,42 @@ class ExpectedState:
             max_hue = max(from_hue, to_hue)
             return min_hue <= actual_hue <= max_hue
 
-    def _kelvin_match(self, expected: ExpectedValues, actual: ExpectedValues) -> str | None:
+    def _kelvin_match(
+        self,
+        expected: ExpectedValues,
+        actual: ExpectedValues,
+        old: ExpectedValues | None,
+    ) -> str | None:
         """Check if color temp kelvin matches. Returns match type or None."""
         if actual.color_temp_kelvin is None or expected.color_temp_kelvin is None:
             return None
 
-        # Phase 1: Exact match with tolerance (prioritize target)
-        if abs(expected.color_temp_kelvin - actual.color_temp_kelvin) <= KELVIN_TOLERANCE:
-            return "exact"
-
-        # Phase 2: Range match (only if transitioning)
+        # For native transitions, old state must be consistent with the range.
         if expected.from_color_temp_kelvin is not None:
             min_val = min(expected.from_color_temp_kelvin, expected.color_temp_kelvin)
             max_val = max(expected.from_color_temp_kelvin, expected.color_temp_kelvin)
+            if not (
+                old is not None
+                and old.color_temp_kelvin is not None
+                and min_val - KELVIN_TOLERANCE
+                <= old.color_temp_kelvin
+                <= max_val + KELVIN_TOLERANCE
+            ):
+                return None
+
+            # Exact match (target within tolerance)
+            if abs(expected.color_temp_kelvin - actual.color_temp_kelvin) <= KELVIN_TOLERANCE:
+                return "exact"
+
+            # Range match (intermediate value)
             if min_val <= actual.color_temp_kelvin <= max_val:
                 return "range"
+
+            return None
+
+        # Point match (no transition range)
+        if abs(expected.color_temp_kelvin - actual.color_temp_kelvin) <= KELVIN_TOLERANCE:
+            return "exact"
 
         return None
 

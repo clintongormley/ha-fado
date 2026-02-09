@@ -202,7 +202,7 @@ class FadeCoordinator:
         entity_id = new_state.entity_id
 
         # Check if this is an expected state change (from our service calls)
-        if self._match_and_remove_expected(entity_id, new_state):
+        if self._match_and_remove_expected(entity_id, old_state, new_state):
             return
 
         # During fade or restore: if we get here, state didn't match expected - manual intervention
@@ -341,7 +341,7 @@ class FadeCoordinator:
             await self._track_and_apply_step(
                 entity_id,
                 step,
-                prev_step=prev_step if native_transitions else None,
+                prev_step=prev_step,
                 use_transition=native_transitions,
             )
             prev_step = step
@@ -406,24 +406,19 @@ class FadeCoordinator:
     ) -> None:
         """Register expected values for a step and apply it to the light.
 
-        When prev_step is provided, range-based expected values are registered
-        (for native transitions). Otherwise, point-based values are used.
+        When prev_step is provided, from_* fields are populated so that
+        match_and_remove can validate old state consistency. With native
+        transitions (larger steps) this also enables range matching for
+        intermediate values.
         """
-        if prev_step is not None:
-            expected = ExpectedValues(
-                brightness=step.brightness,
-                from_brightness=prev_step.brightness,
-                hs_color=step.hs_color,
-                from_hs_color=prev_step.hs_color,
-                color_temp_kelvin=step.color_temp_kelvin,
-                from_color_temp_kelvin=prev_step.color_temp_kelvin,
-            )
-        else:
-            expected = ExpectedValues(
-                brightness=step.brightness,
-                hs_color=step.hs_color,
-                color_temp_kelvin=step.color_temp_kelvin,
-            )
+        expected = ExpectedValues(
+            brightness=step.brightness,
+            from_brightness=prev_step.brightness if prev_step is not None else None,
+            hs_color=step.hs_color,
+            from_hs_color=prev_step.hs_color if prev_step is not None else None,
+            color_temp_kelvin=step.color_temp_kelvin,
+            from_color_temp_kelvin=(prev_step.color_temp_kelvin if prev_step is not None else None),
+        )
         self._add_expected_values(entity_id, expected)
         await self._apply_step(entity_id, step, use_transition=use_transition)
 
@@ -499,20 +494,21 @@ class FadeCoordinator:
         if orig_brightness > 0 and current_brightness != orig_brightness:
             _LOGGER.info("%s: Restoring to brightness %s", entity_id, orig_brightness)
             self.hass.async_create_task(
-                self._restore_original_brightness(entity_id, orig_brightness)
+                self._restore_original_brightness(entity_id, orig_brightness, current_brightness)
             )
 
     async def _restore_original_brightness(
         self,
         entity_id: str,
         brightness: int,
+        from_brightness: int,
     ) -> None:
         """Restore original brightness and wait for confirmation."""
         await self._expected_call_and_wait(
             entity_id,
             SERVICE_TURN_ON,
             {ATTR_ENTITY_ID: entity_id, ATTR_BRIGHTNESS: brightness},
-            ExpectedValues(brightness=brightness),
+            ExpectedValues(brightness=brightness, from_brightness=from_brightness),
         )
 
     # --------------------------------------------------------------------- #
@@ -703,7 +699,7 @@ class FadeCoordinator:
                     entity_id,
                     SERVICE_TURN_OFF,
                     {ATTR_ENTITY_ID: entity_id},
-                    ExpectedValues(brightness=0),
+                    ExpectedValues(brightness=0, from_brightness=current_brightness),
                 )
             else:
                 _LOGGER.debug("%s: already off, nothing to restore", entity_id)
@@ -716,14 +712,20 @@ class FadeCoordinator:
 
         if len(service_data) > 1:  # More than just entity_id
             _LOGGER.info("%s: Restoring intended state: %s", entity_id, service_data)
+            current_attrs = current_state.attributes
+            hs_raw = current_attrs.get(HA_ATTR_HS_COLOR)
+            kelvin_raw = current_attrs.get(HA_ATTR_COLOR_TEMP_KELVIN)
             await self._expected_call_and_wait(
                 entity_id,
                 SERVICE_TURN_ON,
                 service_data,
                 ExpectedValues(
                     brightness=service_data.get(ATTR_BRIGHTNESS),
+                    from_brightness=current_brightness,
                     hs_color=service_data.get(HA_ATTR_HS_COLOR),
+                    from_hs_color=((float(hs_raw[0]), float(hs_raw[1])) if hs_raw else None),
                     color_temp_kelvin=service_data.get(HA_ATTR_COLOR_TEMP_KELVIN),
+                    from_color_temp_kelvin=(int(kelvin_raw) if kelvin_raw else None),
                 ),
             )
         else:
@@ -761,7 +763,9 @@ class FadeCoordinator:
     # Expected state tracking & matching
     # --------------------------------------------------------------------- #
 
-    def _match_and_remove_expected(self, entity_id: str, new_state: State) -> bool:
+    def _match_and_remove_expected(
+        self, entity_id: str, old_state: State | None, new_state: State
+    ) -> bool:
         """Check if state matches expected, remove if found, notify if empty.
 
         Returns True if this was an expected state change (caller should ignore it).
@@ -771,30 +775,39 @@ class FadeCoordinator:
         if not expected_state or expected_state.is_empty:
             return False
 
-        # Build ExpectedValues from the new state
-        if new_state.state == STATE_OFF:
-            actual = ExpectedValues(brightness=0)
-        else:
-            brightness = new_state.attributes.get(ATTR_BRIGHTNESS)
-            if brightness is None:
-                return False
+        # Build ExpectedValues from old and new state
+        old = self._state_to_expected_values(old_state)
+        actual = self._state_to_expected_values(new_state)
+        if actual is None:
+            return False
 
-            # Extract color attributes
-            hs_raw = new_state.attributes.get(HA_ATTR_HS_COLOR)
-            hs_color = (float(hs_raw[0]), float(hs_raw[1])) if hs_raw else None
-
-            # Read kelvin directly from state attributes
-            kelvin_raw = new_state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
-            color_temp_kelvin = int(kelvin_raw) if kelvin_raw else None
-
-            actual = ExpectedValues(
-                brightness=brightness,
-                hs_color=hs_color,
-                color_temp_kelvin=color_temp_kelvin,
-            )
-
-        matched = expected_state.match_and_remove(actual)
+        matched = expected_state.match_and_remove(actual, old=old)
         return matched is not None
+
+    @staticmethod
+    def _state_to_expected_values(state: State | None) -> ExpectedValues | None:
+        """Build ExpectedValues from a light State for matching purposes."""
+        if state is None:
+            return None
+
+        if state.state == STATE_OFF:
+            return ExpectedValues(brightness=0)
+
+        brightness = state.attributes.get(ATTR_BRIGHTNESS)
+        if brightness is None:
+            return None
+
+        hs_raw = state.attributes.get(HA_ATTR_HS_COLOR)
+        hs_color = (float(hs_raw[0]), float(hs_raw[1])) if hs_raw else None
+
+        kelvin_raw = state.attributes.get(HA_ATTR_COLOR_TEMP_KELVIN)
+        color_temp_kelvin = int(kelvin_raw) if kelvin_raw else None
+
+        return ExpectedValues(
+            brightness=brightness,
+            hs_color=hs_color,
+            color_temp_kelvin=color_temp_kelvin,
+        )
 
     def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:
         """Register expected values before making a service call."""

@@ -65,7 +65,7 @@ class TestManualInterventionColors:
         entity.expected_state = ExpectedState(entity_id=entity_id)
         entity.expected_state.add(ExpectedValues(brightness=200, hs_color=(180.0, 50.0)))
 
-        result = coordinator._match_and_remove_expected(entity_id, mock_state_on_with_color)
+        result = coordinator._match_and_remove_expected(entity_id, None, mock_state_on_with_color)
         assert result is True  # Expected, should not trigger intervention
 
     def test_state_mismatch_wrong_hs_color_triggers_intervention(
@@ -78,7 +78,7 @@ class TestManualInterventionColors:
         # Expecting different color (hue 100 vs actual 180 - outside tolerance)
         entity.expected_state.add(ExpectedValues(brightness=200, hs_color=(100.0, 50.0)))
 
-        result = coordinator._match_and_remove_expected(entity_id, mock_state_on_with_color)
+        result = coordinator._match_and_remove_expected(entity_id, None, mock_state_on_with_color)
         assert result is False  # Unexpected - should trigger intervention
 
     def test_state_matches_expected_brightness_and_kelvin(
@@ -90,7 +90,7 @@ class TestManualInterventionColors:
         entity.expected_state = ExpectedState(entity_id=entity_id)
         entity.expected_state.add(ExpectedValues(brightness=200, color_temp_kelvin=3003))
 
-        result = coordinator._match_and_remove_expected(entity_id, mock_state_on_with_kelvin)
+        result = coordinator._match_and_remove_expected(entity_id, None, mock_state_on_with_kelvin)
         assert result is True  # Expected
 
     def test_state_mismatch_wrong_kelvin_triggers_intervention(
@@ -103,7 +103,7 @@ class TestManualInterventionColors:
         # Expecting different kelvin (4000 vs actual 3003 - outside tolerance of 100)
         entity.expected_state.add(ExpectedValues(brightness=200, color_temp_kelvin=4000))
 
-        result = coordinator._match_and_remove_expected(entity_id, mock_state_on_with_kelvin)
+        result = coordinator._match_and_remove_expected(entity_id, None, mock_state_on_with_kelvin)
         assert result is False  # Unexpected - should trigger intervention
 
     def test_brightness_only_fade_ignores_color_changes(
@@ -117,5 +117,5 @@ class TestManualInterventionColors:
         entity.expected_state.add(ExpectedValues(brightness=200))
 
         # State has color but we weren't tracking it
-        result = coordinator._match_and_remove_expected(entity_id, mock_state_on_with_color)
+        result = coordinator._match_and_remove_expected(entity_id, None, mock_state_on_with_color)
         assert result is True  # Match - color is ignored since not tracked
