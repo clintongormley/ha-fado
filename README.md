@@ -6,6 +6,25 @@
 
 A Home Assistant custom integration that provides smooth light fading for brightness, colors, and color temperatures, with automatic brightness restoration, autoconfiguration via the UI, and support for native transitions.
 
+## Table of Contents
+
+- [Compatibility](#compatibility)
+- [Features](#features)
+- [Installation](#installation)
+- [How it works](#how-it-works)
+  - [Smooth Fading](#smooth-fading)
+  - [Automatic Brightness Restoration](#automatic-brightness-restoration)
+  - [Manual interventions](#manual-interventions)
+  - [Non-Dimmable Lights](#non-dimmable-lights)
+  - [Hybrid color/color temperature fading](#hybrid-colorcolor-temperature-fading)
+- [State Transitions](#state-transitions)
+- [Usage: `fado.fade_lights`](#usage-fadofade_lights)
+- [Usage: `fado.exclude_lights` / `fado.include_lights`](#usage-fadoexclude_lights--fadoinclude_lights)
+- [Autoconfiguration Panel](#autoconfiguration-panel)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [License](#license)
+
 ## Compatibility
 
 - **Home Assistant:** 2024.1.0 or newer
