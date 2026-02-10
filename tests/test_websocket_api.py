@@ -660,7 +660,7 @@ async def test_autoconfigure_result_includes_min_brightness(
     entity_id = "light.test_min_brightness"
     hass.states.async_set(entity_id, "on", {"brightness": 200})
 
-    async def mock_autoconfigure_light(hass, entity_id):
+    async def mock_autoconfigure_light(hass, entity_id, **kwargs):
         return {
             "entity_id": entity_id,
             "min_delay_ms": 100,

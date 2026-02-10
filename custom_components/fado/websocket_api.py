@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -35,6 +36,8 @@ from .const import (
 )
 from .coordinator import FadeCoordinator
 from .notifications import _notify_unconfigured_lights
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def async_register_websocket_api(hass: HomeAssistant) -> None:
@@ -326,6 +329,7 @@ async def ws_autoconfigure(
     from .autoconfigure import async_autoconfigure_light  # noqa: PLC0415
 
     entity_ids = msg["entity_ids"]
+    _LOGGER.info("Autoconfigure requested for %d entities: %s", len(entity_ids), entity_ids)
 
     # Expand groups to individual entity IDs
     expanded_entities = _expand_light_groups(hass, entity_ids)
@@ -334,12 +338,18 @@ async def ws_autoconfigure(
     filtered_entities = [
         eid for eid in expanded_entities if not _get_light_config(hass, eid).get("exclude", False)
     ]
+    _LOGGER.info(
+        "Autoconfigure: %d entities after expansion/filtering: %s",
+        len(filtered_entities),
+        filtered_entities,
+    )
 
     # Create cancellation event for unsubscribe support
     cancel_event = asyncio.Event()
 
     def cancel_subscription() -> None:
         """Cancel the autoconfigure subscription."""
+        _LOGGER.info("Autoconfigure subscription cancelled (unsubscribed by client)")
         cancel_event.set()
 
     # Register subscription so client can unsubscribe
@@ -361,6 +371,7 @@ async def ws_autoconfigure(
                 return
 
             try:
+                _LOGGER.info("Autoconfigure: starting test for %s", entity_id)
                 # Send started event after acquiring semaphore (actual testing begins)
                 connection.send_message(
                     websocket_api.event_message(
@@ -370,8 +381,7 @@ async def ws_autoconfigure(
                 )
 
                 # Run full autoconfigure (delay + native transitions, with state restoration)
-                # Note: autoconfigure sets exclude=True on the light config during testing
-                result = await async_autoconfigure_light(hass, entity_id)
+                result = await async_autoconfigure_light(hass, entity_id, cancel_event=cancel_event)
 
                 # Check if cancelled before sending result
                 if cancel_event.is_set():
@@ -403,6 +413,9 @@ async def ws_autoconfigure(
                             },
                         )
                     )
+            except asyncio.CancelledError:
+                _LOGGER.info("Autoconfigure: task cancelled for %s", entity_id)
+                return  # Task cancelled during shutdown
             except Exception as err:  # noqa: BLE001
                 # Check if cancelled before sending error
                 if cancel_event.is_set():
@@ -419,12 +432,21 @@ async def ws_autoconfigure(
                     )
                 )
 
-    # Spawn tasks for all lights
-    tasks = [test_light(entity_id) for entity_id in filtered_entities]
+    coordinator: FadeCoordinator = hass.data[DOMAIN]
+
+    # Create proper tasks and register them with coordinator for shutdown cancellation
+    async_tasks: list[asyncio.Task[None]] = []
+    for entity_id in filtered_entities:
+        task = hass.async_create_task(
+            test_light(entity_id),
+            f"fado_autoconfigure_{entity_id}",
+        )
+        coordinator.register_autoconfigure_task(task)
+        async_tasks.append(task)
 
     # Run all tasks concurrently (semaphore limits parallelism)
-    if tasks:
-        await asyncio.gather(*tasks)
+    if async_tasks:
+        await asyncio.gather(*async_tasks, return_exceptions=True)
 
     # Send final result to close the subscription (only if not cancelled)
     if not cancel_event.is_set():

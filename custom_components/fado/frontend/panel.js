@@ -459,10 +459,7 @@ class FadoPanel extends LitElement {
     if (this._fetchTimeout) {
       clearTimeout(this._fetchTimeout);
     }
-    if (this._autoconfigureUnsub) {
-      this._autoconfigureUnsub();
-      this._autoconfigureUnsub = null;
-    }
+    this._cleanupAutoconfigure();
     if (this._configUpdateUnsub) {
       this._configUpdateUnsub();
       this._configUpdateUnsub = null;
@@ -472,12 +469,9 @@ class FadoPanel extends LitElement {
   updated(changedProperties) {
     super.updated(changedProperties);
     if (changedProperties.has("hass") && this.hass) {
-      // Cancel any active autoconfigure on reconnect to prevent auto-re-subscription
-      if (this._autoconfigureUnsub) {
-        this._autoconfigureUnsub();
-        this._autoconfigureUnsub = null;
-        this._testing = new Set();
-      }
+      // Clean up autoconfigure UI state on reconnect (subscription won't replay
+      // because we use resubscribe: false, but testing spinners need to be cleared)
+      this._cleanupAutoconfigure();
 
       // Subscribe to config update events (no-op if already subscribed)
       this._subscribeConfigUpdates();
@@ -884,19 +878,32 @@ class FadoPanel extends LitElement {
     this._totalToTest = entityIds.length;
 
     try {
+      console.log("[Fado] Starting autoconfigure for", entityIds.length, "lights:", entityIds);
       const unsub = await this.hass.connection.subscribeMessage(
         (event) => this._handleAutoconfigureEvent(event),
-        { type: "fado/autoconfigure", entity_ids: entityIds }
+        { type: "fado/autoconfigure", entity_ids: entityIds },
+        { resubscribe: false },
       );
       // Store unsub function if we need to cancel later
       this._autoconfigureUnsub = unsub;
+      console.log("[Fado] Autoconfigure subscription created (resubscribe=false)");
     } catch (err) {
-      console.error("Failed to start autoconfigure:", err);
+      console.error("[Fado] Failed to start autoconfigure:", err);
       this._testing = new Set();
     }
   }
 
+  _cleanupAutoconfigure() {
+    console.log("[Fado] Cleaning up autoconfigure subscription");
+    if (this._autoconfigureUnsub) {
+      this._autoconfigureUnsub();
+      this._autoconfigureUnsub = null;
+    }
+    this._testing = new Set();
+  }
+
   _handleAutoconfigureEvent(event) {
+    console.log("[Fado] Autoconfigure event:", event.type, event.entity_id || "");
     if (event.type === "started") {
       // Add to testing set
       const newTesting = new Set(this._testing);
@@ -934,11 +941,7 @@ class FadoPanel extends LitElement {
 
     // Check if testing is complete (all done)
     if (this._testing.size === 0 && this._configureChecked.size === 0) {
-      // All done, clean up
-      if (this._autoconfigureUnsub) {
-        this._autoconfigureUnsub();
-        this._autoconfigureUnsub = null;
-      }
+      this._cleanupAutoconfigure();
     }
   }
 
