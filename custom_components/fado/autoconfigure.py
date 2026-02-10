@@ -9,8 +9,9 @@ import math
 import time
 from typing import Any
 
-from homeassistant.components.light import ATTR_BRIGHTNESS
+from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
+from homeassistant.components.light.const import ColorMode
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     SERVICE_TURN_OFF,
@@ -31,6 +32,24 @@ from .coordinator import FadeCoordinator
 from .websocket_api import async_save_light_config
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _is_dimmable(hass: HomeAssistant, entity_id: str) -> bool:
+    """Check if a light supports brightness control (dimming)."""
+    state = hass.states.get(entity_id)
+    if state is None:
+        return True  # Assume dimmable if state unknown
+    modes = set(state.attributes.get(ATTR_SUPPORTED_COLOR_MODES, []))
+    dimmable_modes = {
+        ColorMode.BRIGHTNESS,
+        ColorMode.HS,
+        ColorMode.RGB,
+        ColorMode.RGBW,
+        ColorMode.RGBWW,
+        ColorMode.XY,
+        ColorMode.COLOR_TEMP,
+    }
+    return bool(modes & dimmable_modes)
 
 
 async def _async_turn_on(
@@ -95,25 +114,34 @@ async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict
     light_config["exclude"] = True
 
     try:
-        # Run native transitions test (skip if user disabled)
-        stored_native = light_config.get("native_transitions")
-        if stored_native == "disable":
-            result["native_transitions"] = "disable"
+        dimmable = _is_dimmable(hass, entity_id)
+
+        if dimmable:
+            # Run native transitions test (skip if user disabled)
+            stored_native = light_config.get("native_transitions")
+            if stored_native == "disable":
+                result["native_transitions"] = "disable"
+            else:
+                transition_result = await _async_test_native_transitions(hass, entity_id)
+                if "error" not in transition_result:
+                    result["native_transitions"] = transition_result["supports_native_transitions"]
+
+            # Run min brightness test
+            min_brightness_result = await _async_test_min_brightness(hass, entity_id)
+            if "error" not in min_brightness_result:
+                result["min_brightness"] = min_brightness_result["min_brightness"]
+
+            # Run delay test with native transitions enabled if supported
+            use_transitions = result.get("native_transitions") is True
+            delay_result = await _async_test_light_delay(
+                hass, entity_id, use_native_transitions=use_transitions
+            )
         else:
-            transition_result = await _async_test_native_transitions(hass, entity_id)
-            if "error" not in transition_result:
-                result["native_transitions"] = transition_result["supports_native_transitions"]
+            # On/off-only lights: skip brightness and transition tests
+            result["native_transitions"] = False
+            result["min_brightness"] = 1
+            delay_result = await _async_test_onoff_delay(hass, entity_id)
 
-        # Run min brightness test
-        min_brightness_result = await _async_test_min_brightness(hass, entity_id)
-        if "error" not in min_brightness_result:
-            result["min_brightness"] = min_brightness_result["min_brightness"]
-
-        # Run delay test with native transitions enabled if supported
-        use_transitions = result.get("native_transitions") is True
-        delay_result = await _async_test_light_delay(
-            hass, entity_id, use_native_transitions=use_transitions
-        )
         if "error" in delay_result:
             result["error"] = delay_result["error"]
         else:
@@ -271,6 +299,90 @@ async def _async_test_light_delay(
         result = global_min
 
     _LOGGER.info("%s: Measured min_delay_ms=%d (p90=%.1f)", entity_id, result, p90_value)
+
+    return {"entity_id": entity_id, "min_delay_ms": result}
+
+
+async def _async_test_onoff_delay(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
+    """Test an on/off-only light to determine optimal minimum delay.
+
+    Uses turn_on/turn_off toggles instead of brightness changes.
+
+    Args:
+        hass: Home Assistant instance
+        entity_id: The light entity ID to test
+
+    Returns:
+        On success: {"entity_id": entity_id, "min_delay_ms": result}
+        On failure: {"entity_id": entity_id, "error": "..."}
+    """
+    # Start with light on
+    await _async_turn_on(hass, entity_id)
+    await asyncio.sleep(0.5)
+
+    timings: list[float] = []
+    state_changed_event = asyncio.Event()
+    retry_count = 0
+
+    @callback
+    def _on_state_changed(event: Event[EventStateChangedData]) -> None:
+        """Handle state changed events for the test light."""
+        new_state = event.data.get("new_state")
+        if new_state and new_state.entity_id == entity_id:
+            state_changed_event.set()
+
+    unsub = hass.bus.async_listen("state_changed", _on_state_changed)
+
+    try:
+        for i in range(1, AUTOCONFIGURE_ITERATIONS + 1):
+            for attempt in range(2):
+                state_changed_event.clear()
+                start_time = time.monotonic()
+
+                # Alternate: turn off on odd iterations, turn on on even
+                if i % 2 == 1:
+                    await _async_turn_off(hass, entity_id)
+                else:
+                    await _async_turn_on(hass, entity_id)
+
+                try:
+                    await asyncio.wait_for(
+                        state_changed_event.wait(),
+                        timeout=AUTOCONFIGURE_TIMEOUT_S,
+                    )
+                    break  # Success
+                except TimeoutError:
+                    if attempt == 0 and retry_count == 0:
+                        retry_count += 1
+                        _LOGGER.warning(
+                            "%s: Timeout on iteration %d, retrying",
+                            entity_id,
+                            i,
+                        )
+                        continue
+                    return {"entity_id": entity_id, "error": "Timeout after retry"}
+
+            elapsed_ms = (time.monotonic() - start_time) * 1000
+            timings.append(elapsed_ms)
+
+    finally:
+        unsub()
+
+    if not timings:
+        return {"entity_id": entity_id, "error": "No timing data collected"}
+
+    sorted_timings = sorted(timings)
+    p90_index = int(math.ceil(0.9 * len(sorted_timings))) - 1
+    p90_value = sorted_timings[p90_index]
+
+    result = math.ceil(p90_value / 10) * 10
+
+    coordinator_obj: FadeCoordinator | None = hass.data.get(DOMAIN)
+    global_min = coordinator_obj.min_step_delay_ms if coordinator_obj else DEFAULT_MIN_STEP_DELAY_MS
+    if result < global_min:
+        result = global_min
+
+    _LOGGER.info("%s: Measured on/off min_delay_ms=%d (p90=%.1f)", entity_id, result, p90_value)
 
     return {"entity_id": entity_id, "min_delay_ms": result}
 

@@ -45,6 +45,7 @@ from .const import (
     DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
     DOMAIN,
+    EVENT_CONFIG_UPDATED,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
@@ -207,13 +208,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if action == "remove":
             await coordinator.cleanup_entity(entity_id)
             await _notify_unconfigured_lights(hass)
+            hass.bus.async_fire(EVENT_CONFIG_UPDATED)
         elif action == "create":
             await _notify_unconfigured_lights(hass)
+            hass.bus.async_fire(EVENT_CONFIG_UPDATED)
         elif action == "update":
             # Check if light was re-enabled (disabled_by changed)
             changes = event.data.get("changes", {})
             if "disabled_by" in changes:
                 await _notify_unconfigured_lights(hass)
+                hass.bus.async_fire(EVENT_CONFIG_UPDATED)
 
     entry.async_on_unload(
         hass.bus.async_listen(

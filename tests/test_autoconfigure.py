@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from custom_components.fado.autoconfigure import (
     _async_test_light_delay,
     _async_test_min_brightness,
+    _async_test_onoff_delay,
     async_autoconfigure_light,
 )
 from custom_components.fado.const import DOMAIN
@@ -1088,3 +1089,130 @@ class TestMinBrightness:
         # Storage should still have "disable"
         stored = hass_with_storage.data[DOMAIN].data[mock_light_on]
         assert stored["native_transitions"] == "disable"
+
+
+class TestOnOffAutoconfigure:
+    """Tests for autoconfiguring on/off-only (non-dimmable) lights."""
+
+    @pytest.fixture
+    def mock_onoff_light(self, hass: HomeAssistant) -> str:
+        """Create a mock on/off-only light entity."""
+        entity_id = "light.onoff_switch"
+        hass.states.async_set(
+            entity_id,
+            STATE_ON,
+            {ATTR_SUPPORTED_COLOR_MODES: [ColorMode.ONOFF]},
+        )
+        return entity_id
+
+    async def test_onoff_skips_native_transitions(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_onoff_light: str,
+        service_calls_with_state_update: list,
+    ) -> None:
+        """Test that on/off lights skip native transitions test."""
+        result = await async_autoconfigure_light(hass_with_storage, mock_onoff_light)
+
+        assert result["native_transitions"] is False
+
+    async def test_onoff_skips_min_brightness(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_onoff_light: str,
+        service_calls_with_state_update: list,
+    ) -> None:
+        """Test that on/off lights skip min brightness test and default to 1."""
+        result = await async_autoconfigure_light(hass_with_storage, mock_onoff_light)
+
+        assert result["min_brightness"] == 1
+
+    async def test_onoff_uses_toggle_for_delay(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_onoff_light: str,
+        service_calls_with_state_update: list,
+    ) -> None:
+        """Test that on/off delay test uses turn_on/turn_off (no brightness)."""
+        result = await async_autoconfigure_light(hass_with_storage, mock_onoff_light)
+
+        assert "min_delay_ms" in result
+        assert "error" not in result
+
+        # Verify no brightness parameter was sent in any call
+        # (skip the first turn_on which is the initial state setup)
+        for call in service_calls_with_state_update:
+            assert ATTR_BRIGHTNESS not in call.data
+
+    async def test_onoff_delay_measurement(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_onoff_light: str,
+        service_calls_with_state_update: list,
+    ) -> None:
+        """Test that on/off delay test returns valid min_delay_ms."""
+        result = await _async_test_onoff_delay(hass_with_storage, mock_onoff_light)
+
+        assert "min_delay_ms" in result
+        assert result["min_delay_ms"] >= 100  # Global minimum
+        assert result["min_delay_ms"] % 10 == 0  # Rounded to 10ms
+
+    async def test_onoff_alternates_on_off(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_onoff_light: str,
+        service_calls_with_state_update: list,
+    ) -> None:
+        """Test that on/off delay test alternates between turn_off and turn_on."""
+        await _async_test_onoff_delay(hass_with_storage, mock_onoff_light)
+
+        # First call is the initial turn_on to set standard state
+        # Then 10 iterations: odd=turn_off, even=turn_on
+        test_calls = [
+            c
+            for c in service_calls_with_state_update
+            if c.data.get(ATTR_ENTITY_ID) == mock_onoff_light
+        ]
+        # Skip initial turn_on + sleep setup call
+        iteration_calls = test_calls[1:]
+        assert len(iteration_calls) == 10
+
+        for i, call in enumerate(iteration_calls, start=1):
+            if i % 2 == 1:
+                assert call.service == "turn_off"
+            else:
+                assert call.service == "turn_on"
+
+    async def test_onoff_saves_results_to_storage(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_onoff_light: str,
+        service_calls_with_state_update: list,
+    ) -> None:
+        """Test that on/off autoconfigure saves all results to storage."""
+        await async_autoconfigure_light(hass_with_storage, mock_onoff_light)
+
+        stored = hass_with_storage.data[DOMAIN].data[mock_onoff_light]
+        assert "min_delay_ms" in stored
+        assert stored["native_transitions"] is False
+        assert stored["min_brightness"] == 1
+
+    async def test_onoff_restores_original_state(
+        self,
+        hass_with_storage: HomeAssistant,
+        service_calls_with_state_update: list,
+        hass: HomeAssistant,
+    ) -> None:
+        """Test that on/off autoconfigure restores original off state."""
+        entity_id = "light.onoff_was_off"
+        hass_with_storage.states.async_set(
+            entity_id,
+            STATE_OFF,
+            {ATTR_SUPPORTED_COLOR_MODES: [ColorMode.ONOFF]},
+        )
+
+        await async_autoconfigure_light(hass_with_storage, entity_id)
+
+        # Last call should be turn_off to restore original state
+        last_call = service_calls_with_state_update[-1]
+        assert last_call.service == "turn_off"
