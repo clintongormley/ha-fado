@@ -431,10 +431,22 @@ class FadoPanel extends LitElement {
       this._fetchAll();
       this._subscribeConfigUpdates();
     }
+    // Listen for navigation events so clicking the notification link
+    // while the panel is already open re-selects unconfigured lights
+    this._locationChangedHandler = () => {
+      if (this._data && !this._isTesting()) {
+        this._initConfigureChecked();
+      }
+    };
+    window.addEventListener("location-changed", this._locationChangedHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    if (this._locationChangedHandler) {
+      window.removeEventListener("location-changed", this._locationChangedHandler);
+      this._locationChangedHandler = null;
+    }
     if (this._fetchTimeout) {
       clearTimeout(this._fetchTimeout);
     }
