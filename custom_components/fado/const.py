@@ -4,6 +4,11 @@ DOMAIN = "fado"
 
 # Services
 SERVICE_FADE_LIGHTS = "fade_lights"
+SERVICE_EXCLUDE_LIGHTS = "exclude_lights"
+SERVICE_INCLUDE_LIGHTS = "include_lights"
+
+# Events
+EVENT_CONFIG_UPDATED = f"{DOMAIN}_config_updated"
 
 # Service attributes
 ATTR_BRIGHTNESS = "brightness"
