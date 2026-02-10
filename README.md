@@ -24,6 +24,7 @@ A Home Assistant custom integration that provides smooth light fading for bright
 - Capability-aware: skips lights that don't support requested color modes
 - Uses native transitions to smooth out each step for flicker-free fading
 - Cancels fade when lights are manually adjusted
+- Exclude/include lights from fades via services or the configuration panel
 
 ### Automatic Brightness Restoration
 
@@ -66,7 +67,7 @@ After installation and restart, add the integration via the Home Assistant UI:
 3. Search for "Fado"
 4. Click to add it
 
-Once configured, the `fado.fado` service will be available in **Developer Tools** → **Actions**.
+Once configured, the Fado services will be available in **Developer Tools** → **Actions**.
 
 ### Configuration Panel
 
@@ -99,7 +100,7 @@ This ensures smooth fading without overwhelming slower devices.
 
 ## Usage
 
-### Service: `fado.fado`
+### Service: `fado.fade_lights`
 
 Fades one or more lights to a target brightness and/or color over a transition period.
 
@@ -142,7 +143,7 @@ You can specify starting values to override the current light state:
 **Basic fade:**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   entity_id: light.bedroom
 data:
@@ -153,7 +154,7 @@ data:
 **Fade multiple lights:**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   entity_id:
     - light.bedroom
@@ -166,7 +167,7 @@ data:
 **Fade all lights in an area:**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   area_id: living_room
 data:
@@ -177,7 +178,7 @@ data:
 **Fade a light group:**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   entity_id: light.all_downstairs
 data:
@@ -188,7 +189,7 @@ data:
 **Fade color temperature (warm to cool white):**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   entity_id: light.bedroom
 data:
@@ -201,7 +202,7 @@ data:
 **Fade to a specific color:**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   entity_id: light.accent
 data:
@@ -213,7 +214,7 @@ data:
 **Fade from color temperature to saturated color (hybrid transition):**
 
 ```yaml
-service: fado.fado
+service: fado.fade_lights
 target:
   entity_id: light.living_room
 data:
@@ -233,13 +234,39 @@ automation:
         event: sunset
         offset: "-00:30:00"
     action:
-      - service: fado.fado
+      - service: fado.fade_lights
         target:
           area_id: living_room
         data:
           brightness_pct: 20
           transition: 1800 # 30 minutes
 ```
+
+### Service: `fado.exclude_lights`
+
+Excludes one or more lights from Fado. Excluded lights are ignored by fade operations and state tracking.
+
+**Target** (required): Specify which lights to exclude using entity, device, area, floor, or label targets.
+
+```yaml
+service: fado.exclude_lights
+target:
+  entity_id: light.bedroom
+```
+
+### Service: `fado.include_lights`
+
+Re-includes previously excluded lights so they respond to fade operations again.
+
+**Target** (required): Specify which lights to include using entity, device, area, floor, or label targets.
+
+```yaml
+service: fado.include_lights
+target:
+  entity_id: light.bedroom
+```
+
+These services can be used in automations to dynamically control which lights participate in fades. For example, exclude a light during a movie and include it again afterwards.
 
 ## How It Works
 
@@ -357,7 +384,7 @@ If you encounter a bug, please [open an issue](https://github.com/clintongormley
 
 ### Running Tests
 
-The integration includes a comprehensive test suite with 350 tests covering config flow, service handling, fade execution, color fading, manual interruption detection, and brightness restoration.
+The integration includes a comprehensive test suite with 637 tests covering config flow, service handling, fade execution, color fading, manual interruption detection, and brightness restoration.
 
 #### Prerequisites
 
@@ -403,6 +430,7 @@ The test suite achieves 100% code coverage and includes tests for:
 - **Planckian locus** (`test_planckian_locus.py`): Color temperature to HS conversions
 - **Manual interruption** (`test_manual_interruption.py`): Brightness/color change detection, fade cancellation
 - **Brightness restoration** (`test_brightness_restoration.py`): Restore on turn-on, storage persistence
+- **Exclude/include services** (`test_exclude_service.py`): Service registration, flag persistence, fade filtering, panel notification
 - **Event waiting** (`test_event_waiting.py`): Condition-based event waiting, stale value pruning
 
 ### Continuous Integration
