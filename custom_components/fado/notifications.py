@@ -16,6 +16,7 @@ def _get_unconfigured_lights(hass: HomeAssistant) -> set[str]:
 
     A light is considered unconfigured if:
     - It is enabled (not disabled)
+    - It is NOT a light group (has entity_id in state attributes)
     - It is NOT excluded (exclude: true in storage)
     - It is missing any required config field (currently just min_delay_ms)
     """
@@ -37,6 +38,12 @@ def _get_unconfigured_lights(hass: HomeAssistant) -> set[str]:
             continue
 
         entity_id = entry.entity_id
+
+        # Skip light groups (they have entity_id in state attributes)
+        state = hass.states.get(entity_id)
+        if state and "entity_id" in state.attributes:
+            continue
+
         config = storage_data.get(entity_id, {})
 
         # Skip excluded lights

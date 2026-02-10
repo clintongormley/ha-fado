@@ -12,7 +12,6 @@ class FadoPanel extends LitElement {
       panel: { type: Object },
       _data: { type: Object },
       _loading: { type: Boolean },
-      _refreshing: { type: Boolean },
       _collapsed: { type: Object },
       _configureChecked: { type: Object },
       _testing: { type: Object },
@@ -127,26 +126,6 @@ class FadoPanel extends LitElement {
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
-      }
-
-      .refresh-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.3);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        pointer-events: all;
-      }
-
-      .refresh-overlay .spinner {
-        width: 48px;
-        height: 48px;
-        border-width: 4px;
       }
 
       .chevron {
@@ -435,7 +414,6 @@ class FadoPanel extends LitElement {
     super();
     this._data = null;
     this._loading = true;
-    this._refreshing = false;
     this._collapsed = this._loadCollapsedState();
     this._configureChecked = new Set();
     this._testing = new Set();
@@ -443,6 +421,7 @@ class FadoPanel extends LitElement {
     this._globalMinDelayMs = 100;
     this._logLevel = "warning";
     this._entryId = null;
+    this._lastConnection = null;
   }
 
   connectedCallback() {
@@ -469,19 +448,28 @@ class FadoPanel extends LitElement {
   updated(changedProperties) {
     super.updated(changedProperties);
     if (changedProperties.has("hass") && this.hass) {
-      // Clean up autoconfigure UI state on reconnect (subscription won't replay
-      // because we use resubscribe: false, but testing spinners need to be cleared)
-      this._cleanupAutoconfigure();
+      const isReconnect =
+        this._lastConnection && this._lastConnection !== this.hass.connection;
+      this._lastConnection = this.hass.connection;
+
+      if (isReconnect) {
+        // Actual WebSocket reconnection: clean up autoconfigure UI state
+        // (subscription won't replay because we use resubscribe: false)
+        this._cleanupAutoconfigure();
+        // Old event subscription is dead — re-subscribe
+        this._configUpdateUnsub = null;
+        this._subscribeConfigUpdates();
+        // Re-fetch all data since we may have missed events while disconnected
+        this._fetchAll();
+        return;
+      }
 
       // Subscribe to config update events (no-op if already subscribed)
       this._subscribeConfigUpdates();
 
-      // Fetch immediately when hass first becomes available and we haven't loaded yet
+      // First load: fetch when hass first becomes available
       if (!this._data && this._loading) {
         this._fetchAll();
-      } else if (!this._loading) {
-        // Debounce subsequent updates (only lights, not settings)
-        this._debouncedFetch();
       }
     }
   }
@@ -492,11 +480,7 @@ class FadoPanel extends LitElement {
       clearTimeout(this._fetchTimeout);
     }
     this._fetchTimeout = setTimeout(async () => {
-      this._refreshing = true;
-      await this._fetchLights();
-      // Enforce global minimum on any existing per-light values
-      await this._enforceGlobalMinimum(this._globalMinDelayMs);
-      this._refreshing = false;
+      await this._fetchLightsQuiet();
     }, 1000);
   }
 
@@ -612,30 +596,94 @@ class FadoPanel extends LitElement {
     try {
       const result = await this.hass.callWS({ type: "fado/get_lights" });
       this._data = result;
-
-      // Auto-check lights that don't have a custom delay and are not excluded
-      const toCheck = new Set();
-      // Set default collapsed state for areas (collapsed by default)
-      const newCollapsed = { ...this._collapsed };
-      if (result && result.areas) {
-        for (const area of result.areas) {
-          const areaKey = `area_${area.area_id || "none"}`;
-          if (!(areaKey in newCollapsed)) {
-            newCollapsed[areaKey] = true; // Collapsed by default
-          }
-          for (const light of area.lights) {
-            if (!light.min_delay_ms && !light.exclude) {
-              toCheck.add(light.entity_id);
-            }
-          }
-        }
-      }
-      this._collapsed = newCollapsed;
-      this._configureChecked = toCheck;
+      this._initCollapsedState();
+      this._initConfigureChecked();
     } catch (err) {
       console.error("Failed to fetch lights:", err);
     }
     this._loading = false;
+  }
+
+  async _fetchLightsQuiet() {
+    // Background re-fetch: no loading spinner, no overlay, preserves UI state
+    try {
+      const result = await this.hass.callWS({ type: "fado/get_lights" });
+      if (!result || !result.areas) return;
+      this._mergeData(result);
+    } catch (err) {
+      console.error("Failed to fetch lights:", err);
+    }
+  }
+
+  _initCollapsedState() {
+    const newCollapsed = { ...this._collapsed };
+    if (this._data && this._data.areas) {
+      for (const area of this._data.areas) {
+        const areaKey = `area_${area.area_id || "none"}`;
+        if (!(areaKey in newCollapsed)) {
+          newCollapsed[areaKey] = true; // Collapsed by default
+        }
+      }
+    }
+    this._collapsed = newCollapsed;
+  }
+
+  _initConfigureChecked() {
+    const toCheck = new Set();
+    if (this._data && this._data.areas) {
+      for (const area of this._data.areas) {
+        for (const light of area.lights) {
+          if (!light.min_delay_ms && !light.exclude) {
+            toCheck.add(light.entity_id);
+          }
+        }
+      }
+    }
+    this._configureChecked = toCheck;
+  }
+
+  _mergeData(newData) {
+    // Build set of existing light IDs
+    const existingLightIds = new Set();
+    if (this._data && this._data.areas) {
+      for (const area of this._data.areas) {
+        for (const light of area.lights) {
+          existingLightIds.add(light.entity_id);
+        }
+      }
+    }
+
+    // Replace data (structure may have changed: new lights, removed lights, new areas)
+    this._data = newData;
+
+    // Initialize collapsed state for any new areas
+    this._initCollapsedState();
+
+    // Preserve _configureChecked: keep existing selections for lights that still exist,
+    // add newly-appearing unconfigured lights
+    const newLightIds = new Set();
+    for (const area of newData.areas) {
+      for (const light of area.lights) {
+        newLightIds.add(light.entity_id);
+      }
+    }
+
+    const updatedChecked = new Set();
+    // Keep existing selections for lights that still exist
+    for (const id of this._configureChecked) {
+      if (newLightIds.has(id)) {
+        updatedChecked.add(id);
+      }
+    }
+    // Auto-check newly-appearing lights that qualify
+    for (const area of newData.areas) {
+      for (const light of area.lights) {
+        if (!existingLightIds.has(light.entity_id) && !light.min_delay_ms && !light.exclude) {
+          updatedChecked.add(light.entity_id);
+        }
+      }
+    }
+    this._configureChecked = updatedChecked;
   }
 
   _toggleCollapse(key) {
@@ -894,7 +942,6 @@ class FadoPanel extends LitElement {
   }
 
   _cleanupAutoconfigure() {
-    console.log("[Fado] Cleaning up autoconfigure subscription");
     if (this._autoconfigureUnsub) {
       this._autoconfigureUnsub();
       this._autoconfigureUnsub = null;
@@ -1071,7 +1118,6 @@ class FadoPanel extends LitElement {
     }
 
     return html`
-      ${this._refreshing ? html`<div class="refresh-overlay"><div class="spinner"></div></div>` : ""}
       ${this._renderHeader()}
       <ha-card>
         <table class="lights-table">
