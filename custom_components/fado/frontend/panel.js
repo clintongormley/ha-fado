@@ -610,8 +610,17 @@ class FadoPanel extends LitElement {
       this._data = result;
       this._initCollapsedState();
       this._initConfigureChecked();
+      this._fetchRetries = 0;
     } catch (err) {
       console.error("Failed to fetch lights:", err);
+      // Retry with backoff — fetch can fail if HA is still starting up
+      this._fetchRetries = (this._fetchRetries || 0) + 1;
+      if (this._fetchRetries <= 5) {
+        const delay = Math.min(1000 * 2 ** (this._fetchRetries - 1), 15000);
+        console.log(`[Fado] Retrying fetch in ${delay}ms (attempt ${this._fetchRetries}/5)`);
+        this._fetchTimeout = setTimeout(() => this._fetchAll(), delay);
+        return; // Keep _loading = true so spinner stays visible
+      }
     }
     this._loading = false;
   }
