@@ -50,7 +50,9 @@ from .const import (
     LOG_LEVEL_WARNING,
     OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
+    SERVICE_EXCLUDE_LIGHTS,
     SERVICE_FADE_LIGHTS,
+    SERVICE_INCLUDE_LIGHTS,
     STORAGE_KEY,
     UNCONFIGURED_CHECK_INTERVAL_HOURS,
     VALID_EASING,
@@ -150,6 +152,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         """Service handler wrapper."""
         await coordinator.handle_fade_lights(call)
 
+    async def handle_exclude_lights(call: ServiceCall) -> None:
+        """Exclude targeted lights from Fado."""
+        entity_ids = coordinator.resolve_target_entity_ids(call)
+        if entity_ids:
+            await coordinator.set_exclude(entity_ids, exclude=True)
+
+    async def handle_include_lights(call: ServiceCall) -> None:
+        """Re-include targeted lights in Fado."""
+        entity_ids = coordinator.resolve_target_entity_ids(call)
+        if entity_ids:
+            await coordinator.set_exclude(entity_ids, exclude=False)
+
     @callback
     def handle_light_state_change(event: Event[EventStateChangedData]) -> None:
         """Event handler wrapper."""
@@ -160,6 +174,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         SERVICE_FADE_LIGHTS,
         handle_fade_lights,
         schema=FADE_LIGHTS_SCHEMA,
+    )
+
+    target_only_schema = cv.make_entity_service_schema({})
+    hass.services.async_register(
+        DOMAIN, SERVICE_EXCLUDE_LIGHTS, handle_exclude_lights, schema=target_only_schema
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_INCLUDE_LIGHTS, handle_include_lights, schema=target_only_schema
     )
 
     # Track only light domain state changes (more efficient than listening to all events)
@@ -283,6 +305,8 @@ async def async_unload_entry(hass: HomeAssistant, _entry: ConfigEntry) -> bool:
     await coordinator.shutdown()
 
     hass.services.async_remove(DOMAIN, SERVICE_FADE_LIGHTS)
+    hass.services.async_remove(DOMAIN, SERVICE_EXCLUDE_LIGHTS)
+    hass.services.async_remove(DOMAIN, SERVICE_INCLUDE_LIGHTS)
     hass.data.pop(DOMAIN, None)
 
     # Remove the panel

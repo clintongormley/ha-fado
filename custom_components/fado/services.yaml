@@ -149,3 +149,17 @@ fade_lights:
             number:
               min: 1
               max: 255
+
+exclude_lights:
+  name: Exclude lights
+  description: Excludes lights from Fado. Excluded lights are ignored by fade operations and state tracking.
+  target:
+    entity:
+      domain: light
+
+include_lights:
+  name: Include lights
+  description: Re-includes previously excluded lights so they respond to fade operations again.
+  target:
+    entity:
+      domain: light

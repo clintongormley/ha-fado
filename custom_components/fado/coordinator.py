@@ -47,6 +47,7 @@ from homeassistant.helpers.target import (
 
 from .const import (
     DOMAIN,
+    EVENT_CONFIG_UPDATED,
     NATIVE_TRANSITION_MS,
 )
 from .entity_fade_state import EntityFadeState
@@ -132,6 +133,12 @@ class FadeCoordinator:
             for entity_id in entity_ids
         ]
         await asyncio.gather(*tasks, return_exceptions=True)
+
+    def resolve_target_entity_ids(self, call: ServiceCall) -> list[str]:
+        """Resolve service call targets to a list of light entity IDs."""
+        target_selection = TargetSelection(call.data)
+        selected = async_extract_referenced_entity_ids(self.hass, target_selection)
+        return list(selected.referenced | selected.indirectly_referenced)
 
     def _resolve_fade_targets(self, call: ServiceCall, fade_params: FadeParams) -> list[str]:
         """Resolve, expand, and filter targets for a fade_lights service call.
@@ -910,6 +917,13 @@ class FadeCoordinator:
         if start_brightness > 0 and start_brightness != existing_orig:
             self.store_orig_brightness(entity_id, start_brightness)
         return start_brightness if start_brightness > 0 else existing_orig
+
+    async def set_exclude(self, entity_ids: list[str], exclude: bool) -> None:
+        """Set the exclude flag for one or more lights and persist."""
+        for entity_id in entity_ids:
+            self.get_or_create_light_config(entity_id)["exclude"] = exclude
+        await self.store.async_save(self.data)
+        self.hass.bus.async_fire(EVENT_CONFIG_UPDATED)
 
     async def save_storage(self) -> None:
         """Save storage data to disk."""

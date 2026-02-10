@@ -450,6 +450,7 @@ class FadoPanel extends LitElement {
     // Only fetch if hass is already available
     if (this.hass) {
       this._fetchAll();
+      this._subscribeConfigUpdates();
     }
   }
 
@@ -462,6 +463,10 @@ class FadoPanel extends LitElement {
       this._autoconfigureUnsub();
       this._autoconfigureUnsub = null;
     }
+    if (this._configUpdateUnsub) {
+      this._configUpdateUnsub();
+      this._configUpdateUnsub = null;
+    }
   }
 
   updated(changedProperties) {
@@ -473,6 +478,9 @@ class FadoPanel extends LitElement {
         this._autoconfigureUnsub = null;
         this._testing = new Set();
       }
+
+      // Subscribe to config update events (no-op if already subscribed)
+      this._subscribeConfigUpdates();
 
       // Fetch immediately when hass first becomes available and we haven't loaded yet
       if (!this._data && this._loading) {
@@ -496,6 +504,20 @@ class FadoPanel extends LitElement {
       await this._enforceGlobalMinimum(this._globalMinDelayMs);
       this._refreshing = false;
     }, 1000);
+  }
+
+  async _subscribeConfigUpdates() {
+    // Subscribe to fado_config_updated events so the panel refreshes
+    // when exclude/include services change config outside the panel
+    if (this._configUpdateUnsub || !this.hass) return;
+    try {
+      this._configUpdateUnsub = await this.hass.connection.subscribeEvents(
+        () => this._debouncedFetch(),
+        "fado_config_updated",
+      );
+    } catch {
+      // Subscription may fail if connection is not ready
+    }
   }
 
   _loadCollapsedState() {
