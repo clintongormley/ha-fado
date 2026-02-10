@@ -608,7 +608,7 @@ class FadoPanel extends LitElement {
 
   _handleGlobalDelayChange(e) {
     const value = e.target.value ? parseInt(e.target.value, 10) : null;
-    if (value && value >= 50 && value <= 1000) {
+    if (value && value >= 50 && value <= 2000) {
       this._saveGlobalMinDelay(value);
     }
   }
@@ -1099,7 +1099,7 @@ class FadoPanel extends LitElement {
           <ha-textfield
             type="number"
             min="50"
-            max="1000"
+            max="2000"
             step="10"
             suffix="ms"
             .value=${this._globalMinDelayMs || ""}
@@ -1188,7 +1188,7 @@ class FadoPanel extends LitElement {
                 <ha-textfield
                   type="number"
                   min="${this._globalMinDelayMs}"
-                  max="1000"
+                  max="2000"
                   step="10"
                   placeholder="global"
                   ?disabled=${isExcluded}
