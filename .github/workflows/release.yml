@@ -22,7 +22,7 @@ jobs:
       - name: Get version from manifest
         id: manifest_version
         run: |
-          VERSION=$(jq -r '.version' custom_components/fade_lights/manifest.json)
+          VERSION=$(jq -r '.version' custom_components/fado/manifest.json)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Verify versions match
