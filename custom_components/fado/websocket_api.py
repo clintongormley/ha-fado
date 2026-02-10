@@ -1,5 +1,7 @@
 """WebSocket API for Fado panel."""
 
+# pyright: reportPrivateImportUsage=false
+
 from __future__ import annotations
 
 import asyncio
@@ -326,7 +328,7 @@ async def ws_autoconfigure(
     Both delay testing and native transitions testing are performed.
     """
     # Import here to avoid circular import (autoconfigure imports async_save_light_config)
-    from .autoconfigure import async_autoconfigure_light  # noqa: PLC0415
+    from .autoconfigure import async_autoconfigure_light  # noqa: PLC0415, I001  # pylint: disable=import-outside-toplevel
 
     entity_ids = msg["entity_ids"]
     _LOGGER.info("Autoconfigure requested for %d entities: %s", len(entity_ids), entity_ids)
@@ -416,7 +418,7 @@ async def ws_autoconfigure(
             except asyncio.CancelledError:
                 _LOGGER.info("Autoconfigure: task cancelled for %s", entity_id)
                 return  # Task cancelled during shutdown
-            except Exception as err:  # noqa: BLE001
+            except Exception as err:  # noqa: BLE001  # pylint: disable=broad-exception-caught
                 # Check if cancelled before sending error
                 if cancel_event.is_set():
                     return
@@ -471,12 +473,12 @@ async def ws_test_native_transitions(
     Tests if a light supports native transitions by sending a command
     with a transition time and measuring how long until the state changes.
     """
-    from .autoconfigure import async_test_native_transitions  # noqa: PLC0415
+    from .autoconfigure import _async_test_native_transitions  # noqa: PLC0415, I001  # pylint: disable=import-outside-toplevel
 
     entity_id = msg["entity_id"]
     transition_s = msg["transition_s"]
 
-    result = await async_test_native_transitions(hass, entity_id, transition_s)
+    result = await _async_test_native_transitions(hass, entity_id, transition_s)
 
     if "error" in result:
         connection.send_error(msg["id"], "test_failed", result["error"])

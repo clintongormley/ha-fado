@@ -373,6 +373,7 @@ async def _async_test_onoff_delay(
             if cancel_event is not None and cancel_event.is_set():
                 break
 
+            start_time = time.monotonic()
             for attempt in range(2):
                 state_changed_event.clear()
                 start_time = time.monotonic()
