@@ -1,5 +1,6 @@
 {
-  "name": "Fado",
+  "name": "Fado Light Fader",
   "render_readme": true,
-  "homeassistant": "2024.1.0"
+  "homeassistant": "2024.1.0",
+  "hide_default_branch": false
 }
