@@ -787,19 +787,21 @@ class FadoPanel extends LitElement {
   }
 
   _getAreaLightIds(area) {
-    // Returns all entity_ids in the area
-    return area.lights.map((light) => light.entity_id);
+    // Returns entity_ids in the area that are not excluded
+    return area.lights.filter((light) => !light.exclude).map((light) => light.entity_id);
   }
 
   _getAllLightIds() {
-    // Returns all entity_ids across all areas
+    // Returns all non-excluded entity_ids across all areas
     if (!this._data || !this._data.areas) {
       return [];
     }
     const entityIds = [];
     for (const area of this._data.areas) {
       for (const light of area.lights) {
-        entityIds.push(light.entity_id);
+        if (!light.exclude) {
+          entityIds.push(light.entity_id);
+        }
       }
     }
     return entityIds;
@@ -908,8 +910,7 @@ class FadoPanel extends LitElement {
   }
 
   _getTestingText() {
-    const completed = this._totalToTest - this._testing.size;
-    return `Configuring ${this._testing.size} light${this._testing.size === 1 ? "" : "s"}... (${completed}/${this._totalToTest})`;
+    return `Configuring ${this._testing.size} light${this._testing.size === 1 ? "" : "s"}... (${this._completedTests}/${this._totalToTest})`;
   }
 
   _isButtonDisabled() {
@@ -924,6 +925,7 @@ class FadoPanel extends LitElement {
 
     this._testErrors = new Map();
     this._totalToTest = entityIds.length;
+    this._completedTests = 0;
 
     try {
       console.log("[Fado] Starting autoconfigure for", entityIds.length, "lights:", entityIds);
@@ -961,6 +963,7 @@ class FadoPanel extends LitElement {
       const newTesting = new Set(this._testing);
       newTesting.delete(event.entity_id);
       this._testing = newTesting;
+      this._completedTests++;
 
       // Update local data with new values
       this._updateLightConfig(event.entity_id, event.min_delay_ms, event.native_transitions, event.min_brightness);
@@ -974,6 +977,7 @@ class FadoPanel extends LitElement {
       const newTesting = new Set(this._testing);
       newTesting.delete(event.entity_id);
       this._testing = newTesting;
+      this._completedTests++;
 
       // Add to errors
       const newErrors = new Map(this._testErrors);
