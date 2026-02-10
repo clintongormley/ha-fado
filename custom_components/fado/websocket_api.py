@@ -28,6 +28,7 @@ from .const import (
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
+    MAX_STEP_DELAY_MS,
     MIN_STEP_DELAY_MS,
     OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
@@ -160,7 +161,7 @@ async def async_save_light_config(
     Args:
         hass: Home Assistant instance
         entity_id: The light entity ID
-        min_delay_ms: Optional minimum delay in milliseconds (50-1000)
+        min_delay_ms: Optional minimum delay in milliseconds
         exclude: Optional flag to exclude light from fades
         native_transitions: Optional flag for native transition support
         min_brightness: Optional minimum brightness value (1-255) that keeps light on
@@ -209,7 +210,9 @@ async def async_save_light_config(
     {
         "type": "fado/save_light_config",
         vol.Required("entity_id"): str,
-        vol.Optional("min_delay_ms"): vol.Any(None, vol.All(int, vol.Range(min=50, max=1000))),
+        vol.Optional("min_delay_ms"): vol.Any(
+            None, vol.All(int, vol.Range(min=MIN_STEP_DELAY_MS, max=MAX_STEP_DELAY_MS))
+        ),
         vol.Optional("exclude"): bool,
         vol.Optional("native_transitions"): vol.Any(None, bool, "disable"),
         vol.Optional("min_brightness"): vol.Any(None, vol.All(int, vol.Range(min=1, max=255))),
@@ -495,7 +498,7 @@ async def ws_get_settings(
     {
         "type": "fado/save_settings",
         vol.Optional("default_min_delay_ms"): vol.All(
-            int, vol.Range(min=MIN_STEP_DELAY_MS, max=1000)
+            int, vol.Range(min=MIN_STEP_DELAY_MS, max=MAX_STEP_DELAY_MS)
         ),
         vol.Optional("log_level"): vol.In([LOG_LEVEL_WARNING, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG]),
     }

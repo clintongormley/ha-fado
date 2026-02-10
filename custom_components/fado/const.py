@@ -49,6 +49,9 @@ DEFAULT_MIN_STEP_DELAY_MS = 100  # milliseconds
 # Hard minimum for step delay (service call overhead)
 MIN_STEP_DELAY_MS = 50
 
+# Maximum allowed step delay
+MAX_STEP_DELAY_MS = 2000
+
 # Brightness tolerance for detecting manual intervention (accounts for device rounding)
 BRIGHTNESS_TOLERANCE = 3
 
