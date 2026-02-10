@@ -219,6 +219,52 @@ async def test_exclude_fires_config_updated_event(
     assert len(events) == 2
 
 
+async def test_exclude_ignores_non_light_entities(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    two_lights: tuple[str, str],
+) -> None:
+    """Test that exclude_lights filters out non-light entities from targets."""
+    # Create a non-light entity on the same "device"
+    hass.states.async_set("event.kitchen_input_1", "")
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_EXCLUDE_LIGHTS,
+        {},
+        target={"entity_id": ["light.living_room", "event.kitchen_input_1"]},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    # Light should be excluded
+    assert hass.data[DOMAIN].data.get("light.living_room", {}).get("exclude") is True
+    # Non-light entity should NOT be in storage
+    assert "event.kitchen_input_1" not in hass.data[DOMAIN].data
+
+
+async def test_include_ignores_non_light_entities(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    two_lights: tuple[str, str],
+) -> None:
+    """Test that include_lights filters out non-light entities from targets."""
+    # Pre-exclude the light
+    hass.data[DOMAIN].data["light.living_room"] = {"exclude": True}
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_INCLUDE_LIGHTS,
+        {},
+        target={"entity_id": ["light.living_room", "sensor.temperature"]},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert hass.data[DOMAIN].data["light.living_room"].get("exclude") is False
+    assert "sensor.temperature" not in hass.data[DOMAIN].data
+
+
 async def test_services_unloaded(
     hass: HomeAssistant,
     init_integration: MockConfigEntry,

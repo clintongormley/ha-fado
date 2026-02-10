@@ -434,6 +434,63 @@ class TestDailyNotificationTimer:
         assert call_args[0][2] == timedelta(hours=24)  # Third arg is interval
 
 
+class TestPruneStaleStorage:
+    """Test async_prune_stale_storage removes non-light entities."""
+
+    async def test_prunes_non_light_entities(self, hass: HomeAssistant) -> None:
+        """Test that non-light entities are removed from storage."""
+        coordinator = _make_coordinator(
+            hass,
+            {
+                "light.bedroom": {"min_delay_ms": 100},
+                "event.kitchen_input_1": {"exclude": True},
+                "sensor.temperature": {"orig_brightness": 200},
+            },
+        )
+
+        mock_registry = MagicMock()
+        mock_entry = MagicMock(entity_id="light.bedroom", domain=LIGHT_DOMAIN)
+        mock_registry.async_get = lambda eid: mock_entry if eid == "light.bedroom" else None
+
+        with patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ):
+            await coordinator.async_prune_stale_storage()
+
+        assert "light.bedroom" in coordinator.data
+        assert "event.kitchen_input_1" not in coordinator.data
+        assert "sensor.temperature" not in coordinator.data
+        coordinator.store.async_save.assert_called_once()
+
+    async def test_keeps_valid_light_entities(self, hass: HomeAssistant) -> None:
+        """Test that valid light entities are kept in storage."""
+        coordinator = _make_coordinator(
+            hass,
+            {
+                "light.bedroom": {"min_delay_ms": 100},
+                "light.kitchen": {"min_delay_ms": 150},
+            },
+        )
+
+        mock_registry = MagicMock()
+        mock_entries = {
+            "light.bedroom": MagicMock(entity_id="light.bedroom"),
+            "light.kitchen": MagicMock(entity_id="light.kitchen"),
+        }
+        mock_registry.async_get = lambda eid: mock_entries.get(eid)
+
+        with patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ):
+            await coordinator.async_prune_stale_storage()
+
+        assert "light.bedroom" in coordinator.data
+        assert "light.kitchen" in coordinator.data
+        coordinator.store.async_save.assert_not_called()
+
+
 class TestSaveConfigNotification:
     """Test notification after saving config."""
 

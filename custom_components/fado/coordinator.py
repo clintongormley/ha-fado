@@ -91,17 +91,19 @@ class FadeCoordinator:
         self.data = await self.store.async_load() or {}
 
     async def async_prune_stale_storage(self) -> None:
-        """Remove storage entries for entities that no longer exist.
+        """Remove storage entries for entities that no longer exist or aren't lights.
 
         Should be called after HA has fully started (all entities registered).
         """
         from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
 
         registry = er.async_get(self.hass)
+        light_prefix = f"{LIGHT_DOMAIN}."
         stale = [
             eid
             for eid in self.data
-            if not registry.async_get(eid) and self.hass.states.get(eid) is None
+            if not eid.startswith(light_prefix)
+            or (not registry.async_get(eid) and self.hass.states.get(eid) is None)
         ]
         if stale:
             for eid in stale:
@@ -138,7 +140,9 @@ class FadeCoordinator:
         """Resolve service call targets to a list of light entity IDs."""
         target_selection = TargetSelection(call.data)
         selected = async_extract_referenced_entity_ids(self.hass, target_selection)
-        return list(selected.referenced | selected.indirectly_referenced)
+        all_ids = selected.referenced | selected.indirectly_referenced
+        light_prefix = f"{LIGHT_DOMAIN}."
+        return [eid for eid in all_ids if eid.startswith(light_prefix)]
 
     def _resolve_fade_targets(self, call: ServiceCall, fade_params: FadeParams) -> list[str]:
         """Resolve, expand, and filter targets for a fade_lights service call.
