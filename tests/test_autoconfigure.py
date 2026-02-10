@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -440,7 +441,11 @@ class TestWsAutoconfigure:
         max_concurrent = 0
         lock = asyncio.Lock()
 
-        async def mock_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict:
+        async def mock_autoconfigure_light(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
             """Mock that tracks concurrent execution."""
             nonlocal current_concurrent, max_concurrent
             async with lock:
@@ -514,7 +519,11 @@ class TestWsAutoconfigure:
 
         call_count = 0
 
-        async def mock_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict:
+        async def mock_autoconfigure_light(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
             """Mock that returns success or error based on entity."""
             nonlocal call_count
             call_count += 1
@@ -591,7 +600,11 @@ class TestWsAutoconfigure:
         """Verify light groups are expanded to individual lights."""
         tested_entities: list[str] = []
 
-        async def mock_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict:
+        async def mock_autoconfigure_light(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
             """Mock that records tested entity IDs."""
             tested_entities.append(entity_id)
             return {"entity_id": entity_id, "min_delay_ms": 100, "native_transitions": True}
@@ -659,7 +672,11 @@ class TestWsAutoconfigure:
 
         tested_entities: list[str] = []
 
-        async def mock_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict:
+        async def mock_autoconfigure_light(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
             """Mock that records tested entity IDs."""
             tested_entities.append(entity_id)
             return {"entity_id": entity_id, "min_delay_ms": 100, "native_transitions": True}
@@ -700,7 +717,11 @@ class TestWsAutoconfigure:
         completed_count = 0
         cancel_after = 2  # Cancel after 2 lights start
 
-        async def mock_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict:
+        async def mock_autoconfigure_light(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
             """Mock that simulates work."""
             nonlocal completed_count
             # Longer delay to allow time for cancellation
@@ -976,15 +997,15 @@ class TestMinBrightness:
         """Test autoconfigure runs tests in order: transitions, min_brightness, delay."""
         test_order: list[str] = []
 
-        async def mock_native_transitions(hass, entity_id):
+        async def mock_native_transitions(hass, entity_id, **kwargs):
             test_order.append("native_transitions")
             return {"entity_id": entity_id, "supports_native_transitions": True}
 
-        async def mock_min_brightness(hass, entity_id):
+        async def mock_min_brightness(hass, entity_id, **kwargs):
             test_order.append("min_brightness")
             return {"entity_id": entity_id, "min_brightness": 1}
 
-        async def mock_delay(hass, entity_id, use_native_transitions=False):
+        async def mock_delay(hass, entity_id, use_native_transitions=False, **kwargs):
             test_order.append("delay")
             return {"entity_id": entity_id, "min_delay_ms": 100}
 
@@ -1017,15 +1038,15 @@ class TestMinBrightness:
 
         test_order: list[str] = []
 
-        async def mock_native_transitions(hass, entity_id):
+        async def mock_native_transitions(hass, entity_id, **kwargs):
             test_order.append("native_transitions")
             return {"entity_id": entity_id, "supports_native_transitions": True}
 
-        async def mock_min_brightness(hass, entity_id):
+        async def mock_min_brightness(hass, entity_id, **kwargs):
             test_order.append("min_brightness")
             return {"entity_id": entity_id, "min_brightness": 1}
 
-        async def mock_delay(hass, entity_id, use_native_transitions=False):
+        async def mock_delay(hass, entity_id, use_native_transitions=False, **kwargs):
             test_order.append("delay")
             assert not use_native_transitions, "Should not use transitions when disabled"
             return {"entity_id": entity_id, "min_delay_ms": 100}
@@ -1061,13 +1082,13 @@ class TestMinBrightness:
         """Test 'disable' value is preserved in storage after autoconfigure."""
         hass_with_storage.data[DOMAIN].data[mock_light_on] = {"native_transitions": "disable"}
 
-        async def mock_native_transitions(hass, entity_id):
+        async def mock_native_transitions(hass, entity_id, **kwargs):
             return {"entity_id": entity_id, "supports_native_transitions": True}
 
-        async def mock_min_brightness(hass, entity_id):
+        async def mock_min_brightness(hass, entity_id, **kwargs):
             return {"entity_id": entity_id, "min_brightness": 1}
 
-        async def mock_delay(hass, entity_id, use_native_transitions=False):
+        async def mock_delay(hass, entity_id, use_native_transitions=False, **kwargs):
             return {"entity_id": entity_id, "min_delay_ms": 100}
 
         with (
@@ -1216,3 +1237,237 @@ class TestOnOffAutoconfigure:
         # Last call should be turn_off to restore original state
         last_call = service_calls_with_state_update[-1]
         assert last_call.service == "turn_off"
+
+
+class TestAutoconfigueCancellation:
+    """Tests for autoconfigure cancellation and shutdown cleanup."""
+
+    async def test_autoconfigure_uses_in_memory_tracking_not_persistent_exclude(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_light_on: str,
+    ) -> None:
+        """Test that autoconfigure uses _autoconfiguring_lights, not persistent exclude."""
+        coordinator: FadeCoordinator = hass_with_storage.data[DOMAIN]
+        was_autoconfiguring = False
+        had_exclude_in_data = False
+
+        async def mock_native_transitions(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
+            nonlocal was_autoconfiguring, had_exclude_in_data
+            was_autoconfiguring = coordinator.is_autoconfiguring(entity_id)
+            had_exclude_in_data = coordinator.data.get(
+                entity_id,
+                {},
+            ).get("exclude", False)
+            return {"entity_id": entity_id, "supports_native_transitions": False}
+
+        async def mock_min_brightness(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
+            return {"entity_id": entity_id, "min_brightness": 1}
+
+        async def mock_delay(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with (
+            patch(
+                "custom_components.fado.autoconfigure._async_test_native_transitions",
+                side_effect=mock_native_transitions,
+            ),
+            patch(
+                "custom_components.fado.autoconfigure._async_test_min_brightness",
+                side_effect=mock_min_brightness,
+            ),
+            patch(
+                "custom_components.fado.autoconfigure._async_test_light_delay",
+                side_effect=mock_delay,
+            ),
+        ):
+            await async_autoconfigure_light(hass_with_storage, mock_light_on)
+
+        # During autoconfigure, light should be in autoconfiguring set
+        assert was_autoconfiguring is True
+        # Persistent exclude should NOT have been set
+        assert had_exclude_in_data is False
+        # After completion, light should be removed from autoconfiguring set
+        assert not coordinator.is_autoconfiguring(mock_light_on)
+
+    async def test_autoconfigure_cleanup_on_error(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_light_on: str,
+        service_calls_with_state_update: list[ServiceCall],
+    ) -> None:
+        """Test that _autoconfiguring_lights is cleared after an exception."""
+        coordinator: FadeCoordinator = hass_with_storage.data[DOMAIN]
+
+        async def mock_native_transitions_that_fails(
+            hass: HomeAssistant, entity_id: str, **kwargs: Any
+        ) -> dict:
+            raise RuntimeError("Test failure")
+
+        with (
+            patch(
+                "custom_components.fado.autoconfigure._async_test_native_transitions",
+                side_effect=mock_native_transitions_that_fails,
+            ),
+            pytest.raises(RuntimeError, match="Test failure"),
+        ):
+            await async_autoconfigure_light(hass_with_storage, mock_light_on)
+
+        # Light should not be stuck in autoconfiguring set
+        assert not coordinator.is_autoconfiguring(mock_light_on)
+        # Persistent storage should not have exclude=True
+        assert not coordinator.data.get(mock_light_on, {}).get("exclude", False)
+
+    async def test_autoconfigure_cancel_event_stops_between_phases(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_light_on: str,
+        service_calls_with_state_update: list[ServiceCall],
+    ) -> None:
+        """Test that cancel_event stops autoconfigure between test phases."""
+        coordinator: FadeCoordinator = hass_with_storage.data[DOMAIN]
+        cancel_event = asyncio.Event()
+        tests_run: list[str] = []
+
+        async def mock_native_transitions(
+            hass: HomeAssistant, entity_id: str, **kwargs: Any
+        ) -> dict:
+            tests_run.append("native_transitions")
+            cancel_event.set()  # Cancel after first test
+            return {"entity_id": entity_id, "supports_native_transitions": False}
+
+        async def mock_min_brightness(hass: HomeAssistant, entity_id: str, **kwargs: Any) -> dict:
+            tests_run.append("min_brightness")
+            return {"entity_id": entity_id, "min_brightness": 1}
+
+        async def mock_delay(
+            hass: HomeAssistant,
+            entity_id: str,
+            **kwargs: Any,
+        ) -> dict:
+            tests_run.append("delay")
+            return {"entity_id": entity_id, "min_delay_ms": 100}
+
+        with (
+            patch(
+                "custom_components.fado.autoconfigure._async_test_native_transitions",
+                side_effect=mock_native_transitions,
+            ),
+            patch(
+                "custom_components.fado.autoconfigure._async_test_min_brightness",
+                side_effect=mock_min_brightness,
+            ),
+            patch(
+                "custom_components.fado.autoconfigure._async_test_light_delay",
+                side_effect=mock_delay,
+            ),
+        ):
+            result = await async_autoconfigure_light(
+                hass_with_storage, mock_light_on, cancel_event=cancel_event
+            )
+
+        # Only native transitions should have run before cancellation
+        assert tests_run == ["native_transitions"]
+        assert result.get("error") == "Cancelled"
+        # Cleanup should have happened
+        assert not coordinator.is_autoconfiguring(mock_light_on)
+
+    async def test_shutdown_cancels_autoconfigure_tasks(
+        self,
+        hass_with_storage: HomeAssistant,
+        mock_light_on: str,
+    ) -> None:
+        """Test that coordinator.shutdown() cancels registered autoconfigure tasks."""
+        coordinator: FadeCoordinator = hass_with_storage.data[DOMAIN]
+
+        task_cancelled = False
+
+        async def long_running_autoconfigure() -> None:
+            nonlocal task_cancelled
+            try:
+                await asyncio.sleep(100)
+            except asyncio.CancelledError:
+                task_cancelled = True
+                raise
+
+        task = hass_with_storage.async_create_task(long_running_autoconfigure())
+        coordinator.register_autoconfigure_task(task)
+        coordinator.add_autoconfiguring_light(mock_light_on)
+
+        await coordinator.shutdown()
+
+        assert task_cancelled is True
+        assert len(coordinator._autoconfigure_tasks) == 0
+        assert len(coordinator._autoconfiguring_lights) == 0
+
+    async def test_autoconfigure_task_auto_unregisters_on_completion(
+        self,
+        hass_with_storage: HomeAssistant,
+    ) -> None:
+        """Test that completed autoconfigure tasks are auto-removed from tracking."""
+        coordinator: FadeCoordinator = hass_with_storage.data[DOMAIN]
+
+        async def quick_task() -> None:
+            pass
+
+        task = hass_with_storage.async_create_task(quick_task())
+        coordinator.register_autoconfigure_task(task)
+        assert task in coordinator._autoconfigure_tasks
+
+        await task
+        # Allow done callback to fire
+        await asyncio.sleep(0)
+
+        assert task not in coordinator._autoconfigure_tasks
+
+    async def test_autoconfiguring_lights_excluded_from_fades(
+        self,
+        hass_with_storage: HomeAssistant,
+    ) -> None:
+        """Test that lights in _autoconfiguring_lights are excluded from fade targets."""
+        coordinator: FadeCoordinator = hass_with_storage.data[DOMAIN]
+
+        entity_id = "light.testing_light"
+        hass_with_storage.states.async_set(
+            entity_id,
+            STATE_ON,
+            {
+                ATTR_BRIGHTNESS: 200,
+                ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+            },
+        )
+
+        # Without autoconfiguring, light should be included
+        targets = coordinator._resolve_fade_targets(
+            MagicMock(data={ATTR_ENTITY_ID: entity_id}),
+            MagicMock(),
+        )
+        assert entity_id in targets
+
+        # Mark as autoconfiguring
+        coordinator.add_autoconfiguring_light(entity_id)
+        targets = coordinator._resolve_fade_targets(
+            MagicMock(data={ATTR_ENTITY_ID: entity_id}),
+            MagicMock(),
+        )
+        assert entity_id not in targets
+
+        # Remove from autoconfiguring
+        coordinator.remove_autoconfiguring_light(entity_id)
+        targets = coordinator._resolve_fade_targets(
+            MagicMock(data={ATTR_ENTITY_ID: entity_id}),
+            MagicMock(),
+        )
+        assert entity_id in targets

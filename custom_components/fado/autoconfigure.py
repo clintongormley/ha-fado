@@ -74,7 +74,11 @@ async def _async_turn_off(hass: HomeAssistant, entity_id: str) -> None:
     )
 
 
-async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
+async def async_autoconfigure_light(
+    hass: HomeAssistant,
+    entity_id: str,
+    cancel_event: asyncio.Event | None = None,
+) -> dict[str, Any]:
     """Run full autoconfiguration for a light.
 
     This is the main entry point that:
@@ -88,6 +92,7 @@ async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict
     Args:
         hass: Home Assistant instance
         entity_id: The light entity ID to test
+        cancel_event: Optional event to signal cancellation
 
     Returns:
         {
@@ -95,7 +100,7 @@ async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict
             "min_delay_ms": int (or None if error),
             "min_brightness": int (or None if error),
             "native_transitions": bool (or None if error),
-            "error": str (only if all tests failed),
+            "error": str (only if all tests failed or cancelled),
         }
     """
     # Capture original state
@@ -108,10 +113,13 @@ async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict
 
     result: dict[str, Any] = {"entity_id": entity_id}
 
-    # Temporarily exclude light to suppress main integration state monitoring
+    def _is_cancelled() -> bool:
+        return cancel_event is not None and cancel_event.is_set()
+
+    # Mark light as autoconfiguring (in-memory only, not persisted to storage)
     coordinator: FadeCoordinator = hass.data[DOMAIN]
     light_config = coordinator.get_or_create_light_config(entity_id)
-    light_config["exclude"] = True
+    coordinator.add_autoconfiguring_light(entity_id)
 
     try:
         dimmable = _is_dimmable(hass, entity_id)
@@ -122,25 +130,41 @@ async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict
             if stored_native == "disable":
                 result["native_transitions"] = "disable"
             else:
-                transition_result = await _async_test_native_transitions(hass, entity_id)
+                transition_result = await _async_test_native_transitions(
+                    hass, entity_id, cancel_event=cancel_event
+                )
                 if "error" not in transition_result:
                     result["native_transitions"] = transition_result["supports_native_transitions"]
 
+            if _is_cancelled():
+                return {"entity_id": entity_id, "error": "Cancelled"}
+
             # Run min brightness test
-            min_brightness_result = await _async_test_min_brightness(hass, entity_id)
+            min_brightness_result = await _async_test_min_brightness(
+                hass, entity_id, cancel_event=cancel_event
+            )
             if "error" not in min_brightness_result:
                 result["min_brightness"] = min_brightness_result["min_brightness"]
+
+            if _is_cancelled():
+                return {"entity_id": entity_id, "error": "Cancelled"}
 
             # Run delay test with native transitions enabled if supported
             use_transitions = result.get("native_transitions") is True
             delay_result = await _async_test_light_delay(
-                hass, entity_id, use_native_transitions=use_transitions
+                hass,
+                entity_id,
+                use_native_transitions=use_transitions,
+                cancel_event=cancel_event,
             )
         else:
             # On/off-only lights: skip brightness and transition tests
             result["native_transitions"] = False
             result["min_brightness"] = 1
-            delay_result = await _async_test_onoff_delay(hass, entity_id)
+            delay_result = await _async_test_onoff_delay(hass, entity_id, cancel_event=cancel_event)
+
+        if _is_cancelled():
+            return {"entity_id": entity_id, "error": "Cancelled"}
 
         if "error" in delay_result:
             result["error"] = delay_result["error"]
@@ -158,10 +182,11 @@ async def async_autoconfigure_light(hass: HomeAssistant, entity_id: str) -> dict
             await async_save_light_config(hass, entity_id, min_brightness=result["min_brightness"])
 
     finally:
-        # Restore exclude flag before restoring state
-        light_config["exclude"] = False
-        # Always restore original state
-        await _async_restore_light_state(hass, entity_id, original_on, original_brightness)
+        # In-memory cleanup (synchronous, always succeeds even during shutdown)
+        coordinator.remove_autoconfiguring_light(entity_id)
+        # Best-effort restore of original state (may fail during shutdown)
+        with contextlib.suppress(Exception, asyncio.CancelledError):
+            await _async_restore_light_state(hass, entity_id, original_on, original_brightness)
 
     return result
 
@@ -210,7 +235,10 @@ async def _async_set_standard_state(hass: HomeAssistant, entity_id: str) -> None
 
 
 async def _async_test_light_delay(
-    hass: HomeAssistant, entity_id: str, use_native_transitions: bool = False
+    hass: HomeAssistant,
+    entity_id: str,
+    use_native_transitions: bool = False,
+    cancel_event: asyncio.Event | None = None,
 ) -> dict[str, Any]:
     """Test a light to determine optimal minimum delay between commands.
 
@@ -246,6 +274,9 @@ async def _async_test_light_delay(
         transition = NATIVE_TRANSITION_MS / 1000 if use_native_transitions else None
 
         for i in range(1, AUTOCONFIGURE_ITERATIONS + 1):
+            if cancel_event is not None and cancel_event.is_set():
+                break
+
             # Alternate brightness: 10 for odd iterations, 255 for even
             target_brightness = 10 if i % 2 == 1 else 255
             start_time = time.monotonic()
@@ -303,7 +334,11 @@ async def _async_test_light_delay(
     return {"entity_id": entity_id, "min_delay_ms": result}
 
 
-async def _async_test_onoff_delay(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
+async def _async_test_onoff_delay(
+    hass: HomeAssistant,
+    entity_id: str,
+    cancel_event: asyncio.Event | None = None,
+) -> dict[str, Any]:
     """Test an on/off-only light to determine optimal minimum delay.
 
     Uses turn_on/turn_off toggles instead of brightness changes.
@@ -335,6 +370,9 @@ async def _async_test_onoff_delay(hass: HomeAssistant, entity_id: str) -> dict[s
 
     try:
         for i in range(1, AUTOCONFIGURE_ITERATIONS + 1):
+            if cancel_event is not None and cancel_event.is_set():
+                break
+
             for attempt in range(2):
                 state_changed_event.clear()
                 start_time = time.monotonic()
@@ -387,7 +425,11 @@ async def _async_test_onoff_delay(hass: HomeAssistant, entity_id: str) -> dict[s
     return {"entity_id": entity_id, "min_delay_ms": result}
 
 
-async def _async_test_min_brightness(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
+async def _async_test_min_brightness(
+    hass: HomeAssistant,
+    entity_id: str,
+    cancel_event: asyncio.Event | None = None,
+) -> dict[str, Any]:
     """Test to find the minimum brightness value that keeps the light on.
 
     Some lights use a 1-100 scale internally while Home Assistant uses 1-255.
@@ -430,6 +472,9 @@ async def _async_test_min_brightness(hass: HomeAssistant, entity_id: str) -> dic
 
     try:
         for brightness_value in range(1, 256):
+            if cancel_event is not None and cancel_event.is_set():
+                break
+
             state_changed_event.clear()
 
             _LOGGER.debug(
@@ -503,7 +548,10 @@ async def _async_test_min_brightness(hass: HomeAssistant, entity_id: str) -> dic
 
 
 async def _async_test_native_transitions(
-    hass: HomeAssistant, entity_id: str, transition_s: float = 2.0
+    hass: HomeAssistant,
+    entity_id: str,
+    transition_s: float = 2.0,
+    cancel_event: asyncio.Event | None = None,
 ) -> dict[str, Any]:
     """Test if a light supports native transitions.
 
@@ -536,6 +584,9 @@ async def _async_test_native_transitions(
     unsub = hass.bus.async_listen("state_changed", _on_state_changed)
 
     try:
+        if cancel_event is not None and cancel_event.is_set():
+            return {"entity_id": entity_id, "error": "Cancelled"}
+
         # Send command with transition (light already at 255)
         start_time = time.monotonic()
         await _async_turn_on(hass, entity_id, brightness=target_brightness, transition=transition_s)

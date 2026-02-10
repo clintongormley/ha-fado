@@ -85,6 +85,8 @@ class FadeCoordinator:
         self.data: dict[str, Any] = {}
         self.min_step_delay_ms = min_step_delay_ms
         self._entities: dict[str, EntityFadeState] = {}
+        self._autoconfiguring_lights: set[str] = set()
+        self._autoconfigure_tasks: set[asyncio.Task[None]] = set()
 
     async def async_load(self) -> None:
         """Load persistent data from store."""
@@ -204,11 +206,13 @@ class FadeCoordinator:
             elif entity_id.startswith(light_prefix):
                 result.add(entity_id)
 
-        # Filter out excluded lights
+        # Filter out excluded and autoconfiguring lights
         final_result = []
         for eid in result:
             if self.get_light_config(eid).get("exclude", False):
                 _LOGGER.debug("%s: Excluded from fade", eid)
+            elif eid in self._autoconfiguring_lights:
+                _LOGGER.debug("%s: Excluded from fade (autoconfiguring)", eid)
             else:
                 final_result.append(eid)
         return final_result
@@ -261,8 +265,11 @@ class FadeCoordinator:
         # Ignore group helpers (lights that contain other lights)
         if new_state.attributes.get(ATTR_ENTITY_ID) is not None:
             return False
-        # Skip excluded lights
-        return not self.get_light_config(new_state.entity_id).get("exclude", False)
+        # Skip excluded or autoconfiguring lights
+        entity_id = new_state.entity_id
+        if self.get_light_config(entity_id).get("exclude", False):
+            return False
+        return entity_id not in self._autoconfiguring_lights
 
     # --------------------------------------------------------------------- #
     # Fade execution
@@ -934,6 +941,27 @@ class FadeCoordinator:
         await self.store.async_save(self.data)
 
     # --------------------------------------------------------------------- #
+    # Autoconfigure task tracking
+    # --------------------------------------------------------------------- #
+
+    def add_autoconfiguring_light(self, entity_id: str) -> None:
+        """Mark a light as currently being autoconfigured (in-memory only)."""
+        self._autoconfiguring_lights.add(entity_id)
+
+    def remove_autoconfiguring_light(self, entity_id: str) -> None:
+        """Remove a light from the autoconfiguring set."""
+        self._autoconfiguring_lights.discard(entity_id)
+
+    def is_autoconfiguring(self, entity_id: str) -> bool:
+        """Check if a light is currently being autoconfigured."""
+        return entity_id in self._autoconfiguring_lights
+
+    def register_autoconfigure_task(self, task: asyncio.Task[None]) -> None:
+        """Register an autoconfigure task for lifecycle tracking."""
+        self._autoconfigure_tasks.add(task)
+        task.add_done_callback(self._autoconfigure_tasks.discard)
+
+    # --------------------------------------------------------------------- #
     # Cleanup
     # --------------------------------------------------------------------- #
 
@@ -958,6 +986,7 @@ class FadeCoordinator:
 
         # Remove entity from tracking
         self._entities.pop(entity_id, None)
+        self._autoconfiguring_lights.discard(entity_id)
 
         # Remove from persistent storage
         if entity_id in self.data:
@@ -967,14 +996,25 @@ class FadeCoordinator:
             _LOGGER.info("%s: Removed persistent data for deleted entity", entity_id)
 
     async def shutdown(self) -> None:
-        """Shut down all active fades and clean up state."""
+        """Shut down all active fades, autoconfigure tasks, and clean up state."""
+        # Cancel autoconfigure tasks
+        for task in self._autoconfigure_tasks:
+            task.cancel()
+        autoconfigure_tasks = list(self._autoconfigure_tasks)
+        self._autoconfigure_tasks.clear()
+        self._autoconfiguring_lights.clear()
+
+        # Cancel fade tasks
         for entity in self._entities.values():
             entity.signal_cancel()
-        tasks = []
+        fade_tasks: list[asyncio.Task[None]] = []
         for entity in self._entities.values():
-            tasks.extend(entity.cancel_all_tasks())
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            fade_tasks.extend(entity.cancel_all_tasks())
+
+        # Await all cancelled tasks
+        all_tasks = autoconfigure_tasks + fade_tasks
+        if all_tasks:
+            await asyncio.gather(*all_tasks, return_exceptions=True)
         self._entities.clear()
 
 
