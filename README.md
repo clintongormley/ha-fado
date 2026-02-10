@@ -1,4 +1,4 @@
-# <img style="float:right" src="brand/icon.png" alt="Fado icon"/>Fado Custom Integration
+# Fado Custom Integration
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/clintongormley/ha-fado)](https://github.com/clintongormley/ha-fado/releases)
