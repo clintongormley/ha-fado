@@ -1,10 +1,12 @@
+<img style="float:right" src="brand/icon.png" alt="Fado icon"/>
+
 # Fado Custom Integration
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/clintongormley/ha-fado)](https://github.com/clintongormley/ha-fado/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Home Assistant custom integration that provides smooth light fading for brightness and colors with automatic brightness restoration.
+A Home Assistant custom integration that provides smooth light fading for brightness and colors with automatic brightness restoration, autoconfiguration via the UI, and support for native transitions.
 
 ## Compatibility
 
@@ -13,29 +15,22 @@ A Home Assistant custom integration that provides smooth light fading for bright
 
 ## Features
 
-### Smooth Light Fading Service
+### Smooth Light Fading Action
 
-- Fade lights to any brightness level (0-100%) over a specified transition period
+- Fade lights to any brightness level (0-100%) over a specified transition period, with easing
 - Fade colors smoothly using HS, RGB, RGBW, RGBWW, XY, or color temperature (Kelvin)
 - Hybrid transitions between color modes (e.g., color temperature to saturated color)
-- Specify starting values with the `from:` parameter for precise control
 - Target lights by entity, device, area, floor, or label
 - Automatically expands light groups
+- Optionally specify starting values with the `from:` parameter for precise control
+- Mostly drop-in replacement for the `light.turn_on` action
 - Capability-aware: skips lights that don't support requested color modes
-- Uses native transitions to smooth out each step for flicker-free fading
+- Uses native transitions (where available) to smooth out each step for flicker-free fading
 - Cancels fade when lights are manually adjusted
-- Exclude/include lights from fades via services or the configuration panel
+- Setting brightness to 1% automatically sets the minimum real brightness supported by the light
+- Autoconfiguration UI to determine optimal configuration for individual lights
+- Exclude/include lights from fades and brightness restoration via actions or the configuration panel
 
-### Automatic Brightness Restoration
-
-When you fade a light down to off and then manually turn it back on, the integration automatically restores the light to its original brightness (before the fade started).
-
-**Example:**
-
-1. Light is at 80% brightness
-2. You fade it to 0% (off) over 5 seconds
-3. Later, you turn the light on manually
-4. Light automatically restores to 80%
 
 ## Installation
 
@@ -53,97 +48,198 @@ When you fade a light down to off and then manually turn it back on, the integra
 ### Manual Installation
 
 1. Copy the `custom_components/fado` folder to your Home Assistant installation:
-   ```
+
+   ```bash
    <config_directory>/custom_components/fado/
    ```
+
 2. Restart Home Assistant
 
-## Configuration
+### Adding the integration
 
 After installation and restart, add the integration via the Home Assistant UI:
 
-1. Go to **Settings** → **Devices & Services**
+1. Go to **Settings** → **Devices & services**
 2. Click **+ Add Integration**
 3. Search for "Fado"
 4. Click to add it
 
-Once configured, the Fado services will be available in **Developer Tools** → **Actions**.
+Once configured, the Fado actions will be available in **Settings** > **Developer Tools** → **Actions**.
 
-### Configuration Panel
+Before anything, you should open the [**Autoconfiguration Panel**](#autoconfiguration-panel) in the Home Assistant sidebar and autoconfigure your lights.
 
-After installation, **Fado** appears in your Home Assistant sidebar. Click it to access the configuration panel where you can:
+## How it works
 
-- **View all lights** organized by floor and area
-- **Set per-light minimum delay** values for smoother fading on slower devices
-- **Exclude lights** from fade operations (at light, area, or floor level)
-- **Run auto-configure** to automatically measure optimal timing for each light
-- **Set the global minimum delay** that applies as a floor for all lights
-- **Configure log level** that persists across restarts (warning, info, or debug)
+The principle in action is that fades (usually executed by automations) should be gradual and smooth, while manual actions by the user (using the switch or the app to turn the light on or off or to change the brightness or color), should be immediate, otherwise the user may think that something has gone wrong.
 
-| Setting                         | Description                                                                                                          | Default | Range              |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | ------------------ |
-| **Log level**                   | Controls logging verbosity. Warning shows only issues, Info shows fade operations, Debug shows all details.          | Warning | warning/info/debug |
-| **Global min delay**            | The absolute minimum delay for all lights. Per-light values cannot be set lower than this.                           | 100ms   | 50-1000            |
-| **Per-light min delay**         | Override for specific lights. Must be at least the global minimum. If global is raised, these auto-update.           | —       | global-1000        |
-| **Exclude**                     | Exclude lights from all fade operations. Excluded lights are skipped when fading areas or groups.                    | Off     | —                  |
+Additionally, Fado tries to do the right thing. The API should be straightforward and simple to use, while still allowing for maximum flexibility.
 
-#### Auto-Configure
+*You don't need to understand all of the details explained below to use Fado. They are provided for interest only.*
 
-The auto-configure feature measures each light's response time to determine the optimal minimum delay:
+### Smooth Fading
 
-1. Select the lights you want to configure using the checkboxes
-2. Click **Auto-configure selected lights**
-3. The integration will toggle each light's brightness multiple times and measure response times
-4. The 90th percentile response time (rounded up to nearest 10ms) is saved as the light's minimum delay
+#### Action call
 
-This ensures smooth fading without overwhelming slower devices.
+In **Settings** > **Developer tools** > **Actions**, or when configuring an **Action** in an automation, use the `fado.fade_lights` action to:
 
-## Usage
+- select one or more **target** lights
+- provide a target **brightness** (where zero means turn the light off), and/or a **color** or **color temperature**,
+- specify a **transition** time, i.e. how long the fade should last,
+- optionally specify an **easing curve** which by default tries to make the fade smoother during the lower brightness phase.
+- optionally specify a **from** starting point in case you don't want to start from the current state of the light.
 
-### Service: `fado.fade_lights`
+See [**Usage: `Fado.fade_lights`**](#usage-fadofade_lights) for parameter specifications.
+
+#### Fade resolution
+
+Fado resolves the targets list to a list of unique light entities and dispatches a fade action for each entity, so the fade for each light begins from the state that that light is currently in.
+
+It uses the transition time, [**minimum delay**](#minimum-delay) setting, and the distance between the beginning and end states (e.g. start- and end-brightness, or start- and end-color) to calculate the optimal number of steps and the size of each step that the fade should use.
+
+If the light doesn't support the specified change (for instance changing color temperature on a light that only supports brightness), or if the light is already in the final state, then no fade is executed.
+
+#### Fade execution
+
+If there is an existing fade in progress then Fado cancels it and waits for it to be cleaned up before starting the new fade.
+
+If the light is currently on then Fado stores the current brightness level as the  `original brightness`. This is used for [**automatic brightness restoration**](#automatic-brightness-restoration).
+
+If a `from` parameter is specified, then it immediately sets the light to the specified `from` state, after which the fade loop begins.
+
+For each step in the fade loop, Fado determines the next brightness and color/color temp values, sets them, and records how long it took. If the elapsed time is less than the [**minimum delay**](#minimum-delay), then it sleeps for the remaining time before continuing with the next step. This means that the total transition time will be at least as long as the specified `transition` time. (It may, however, be longer if Home Assistant or the network or the light itself is responding slowly.)
+
+If the light supports [**native transitions**](#native-transitions) then a short `transition` time is used to apply a fade step to use the light's hardware to make the fade smoother.
+
+Fado stores the details of each fade step that is issued because it expects to see a matching state change event which it will recognise as its own and so knows to ignore it.
+
+### Automatic Brightness Restoration
+
+When you fade a light down to off and then manually turn it back on, the light turns on at the last brightness set by the fade loop, which might be `1%`. This is unlikely to be what you want. Instead, the integration automatically restores the light to its `original brightness` level before the fade started.
+
+**Example:**
+
+1. Light is at 80% brightness.
+2. This value is stored as the `original brightness`.
+3. You fade it to 0% (off) over 5 seconds.
+4. Later, you turn the light on manually.
+5. The light turns on at the last brightness the hardware is aware of, e.g. 1%.
+6. Fado automatically restores the brightness to the `original brightness` value of 80%.
+
+
+### Manual interventions
+
+During the fade loop, if Fado sees any event that it doesn't expect, that means there has been a manual intervention (e.g. the user uses the switch or app to switch the light on or off, or to change the brightness or color). In this case Fado cancels the running fade and waits for any in-flight steps to finish. These in-flight steps might overwrite the user's intended change, so once the in-flight events have been cleared, Fado restores the intended state.
+
+**Example 1:**
+
+1. Light is at 80% brightness.
+2. This value is stored as the `original brightness`.
+3. You fade it to 0% (off) over 5 seconds.
+4. When the fade reaches 30%, you turn the light off manually with the switch.
+5. The fade is cancelled but an in-flight step turns the light back on at 25%.
+6. Fado waits until the 25% event has been seen and no further events are expected.
+7. Then it restores your intended state by turning the light off.
+8. The stored `original brightness` remains at 80%
+
+**Example 2:**
+
+1. Light is at 80% brightness.
+2. This value is stored as the `original brightness`.
+3. You fade it to 0% (off) over 5 seconds.
+4. When the fade reaches 30%, you turn the light off manually, and then back on again.
+5. The light turns off then comes back on at 30%.
+6. The fade is cancelled but an in-flight step turns the brightness to 25%.
+7. Fado waits until the 25% event has been seen and no further events are expected.
+8. Then it ignores the previous `off` state and restores your **final** intended state by turning the light on at the stored `original brightness` of 80%.
+
+### Non-Dimmable Lights
+
+Lights that do not support brightness will turn off when brightness is set to 0, or turn on when brightness is greater than 0.
+
+### Hybrid color/color temperature fading
+
+Colors and color temperatures overlap, but are not the same thing. Color temperatures consist of limited shades of white light, while colors can cover any color in the rainbow (but typically don't display white light accurately).
+
+Fading from one color to another is straightforward, as is fading from one color temperature to another. Fado supports hybrid fading as well, for instance fading from a color to a color temperature or from a color temperature to a color. It does this by dividing the fade into two phases, where the color phase takes 2/3 of the transition time, and the color temperature phase takes 1/3 of the transition time.
+
+#### Fading from color to color temperature
+
+- the color phase fades from the starting color to the closest color in the supported color temperature range
+- the color temperature phase switches from color to color temperature at the crossover point and continues the fade to the target color temperature
+
+#### Fading from color temperature to color
+
+- the color temperature phase fades from the starting color temperature to the last supported color temperature closest to the target color
+- the color phase switches from color temperature to color at the crossover point and continues the fade to the target color
+
+#### Fading to color temperature where unsupported
+
+If the user specifies a color temperature but the light only supports RGB colors, then a best effort is made to use hue-saturation to approximate the specified color temperature.
+
+## Usage: `fado.fade_lights`
 
 Fades one or more lights to a target brightness and/or color over a transition period.
 
-#### Parameters:
+#### **`target`** (required):
 
-**Target** (required): Specify which lights to fade using any combination of:
+Specify which lights to fade using any combination of:
 
-- **entity_id**: One or more light entities (e.g., `light.bedroom`)
-- **device_id**: One or more device IDs
-- **area_id**: One or more area IDs (e.g., `living_room`)
-- **floor_id**: One or more floor IDs
-- **label_id**: One or more label IDs
+- **`entity_id`**: One or more light entities (e.g., `light.bedroom`)
+- **`device_id`**: One or more device IDs
+- **`area_id`**: One or more area IDs (e.g., `living_room`)
+- **`floor_id`**: One or more floor IDs
+- **`label_id`**: One or more label IDs
 
-Light groups are automatically expanded to their individual lights. Duplicate entities are automatically deduplicated.
+  Light groups are automatically expanded to their individual lights. Duplicate entities are automatically deduplicated.
 
-**Service data:**
+#### **Transition** (optional, default: `3`):
 
-- **brightness_pct** (optional): Target brightness percentage (0-100)
-- **transition** (optional, default: 3): Transition duration in seconds (supports decimals, e.g., `0.5` for 500ms)
+How long the fade should take in seconds (supports decimals, e.g., `0.5` for 500ms)
 
-**Color parameters** (only one color parameter allowed per call):
+#### **Brightness parameters** (optional):
 
-- **hs_color** (optional): Target color as `[hue, saturation]` where hue is 0-360 and saturation is 0-100
-- **rgb_color** (optional): Target color as `[red, green, blue]` (0-255 each)
-- **rgbw_color** (optional): Target color as `[red, green, blue, white]` (0-255 each)
-- **rgbww_color** (optional): Target color as `[red, green, blue, cold_white, warm_white]` (0-255 each)
-- **xy_color** (optional): Target color as `[x, y]` (0-1 each)
-- **color_temp_kelvin** (optional): Target color temperature in Kelvin (1000-40000)
+Either **`brightness_pct`** (0-100) or **`brightness_value`** (0-255). A value of zero means `off`
 
-**Starting values** (optional `from:` block):
+#### **Color or color temperature parameters** (optional):
+
+Only one target color or color temperature parameter allowed.
+
+Either:
+
+- **`color_temp_kelvin`**: Target color temperature in Kelvin (1000-40000)
+- **`hs_color`**: Target color as `[hue, saturation]` where hue is 0-360 and saturation is 0-100
+- **`rgb_color`**: Target color as `[red, green, blue]` (0-255 each)
+- **`rgbw_color`**: Target color as `[red, green, blue, white]` (0-255 each)
+- **`rgbww_color`**: Target color as `[red, green, blue, cold_white, warm_white]` (0-255 each)
+- **`xy_color`**: Target color as `[x, y]` (0-1 each)
+
+#### **Starting values** (optional `from:` block):
 
 You can specify starting values to override the current light state:
 
-- **from.brightness_pct**: Starting brightness percentage
-- **from.hs_color**, **from.rgb_color**, etc.: Starting color (same formats as target colors)
-- **from.color_temp_kelvin**: Starting color temperature
+- **`from.brightness_pct`**: Starting brightness percentage
+- **`from.color_temp_kelvin`**: Starting color temperature
+- **`from.hs_color`**, **`from.rgb_color`**, etc.: Starting color (same formats as target colors)
+
+#### **Easing curves** (optional, default `Auto`):
+
+Changing the brightness from 100 to 101 is a 1% change, but changing from 1 to 2 is a 100% change. This means that brightness changes are more jarring the lower the brightness level. Fado tries to make fading smoother by supporting easing curves:
+
+- **`auto`** (default): Uses `ease_in` when start brightness is less than end brightness, and `ease_out` when end brightness is less than start brightness
+- **`linear`**: Fades in a straight line
+- **`ease_in_`**: Starts slow
+- **`ease_in_cubic`**: Starts slower
+- **`ease_out`**: Ends slow
+- **`ease_out_cubic`**: Ends slower
+- **`ease_in_out_sine`**: Smooth S curve
+
 
 #### Examples:
 
 **Basic fade:**
 
 ```yaml
-service: fado.fade_lights
+action: fado.fade_lights
 target:
   entity_id: light.bedroom
 data:
@@ -151,45 +247,29 @@ data:
   transition: 5
 ```
 
-**Fade multiple lights:**
+**Fade multiple lights using different targets:**
 
 ```yaml
-service: fado.fade_lights
+action: fado.fade_lights
 target:
   entity_id:
-    - light.bedroom
-    - light.living_room
+    - light.bedroom_wall
+    - light.living_room_ceiling
+    - light.outside_lights # light group
+  area_id:
+    - kitchen
+  floor_id:
+    - upstairs
+
 data:
   brightness_pct: 80
   transition: 10
 ```
 
-**Fade all lights in an area:**
+**Fade color temperature (warm to cool white) with specified starting point:**
 
 ```yaml
-service: fado.fade_lights
-target:
-  area_id: living_room
-data:
-  brightness_pct: 30
-  transition: 60
-```
-
-**Fade a light group:**
-
-```yaml
-service: fado.fade_lights
-target:
-  entity_id: light.all_downstairs
-data:
-  brightness_pct: 30
-  transition: 60
-```
-
-**Fade color temperature (warm to cool white):**
-
-```yaml
-service: fado.fade_lights
+action: fado.fade_lights
 target:
   entity_id: light.bedroom
 data:
@@ -202,7 +282,7 @@ data:
 **Fade to a specific color:**
 
 ```yaml
-service: fado.fade_lights
+action: fado.fade_lights
 target:
   entity_id: light.accent
 data:
@@ -211,20 +291,7 @@ data:
   transition: 5
 ```
 
-**Fade from color temperature to saturated color (hybrid transition):**
-
-```yaml
-service: fado.fade_lights
-target:
-  entity_id: light.living_room
-data:
-  hs_color: [0, 100]  # Red
-  transition: 10
-  from:
-    color_temp_kelvin: 4000
-```
-
-### Automation Example
+**Automation Example**
 
 ```yaml
 automation:
@@ -234,7 +301,7 @@ automation:
         event: sunset
         offset: "-00:30:00"
     action:
-      - service: fado.fade_lights
+      - action: fado.fade_lights
         target:
           area_id: living_room
         data:
@@ -242,72 +309,99 @@ automation:
           transition: 1800 # 30 minutes
 ```
 
-### Service: `fado.exclude_lights`
+### Action: `fado.exclude_lights`
 
 Excludes one or more lights from Fado. Excluded lights are ignored by fade operations and state tracking.
 
 **Target** (required): Specify which lights to exclude using entity, device, area, floor, or label targets.
 
 ```yaml
-service: fado.exclude_lights
+action: fado.exclude_lights
 target:
   entity_id: light.bedroom
 ```
 
-### Service: `fado.include_lights`
+### Action: `fado.include_lights`
 
 Re-includes previously excluded lights so they respond to fade operations again.
 
 **Target** (required): Specify which lights to include using entity, device, area, floor, or label targets.
 
 ```yaml
-service: fado.include_lights
+action: fado.include_lights
 target:
   entity_id: light.bedroom
 ```
 
-These services can be used in automations to dynamically control which lights participate in fades. For example, exclude a light during a movie and include it again afterwards.
+These actions can be used in automations to dynamically control which lights participate in fades. For example, exclude a light during a movie and include it again afterwards.
 
-## How It Works
+## Autoconfiguration Panel
 
-### Brightness Tracking
+After installation, **Fado** appears in your Home Assistant sidebar. Click it to access the configuration panel where you can autoconfigure each light for the smoothest fades with the minimum of overhead.
 
-The integration maintains two brightness values for each light:
+Run **auto-configure** to automatically measure optimal step timing, support for native transitions, and minimum real brightness for each light
 
-- **Original brightness**: The brightness level before the fade started or before the light was turned off
-- **Current brightness**: The brightness being set during fade operations
+| Setting                         | Description                                                                                                          | Default | Range              |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | ------------------ |
+| [**Min delay**](#minimum-delay)         | The minimum delay (ms) between fade-steps for smoother fading without overloading slower devices.            | Global min delay       | global -`2000`        |
+| [**Min brightness**](#minimium-brightness)         | The minimum real brightness value that the light supports.            | `1`       | `1`- `255`        |
+| [**Native transitions**](#native-transitions)         | Whether to use the device's native transitions to smooth fading            | `No`       | `No`, `Yes`, `Disable`        |
+| [**Exclude**](#exclude)         | Exclude this light from management by Fado            | `No`       | `No`, `Yes`        |
+| [**Log level** ](#log-level)                  | Controls logging verbosity          | `warning`       | `warning`, `info`, `debug` |
+| [**Global min delay**](#global-minimum-delay)             | The absolute minimum delay (ms) for all lights. Per-light values cannot be set lower than this.                           | `100`   | `50` - `2000`            |
+| [**Download diagnostics**](#download-diagnostics)                     | Download diagnostic data for debugging                    | -     | —                  |
 
-When you fade a light to off, the original brightness is preserved. When the light is manually turned on again, it's automatically restored to that original brightness.
 
-### Manual Change Detection
+### Minimum delay
 
-The integration detects manual changes by comparing state (off vs on) and actual brightness to expected brightness during fades. If the brightness differs by more than ±3 (tolerance for device rounding), the change is treated as manual intervention and the fade is cancelled.
+Autoconfiguration measures how long it takes for a light to apply changes to brightness and to report back its new state to Home Assistant. This mimimum delay is the amount of time (in milliseconds) that Fado will wait between each fade step.
 
-When a fade is cancelled due to manual intervention, the integration stores the user's intended state. If a late-arriving fade service call reverts the user's change, the integration automatically restores the user's intended state.
+The lower this number, the smoother the fade can be but the more events Home Assistant needs to process. However, there is no point in sending more frequent updates then the light can handle. While you can configure this setting manually, it is not recommended to set it to a lower value than that determined by autoconfiguration.
 
-#### Behavior During Fades
+The minimum delay for an individual light cannot be set lower than the global minimum delay.
 
-| Action                | Result                                                                     |
-| --------------------- | -------------------------------------------------------------------------- |
-| **Turn off**          | Fade cancelled, light turns off, original brightness before fade preserved |
-| **Change brightness** | Fade cancelled, original brightness updated to new brightness              |
+### Minimium brightness
 
-#### Behavior When Light Is Off
+Home Assistant allows setting a brightness value anywhere from 1 to 255, but internally lights often use a different scale, for instance 1 to 100. For these lights, setting a brightness value of 1 might result in the light being turned off instead.
 
-| Action                             | Result                            |
-| ---------------------------------- | --------------------------------- |
-| **Turn on**                        | Brightness restored to original   |
-| **Turn on and set new brightness** | Brightness restored to original\* |
+Autoconfigure determines the minimum brightness value where light is still emitted. With Fado, setting a brightness percentage or brightness value lower than this setting will instead apply the minimum real brightness.
 
-_\*Limitation: When turning on a light and simultaneously setting a brightness (via app or some smart switches), the integration cannot distinguish this from a simple turn-on. The original brightness will be restored, overriding the requested brightness._
+Accepts 50ms - 2000ms and defaults to the [global minimum delay](#global-minimum-delay).
 
-#### Behavior When Light Is On (No Active Fade)
+### Native transitions
 
-If you manually adjust a light's brightness while it's on (and no fade is active), that becomes the new "original" brightness for future restoration.
+Some lights support native transitions, that is the light hardware knows how to fade between two brightness levels. This is triggered by passing a time value to the `transition` parameter of `light.turn_on`. However, even if the light claims to support transitions, in reality this may not be the case. Also, the amount of time the transition takes may be very different from the time passed to the `transition` parameter.
 
-### Non-Dimmable Lights
+Autoconfiguration tests this out to determine (a) whether native transitions are actually supported, and (b) how this affects the minimum step delay.
 
-Lights that do not support brightness will turn off when brightness is set to 0, or turn on when brightness is greater than 0.
+By setting native transitions manually to `Disable`, Fado will disable native transitions when autoconfiguring the minimum step delay, and when applying fades to a light.
+
+### Exclude
+
+Checking the `Exclude` checkbox next to a light will prevent Fado from fading a light and also from autorestoring the orginal brightness level.
+
+### Global minimum delay
+
+This is the absolute minimum delay for all lights. No light may have a custom [minimum delay](#minimum-delay) setting below this value. It defaults to 100ms and has a minimum value of 50ms.
+
+### Log level
+
+The **Log level** setting controls logging verbosity:
+
+| Level | What it shows |
+|-------|---------------|
+| `warning` | Default level. Only logs exceptions.
+| `info` | High-level overview: fade start/complete, manual intervention detected, brightness restoration, auto-configuration |
+| `debug` | Low-level details: every brightness step, expected state tracking, task cancellation internals |
+
+For most troubleshooting, `info` level is sufficient and easier to follow.
+
+This log setting is persisted across restarts.
+
+### Download diagnostics
+
+The **Download diagnostics** link will download a JSON file containing all of the data used by Fado for debugging purposes. Important when submitting bug reports.
+
 
 ## Troubleshooting
 
@@ -324,52 +418,40 @@ For most troubleshooting, **INFO** level is sufficient and easier to follow.
 
 ### Enable Logging via UI
 
-1. Go to **Settings** > **Devices & Services** > **Fado**
+1. Go to **Settings** > **Devices & Actions** > **Fado**
 2. Click **Enable debug logging**
 3. Reproduce the issue
 4. Click **Disable debug logging** to download the log file
 
 This enables DEBUG level logging temporarily.
 
-### Enable Logging via configuration.yaml
 
-Add to your `configuration.yaml`:
+### Known Problems
 
-```yaml
-# INFO level - recommended for general troubleshooting
-logger:
-  logs:
-    custom_components.fado: info
-```
+Different lights behave differently, and these differences can create problems.
 
-```yaml
-# DEBUG level - for detailed investigation
-logger:
-  logs:
-    custom_components.fado: debug
-```
+#### Rounding
 
-After editing, restart Home Assistant or call the `logger.set_level` action.
+The values set by Fado are not necessarily what the light reports back. For instance, Fado sets a brightness of `50%` but the light reports a brightness of `51%`.  Fado uses rounding to try to match these values regardless.
 
-### Enable Logging via Action Call
+#### Turning on and changing brightness
 
-You can also enable logging temporarily via **Developer Tools** > **Actions**:
+Fado can't recognise the difference between turning a light on, and turning a light on and simultaneously changing the brightness level:
 
-```yaml
-action: logger.set_level
-data:
-  custom_components.fado: info
-```
+| Old state | New state  | What it shows |
+|-------|---------------|-----------------|
+| `state:on`, `brightness: 10` | `state:on`, `brightness: 20` | When the light is on and the user changes the brightness level, Fado recognises the brightness change and stores the new bright level as `original brightness`
+| `state:off`, `brightness:None` | `state:on`, `brightness:10` | When the user turns the light on, the light reports the current brightness and Fado resets it to the stored `original brightness`
+| `state:off`, `brightness:None` | `state:on`, `brightness:10` | When the user turns the light on AND simultaneously changes brightness, Fado can't distinguish this case from the previous case, and so it incorrectly resets the brightness to the stored `original brightness`
 
-Or for debug level:
+#### Missing and extra events
 
-```yaml
-action: logger.set_level
-data:
-  custom_components.fado: debug
-```
+A light may compress several actions into a single event, so while applying a fade step the user turns the light off. This manual intervention may be ignored by the light and so the fade loop continues. Alternatively, maybe the light-off event is reported and the fade step never generates an event.
 
-To view logs, go to **Settings** > **System** > **Logs**, click the three-dot menu, and select **Load full logs**.
+When using [native transitions](#native-transitions), the light may emit state update events which are mid-range, e.g. a fade step is intended to move the light from brightness `50` to brightness `65`, but the light may also report an intermediate brightness state of `55`. Intermediate steps are recognised but are not removed from the list of expected states as the light should later report a final state which matches the `50->65` change.
+
+Fado maintains an expected-events list internally. These events are pruned after 3 seconds so that, even if things do occassionally go wrong, within 3 seconds the light should be functioning normally again.
+
 
 ### Reporting Issues
 
@@ -384,7 +466,7 @@ If you encounter a bug, please [open an issue](https://github.com/clintongormley
 
 ### Running Tests
 
-The integration includes a comprehensive test suite with 637 tests covering config flow, service handling, fade execution, color fading, manual interruption detection, and brightness restoration.
+The integration includes a comprehensive test suite with 637 tests covering config flow, action handling, fade execution, color fading, manual interruption detection, and brightness restoration.
 
 #### Prerequisites
 
@@ -421,8 +503,8 @@ pytest tests/test_fade_execution.py -v
 The test suite achieves 100% code coverage and includes tests for:
 
 - **Config flow** (`test_config_flow.py`): User setup, import flow, options validation
-- **Integration setup** (`test_init.py`): Service registration, storage loading, unload cleanup
-- **Service handling** (`test_services.py`): Entity ID formats, group expansion, default parameters
+- **Integration setup** (`test_init.py`): Action registration, storage loading, unload cleanup
+- **Action handling** (`test_actions.py`): Entity ID formats, group expansion, default parameters
 - **Fade execution** (`test_fade_execution.py`): Fade up/down, turn off at 0%, non-dimmable lights
 - **Color parameters** (`test_color_params.py`): Color conversions, validation, `from:` parameter
 - **Capability filtering** (`test_capability_filtering.py`): Light capability detection, unsupported mode handling
@@ -430,7 +512,7 @@ The test suite achieves 100% code coverage and includes tests for:
 - **Planckian locus** (`test_planckian_locus.py`): Color temperature to HS conversions
 - **Manual interruption** (`test_manual_interruption.py`): Brightness/color change detection, fade cancellation
 - **Brightness restoration** (`test_brightness_restoration.py`): Restore on turn-on, storage persistence
-- **Exclude/include services** (`test_exclude_service.py`): Service registration, flag persistence, fade filtering, panel notification
+- **Exclude/include actions** (`test_exclude_action.py`): Action registration, flag persistence, fade filtering, panel notification
 - **Event waiting** (`test_event_waiting.py`): Condition-based event waiting, stale value pruning
 
 ### Continuous Integration
