@@ -455,6 +455,14 @@ class FadoPanel extends LitElement {
       this._configUpdateUnsub();
       this._configUpdateUnsub = null;
     }
+    if (this._entityRegUnsub) {
+      this._entityRegUnsub();
+      this._entityRegUnsub = null;
+    }
+    if (this._deviceRegUnsub) {
+      this._deviceRegUnsub();
+      this._deviceRegUnsub = null;
+    }
   }
 
   updated(changedProperties) {
@@ -468,8 +476,10 @@ class FadoPanel extends LitElement {
         // Actual WebSocket reconnection: clean up autoconfigure UI state
         // (subscription won't replay because we use resubscribe: false)
         this._cleanupAutoconfigure();
-        // Old event subscription is dead — re-subscribe
+        // Old event subscriptions are dead — re-subscribe
         this._configUpdateUnsub = null;
+        this._entityRegUnsub = null;
+        this._deviceRegUnsub = null;
         this._subscribeConfigUpdates();
         // Re-fetch all data since we may have missed events while disconnected
         this._fetchAll();
@@ -507,6 +517,32 @@ class FadoPanel extends LitElement {
       );
     } catch {
       // Subscription may fail if connection is not ready
+    }
+
+    // Subscribe to entity/device registry events so the panel refreshes
+    // when area assignments or names change (e.g. via more-info dialog).
+    // Most lights get their area from the device, so we need both.
+    if (!this._entityRegUnsub) {
+      try {
+        this._entityRegUnsub = await this.hass.connection.subscribeEvents((ev) => {
+          const data = ev.data;
+          if (data && data.entity_id && data.entity_id.startsWith("light.")) {
+            this._debouncedFetch();
+          }
+        }, "entity_registry_updated");
+      } catch {
+        // Subscription may fail if connection is not ready
+      }
+    }
+    if (!this._deviceRegUnsub) {
+      try {
+        this._deviceRegUnsub = await this.hass.connection.subscribeEvents(
+          () => this._debouncedFetch(),
+          "device_registry_updated",
+        );
+      } catch {
+        // Subscription may fail if connection is not ready
+      }
     }
   }
 
@@ -664,6 +700,11 @@ class FadoPanel extends LitElement {
   }
 
   _mergeData(newData) {
+    // Skip update if data hasn't changed (avoids unnecessary re-renders)
+    if (this._data && JSON.stringify(this._data) === JSON.stringify(newData)) {
+      return;
+    }
+
     // Build set of existing light IDs
     const existingLightIds = new Set();
     if (this._data && this._data.areas) {
