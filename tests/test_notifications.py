@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
 
 from custom_components.fado import async_setup_entry
 from custom_components.fado.const import DOMAIN, NOTIFICATION_ID
@@ -227,6 +227,71 @@ class TestNotifyUnconfiguredLights:
             await _notify_unconfigured_lights(hass)
 
         mock_dismiss.assert_called_once_with(hass, NOTIFICATION_ID)
+
+
+class TestNotifySkippedBeforeStart:
+    """Test that notifications are skipped before HA has fully started."""
+
+    async def test_skips_when_ha_not_running(self, hass: HomeAssistant) -> None:
+        """Test notification is skipped when hass.state is not running."""
+        _make_coordinator(hass)
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.bedroom"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        hass.state = CoreState.starting
+
+        with (
+            patch("custom_components.fado.notifications.er.async_get") as mock_er,
+            patch(
+                "custom_components.fado.notifications.persistent_notification.async_create"
+            ) as mock_create,
+            patch(
+                "custom_components.fado.notifications.persistent_notification.async_dismiss"
+            ) as mock_dismiss,
+        ):
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            await _notify_unconfigured_lights(hass)
+
+        # Neither create nor dismiss should be called before HA is running
+        mock_create.assert_not_called()
+        mock_dismiss.assert_not_called()
+
+    async def test_entity_registry_create_during_startup_no_notification(
+        self, hass: HomeAssistant
+    ) -> None:
+        """Test that entity registry create events during startup don't trigger notifications."""
+        from homeassistant.helpers import entity_registry as er
+
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fado.async_register_websocket_api"),
+            patch("custom_components.fado._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+        # HA is still starting at this point
+        hass.state = CoreState.starting
+
+        with patch(
+            "custom_components.fado.notifications.persistent_notification.async_create"
+        ) as mock_create:
+            # Simulate entity registry create event (happens during startup)
+            hass.bus.async_fire(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                {"action": "create", "entity_id": "light.new_group"},
+            )
+            await hass.async_block_till_done()
+
+        # Should not create notification while HA is still starting
+        mock_create.assert_not_called()
 
 
 class TestSetupNotification:
