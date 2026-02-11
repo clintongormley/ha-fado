@@ -128,6 +128,10 @@ async def async_get_lights(hass: HomeAssistant) -> dict[str, Any]:
             }
         )
 
+    # Sort lights within each area alphabetically by name
+    for area_data in areas_dict.values():
+        area_data["lights"].sort(key=lambda l: l["name"].lower())
+
     # Convert to sorted list: alphabetical with "Unknown" (area_id=None) at the bottom
     result = sorted(
         areas_dict.values(),
