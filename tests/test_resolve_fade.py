@@ -565,8 +565,8 @@ class TestResolveFadeEdgeCases:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100)
 
         assert change is not None
-        # When light is off (no brightness), start_brightness is clamped to min (default=1)
-        assert change.start_brightness == 1
+        # When light is off (no brightness), start_brightness is 0
+        assert change.start_brightness == 0
         assert change.end_brightness == 127
 
     def test_saturation_threshold_boundary_on_locus(self) -> None:

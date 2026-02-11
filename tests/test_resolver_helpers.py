@@ -37,30 +37,28 @@ class TestResolveStartBrightness:
 
         assert result == 180
 
-    def test_returns_min_brightness_when_light_off(self) -> None:
-        """Test that min_brightness is returned when light is off (no brightness in state)."""
+    def test_returns_zero_when_light_off(self) -> None:
+        """Test that 0 is returned when light is off (no brightness in state)."""
         params = FadeParams()
         state = {}
 
-        # With default min_brightness=1, start from 1 not 0
         result = _resolve_start_brightness(params, state, min_brightness=1)
-        assert result == 1
+        assert result == 0
 
-        # With min_brightness=10, start from 10
         result = _resolve_start_brightness(params, state, min_brightness=10)
-        assert result == 10
+        assert result == 0
 
-    def test_from_brightness_pct_zero_clamped_to_min(self) -> None:
-        """Test handling of 0% brightness (clamped to min_brightness)."""
+    def test_from_brightness_pct_zero_returns_zero(self) -> None:
+        """Test handling of 0% brightness (returns 0, light off)."""
         params = FadeParams(from_brightness_pct=0)
         state = {ATTR_BRIGHTNESS: 255}
 
-        # 0% converts to 0, but gets clamped to min_brightness
+        # 0% converts to 0, preserved as off
         result = _resolve_start_brightness(params, state, min_brightness=1)
-        assert result == 1
+        assert result == 0
 
         result = _resolve_start_brightness(params, state, min_brightness=10)
-        assert result == 10
+        assert result == 0
 
     def test_from_brightness_pct_100(self) -> None:
         """Test handling of 100% brightness."""
@@ -71,17 +69,17 @@ class TestResolveStartBrightness:
 
         assert result == 255
 
-    def test_state_brightness_none_returns_min(self) -> None:
+    def test_state_brightness_none_returns_zero(self) -> None:
         """Test handling of None brightness in state (light off)."""
         params = FadeParams()
         state = {ATTR_BRIGHTNESS: None}
 
-        # When light is off (brightness is None), return min_brightness
+        # When light is off (brightness is None), return 0
         result = _resolve_start_brightness(params, state, min_brightness=1)
-        assert result == 1
+        assert result == 0
 
         result = _resolve_start_brightness(params, state, min_brightness=5)
-        assert result == 5
+        assert result == 0
 
     def test_from_brightness_raw_used_directly(self) -> None:
         """Test that from_brightness (raw) is used directly."""

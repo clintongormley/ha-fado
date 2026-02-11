@@ -263,7 +263,8 @@ def _resolve_start_brightness(
     3. Current state brightness
     4. 0 if light is off
 
-    The result is clamped to min_brightness floor (ensuring fade doesn't start from 0).
+    The result is clamped to min_brightness floor, EXCEPT when the light is off
+    (brightness 0), which is preserved so the fade engine sees a real change.
 
     Args:
         params: FadeParams with optional from_brightness_pct/from_brightness
@@ -271,7 +272,7 @@ def _resolve_start_brightness(
         min_brightness: Minimum brightness floor (1-255)
 
     Returns:
-        Starting brightness (min_brightness to 255 scale)
+        Starting brightness (0 or min_brightness to 255 scale)
     """
     brightness: int
 
@@ -285,7 +286,9 @@ def _resolve_start_brightness(
         state_brightness = state.get(ATTR_BRIGHTNESS)
         brightness = int(state_brightness) if state_brightness is not None else 0
 
-    # Clamp to min_brightness floor
+    # Clamp to min_brightness floor, but allow 0 (light is off)
+    if brightness == 0:
+        return 0
     return max(brightness, min_brightness)
 
 
@@ -571,7 +574,7 @@ def _resolve_auto_turn_on_brightness(
 
     state_brightness = state_attributes.get(ATTR_BRIGHTNESS)
     light_was_off_or_dim = state_brightness is None or state_brightness < min_brightness
-    if start_brightness != min_brightness or not light_was_off_or_dim:
+    if start_brightness > min_brightness or not light_was_off_or_dim:
         return None
 
     target_brightness = stored_brightness if stored_brightness > min_brightness else 255
