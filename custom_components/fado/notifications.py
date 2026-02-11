@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from homeassistant.components import persistent_notification
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, NOTIFICATION_ID, REQUIRED_CONFIG_FIELDS
@@ -63,7 +63,13 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
     If there are unconfigured lights, creates or updates a persistent notification
     with a link to the Fado panel. If all lights are configured, dismisses
     any existing notification.
+
+    Skipped before HA has fully started because entity states (needed to detect
+    light groups) are not yet available.
     """
+    if hass.state is not CoreState.running:
+        return
+
     unconfigured = _get_unconfigured_lights(hass)
 
     if unconfigured:
