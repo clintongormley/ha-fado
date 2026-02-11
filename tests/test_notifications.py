@@ -232,8 +232,8 @@ class TestNotifyUnconfiguredLights:
 class TestSetupNotification:
     """Test notification on setup."""
 
-    async def test_checks_unconfigured_on_setup(self, hass: HomeAssistant) -> None:
-        """Test that setup checks for unconfigured lights."""
+    async def test_checks_unconfigured_after_start(self, hass: HomeAssistant) -> None:
+        """Test that unconfigured check runs after HA has fully started."""
         mock_entry = MagicMock(spec=ConfigEntry)
         mock_entry.entry_id = "test_entry"
         mock_entry.options = {}
@@ -246,6 +246,13 @@ class TestSetupNotification:
         ):
             hass.http = None  # Skip panel registration
             await async_setup_entry(hass, mock_entry)
+
+            # Not called during setup (states may not be loaded yet)
+            mock_notify.assert_not_called()
+
+            # Fire the started event (all entity states now available)
+            hass.bus.async_fire("homeassistant_started")
+            await hass.async_block_till_done()
 
         mock_notify.assert_called_once_with(hass)
 

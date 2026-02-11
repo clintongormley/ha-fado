@@ -269,12 +269,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Apply stored log level on startup
     await _apply_stored_log_level(hass, entry)
 
-    # Check for unconfigured lights and notify
-    await _notify_unconfigured_lights(hass)
-
-    # Prune stale storage after HA has fully started (all entities registered)
+    # Prune stale storage and check for unconfigured lights after HA has fully
+    # started (all entity states are available, so light groups can be detected)
     async def _prune_on_start(_event: Event) -> None:
         await coordinator.async_prune_stale_storage()
+        await _notify_unconfigured_lights(hass)
 
     entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _prune_on_start))
 
