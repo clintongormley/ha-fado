@@ -128,7 +128,7 @@ Fado stores the details of each fade step that is issued because it expects to s
 
 When you fade a light down to off and then manually turn it back on, the light turns on at the last brightness set by the fade loop, which might be `1%`. This is unlikely to be what you want. Instead, the integration automatically restores the light to its `original brightness` level before the fade started.
 
-**Example:**
+#### Example: Automatic Brightness Restoration
 
 1. Light is at 80% brightness.
 2. This value is stored as the `original brightness`.
@@ -137,6 +137,17 @@ When you fade a light down to off and then manually turn it back on, the light t
 5. The light turns on at the last brightness the hardware is aware of, e.g. 1%.
 6. Fado automatically restores the brightness to the `original brightness` value of 80%.
 
+However, brightness restoration isn't always wanted. Imagine the user turns on the light from an off state and simultaneously changes the brightness, for instance by holding down the dimmer switch to fade the brightness up until the switch is released. In order to distinguish between this case and the previous case, Fado also stores the brightness at the moment the light was turned off.
+
+#### Example: Turn on and simultaneously change brightness
+
+1. Light is at 80% brightness.
+2. You turn the light off.
+3. Fado stores the brightness before turning the light off as `previous brightness`.
+4. You turn the light on and hold the dimmer switch to change the brightness.
+5. Fado compares the current brightness to the `previous brightness`.
+6. If they are the same then it assumes the user has just turned the light on and it should restore the `original brightness`.
+7. If they are different then it assumes the user has also changed the brightness, and it stores the new brightness as `original brightness`.
 
 ### Manual interventions
 
@@ -211,13 +222,14 @@ This table details how the fade is executed depending on the initial state of th
 
 This table details the changes applied when Fado detects a manual event (i.e. an event from the switch or the app):
 
-Fado can't recognise the difference between turning a light on, and turning a light on and simultaneously changing the brightness level:
+Fado uses the `previous brightness` to distinguish between turning a light on and turning a light on while simultaneously changing the brightness level:
 
 | Old state | New state  | Description |
 |-------|---------------|-----------------|
-| `state:on`, `brightness: 10` | `state:on`, `brightness: 20` | When the light is on and the user changes the brightness level, Fado recognises the brightness change and stores the new bright level as `original brightness` |
-| `state:off`, `brightness:None` | `state:on`, `brightness:10` | When the user turns the light on, the light reports its current brightness and Fado resets it to the stored `original brightness`, if it is different |
-| `state:off`, `brightness:None` | `state:on`, `brightness:10` | When the user turns the light on and **simultaneously** changes brightness, Fado can't distinguish this case from the previous case, and so it incorrectly resets the brightness to the stored `original brightness` |
+| `state:on`, `brightness: 10` | `state:off`, `brightness: None` | When the user turns the light off, Fado stores the old brightness as the `previous brightness`. |
+| `state:on`, `brightness: 10` | `state:on`, `brightness: 20` | When the light is on and the user changes the brightness level, Fado recognises the brightness change and stores the new bright level as `original brightness`. |
+| `state:off`, `brightness:None`, `previous brightness: 10` | `state:on`, `brightness:10` | When the user turns the light on, the light reports its current brightness, which Fado compares to the `previous brightness`. Because they are the same, Fado resets it to the stored `original brightness`, if it is different. |
+| `state:off`, `brightness:None` | `state:on`, `brightness:10`, `previous brightness: 20` | When the user turns the light on, the light reports its current brightness, which Fado compares to the `previous brightness`. Because they are different, Fado leaves the brightness as is and stores the current brightness as `original brightness`.  |
 
 ## Usage: `fado.fade_lights`
 
@@ -494,14 +506,14 @@ If you encounter a bug, please [open an issue](https://github.com/clintongormley
 - Your Home Assistant version
 - The integration version
 - Debug logs showing the problem
-- Diagnostic data (available from the [**Autoconfiguration Panel**])(#autoconfiguration-panel)
+- Diagnostic data (available from the [**Autoconfiguration Panel**](#autoconfiguration-panel))
 - Steps to reproduce
 
 ## Development
 
 ### Running Tests
 
-The integration includes a comprehensive test suite with 637 tests covering config flow, action handling, fade execution, color fading, manual interruption detection, and brightness restoration.
+The integration includes a comprehensive test suite with 654 tests covering config flow, action handling, fade execution, color fading, manual interruption detection, and brightness restoration.
 
 #### Prerequisites
 
