@@ -41,6 +41,7 @@ class EntityFadeState:
     expected_state: ExpectedState | None = None
     intended_queue: list[State] = field(default_factory=list)
     restore_task: asyncio.Task | None = None
+    previous_brightness: int | None = None
 
     @property
     def is_fading(self) -> bool:

@@ -235,6 +235,14 @@ class FadeCoordinator:
 
         entity_id = new_state.entity_id
 
+        # Track brightness on any on→off transition so we can detect
+        # whether the user changed brightness when turning the light back on
+        if old_state is not None and old_state.state == STATE_ON and new_state.state == STATE_OFF:
+            old_brightness = old_state.attributes.get(ATTR_BRIGHTNESS)
+            if old_brightness is not None:
+                entity = self.get_or_create_entity(entity_id)
+                entity.previous_brightness = int(old_brightness)
+
         # Check if this is an expected state change (from our service calls)
         if self._match_and_remove_expected(entity_id, old_state, new_state):
             return
@@ -509,7 +517,13 @@ class FadeCoordinator:
     # --------------------------------------------------------------------- #
 
     def _handle_off_to_on(self, entity_id: str, new_state: State) -> None:
-        """Handle OFF -> ON transition by restoring original brightness."""
+        """Handle OFF -> ON transition by restoring original brightness.
+
+        Uses previous_brightness (brightness at turn-off) to distinguish a simple
+        toggle from a toggle-with-brightness-change (e.g. holding a dimmer switch).
+        If the turn-on brightness differs from previous, the user changed it
+        intentionally, so we store it instead of restoring.
+        """
         _LOGGER.info("%s: Light turned on", entity_id)
 
         # Non-dimmable lights can't have brightness restored
@@ -519,13 +533,34 @@ class FadeCoordinator:
         orig_brightness = self.get_orig_brightness(entity_id)
         current_brightness = new_state.attributes.get(ATTR_BRIGHTNESS, 0)
 
+        # Check if user changed brightness while turning on
+        entity = self.get_entity(entity_id)
+        previous_brightness = entity.previous_brightness if entity else None
+
         _LOGGER.debug(
-            "%s: orig_brightness=%s, current_brightness=%s",
+            "%s: orig_brightness=%s, current_brightness=%s, previous_brightness=%s",
             entity_id,
             orig_brightness,
             current_brightness,
+            previous_brightness,
         )
 
+        # Clear previous_brightness after reading
+        if entity:
+            entity.previous_brightness = None
+
+        if previous_brightness is not None and current_brightness != previous_brightness:
+            # User changed brightness while turning on — store as new original
+            _LOGGER.info(
+                "%s: Brightness changed on turn-on (%s -> %s), storing as original",
+                entity_id,
+                previous_brightness,
+                current_brightness,
+            )
+            self.store_orig_brightness(entity_id, current_brightness)
+            return
+
+        # Simple toggle (or no previous_brightness) — restore original brightness
         if orig_brightness > 0 and current_brightness != orig_brightness:
             _LOGGER.info("%s: Restoring to brightness %s", entity_id, orig_brightness)
             self.hass.async_create_task(
