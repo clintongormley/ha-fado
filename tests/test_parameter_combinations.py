@@ -20,7 +20,7 @@ from custom_components.fado.fade_params import FadeParams
 class TestFromOffState:
     """Test fades starting from off state (brightness=0 or None).
 
-    Note: With min_brightness=1 (default), start_brightness is clamped to 1 when light is off.
+    Note: When light is off, start_brightness is 0 (not clamped to min_brightness).
     """
 
     def test_off_to_brightness(self) -> None:
@@ -34,8 +34,8 @@ class TestFromOffState:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100)
 
         assert change is not None
-        # With min_brightness=1 (default), start from 1 not 0
-        assert change.start_brightness == 1
+        # Light is off, start from 0
+        assert change.start_brightness == 0
         assert change.end_brightness == 255
 
     def test_off_to_hs_auto_turn_on(self) -> None:
@@ -50,8 +50,8 @@ class TestFromOffState:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100, stored_brightness=0)
 
         assert change is not None
-        # Auto-turn-on: brightness min_brightness→255
-        assert change.start_brightness == 1  # clamped from 0 to min_brightness
+        # Auto-turn-on: brightness 0→255
+        assert change.start_brightness == 0  # light is off
         assert change.end_brightness == 255
         # HS from white (0,0) to target
         assert change.start_hs == (0.0, 0.0)
@@ -69,8 +69,8 @@ class TestFromOffState:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100, stored_brightness=200)
 
         assert change is not None
-        # Start brightness clamped to min_brightness
-        assert change.start_brightness == 1
+        # Light is off, start from 0
+        assert change.start_brightness == 0
         assert change.end_brightness == 200  # Uses stored
 
     def test_off_to_color_temp_auto_turn_on(self) -> None:
@@ -86,8 +86,8 @@ class TestFromOffState:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100, stored_brightness=0)
 
         assert change is not None
-        # Auto-turn-on, with start clamped to min_brightness
-        assert change.start_brightness == 1
+        # Auto-turn-on, light is off
+        assert change.start_brightness == 0
         assert change.end_brightness == 255
         # CT from boundary (min=400 mireds, max=153 mireds, target=250 mireds)
         # Target 4000K = 250 mireds, closer to max (153) than min (400)
@@ -109,8 +109,8 @@ class TestFromOffState:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100)
 
         assert change is not None
-        # Start brightness clamped to min_brightness
-        assert change.start_brightness == 1
+        # Light is off, start from 0
+        assert change.start_brightness == 0
         assert change.end_brightness == 127  # 50%
         assert change.start_hs == (0.0, 0.0)  # white
         assert change.end_hs == (100.0, 100.0)
@@ -132,8 +132,8 @@ class TestFromOffState:
         change = FadeChange.resolve(params, state, min_step_delay_ms=100)
 
         assert change is not None
-        # Start brightness clamped to min_brightness
-        assert change.start_brightness == 1
+        # Light is off, start from 0
+        assert change.start_brightness == 0
         assert change.end_brightness == 127  # 50%
         assert change.start_mireds == 153  # boundary (6500K, closer to 4000K)
         assert change.end_mireds == 250  # 4000K

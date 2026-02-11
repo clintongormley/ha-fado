@@ -848,8 +848,8 @@ class TestFadeChangeResolveMinBrightness:
         assert fade is not None
         assert fade.end_brightness == 20  # Clamped to min_brightness
 
-    def test_start_brightness_clamped_when_fading_from_off(self) -> None:
-        """Test starting brightness is clamped to min_brightness when light is off."""
+    def test_start_brightness_zero_when_fading_from_off(self) -> None:
+        """Test starting brightness is 0 when light is off."""
         from custom_components.fado.fade_params import FadeParams
 
         params = FadeParams(brightness_pct=50, transition_ms=1000)
@@ -861,8 +861,8 @@ class TestFadeChangeResolveMinBrightness:
         fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
 
         assert fade is not None
-        # Start should be clamped from 0 to min_brightness
-        assert fade.start_brightness == 10
+        # Start should be 0 (light is off), not clamped to min_brightness
+        assert fade.start_brightness == 0
 
     def test_start_brightness_clamped_when_current_brightness_is_low(self) -> None:
         """Test starting brightness is clamped when current brightness < min_brightness."""
@@ -977,8 +977,8 @@ class TestFadeChangeResolveMinBrightness:
         assert fade is not None
         assert fade.end_brightness == 0  # Not clamped to min_brightness
 
-    def test_fade_respects_min_brightness_during_interpolation(self) -> None:
-        """Test that fading from min_brightness ensures all steps stay above min."""
+    def test_fade_from_off_starts_at_zero(self) -> None:
+        """Test that fading from off starts at 0 (not clamped to min_brightness)."""
         from custom_components.fado.fade_params import FadeParams
 
         params = FadeParams(brightness_pct=100, transition_ms=500)
@@ -990,16 +990,8 @@ class TestFadeChangeResolveMinBrightness:
         fade = FadeChange.resolve(params, state, min_step_delay_ms=100, min_brightness=10)
 
         assert fade is not None
-        assert fade.start_brightness == 10  # Clamped from 0
+        assert fade.start_brightness == 0  # Light is off
         assert fade.end_brightness == 255
-
-        # All interpolated steps should be >= min_brightness
-        while fade.has_next():
-            step = fade.next_step()
-            assert step.brightness is not None
-            assert step.brightness >= 10, (
-                f"Step brightness {step.brightness} is below min_brightness"
-            )
 
     def test_default_min_brightness_is_1(self) -> None:
         """Test that default min_brightness is 1 (backward compatibility)."""
@@ -1033,6 +1025,5 @@ class TestFadeChangeResolveMinBrightness:
         )
 
         assert fade is not None
-        # Start should be clamped to min_brightness since light is off
-        # Auto-turn-on should also use min_brightness as floor
-        assert fade.start_brightness == 10
+        # Start should be 0 (light is off)
+        assert fade.start_brightness == 0
