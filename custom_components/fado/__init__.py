@@ -260,7 +260,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass,
             frontend_url_path="fado",
             webcomponent_name="fado-panel",
-            sidebar_title="Fado",
+            sidebar_title="Fado Light Fader",
             sidebar_icon="mdi:lightbulb-variant",
             module_url="/fado_panel/panel.js",
             require_admin=False,
