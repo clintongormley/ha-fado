@@ -324,16 +324,16 @@ initial state of the light and the target state. If the
 [**`from`**](#starting-values-optional-from-block) parameter is
 used, the specified values are used as the initial state.
 
-| Initial State                  | Target             | Action                                                                     |
-| ------------------------------ | ------------------ | -------------------------------------------------------------------------- |
-| `state:on`, `brightness:10`    | `brightness:50`    | Brightness fades from 10 to 50                                             |
-| `state:off`                    | `brightness:50`    | Brightness fades from 0 to 50                                              |
-| `state:on`, `hs:[10,10]`       | `hs:[50,50]`       | Color fades `hs:[10,10]` to `hs:[50,50]` (similar for RGB, RGBW, etc.)     |
-| `state:off`                    | `hs:[50,50]`       | Color fades `hs:[0,0]` to `hs:[50,50]` (similar for RGB, RGBW, etc.)       |
-| `state:on`, `color_temp:2500`  | `color_temp:4000`  | Color temperature fades from 2500 to 4000                                  |
-| `state:off`                    | `color_temp:4000`  | Fades from min- or max-color temp (whichever is closest) to 4000           |
-| `state:on`, `color_temp:4000`  | `hs:[0,100]`       | Hybrid fade from `color_temp:4000` to `hs:[0,100]`                         |
-| `state:on`, `hs:[0,100]`       | `color_temp:4000`  | Hybrid fade from `hs:[0,100]` to `color_temp:4000`                         |
+| Initial State | Target | Action |
+| --- | --- | --- |
+| `state:on`, `brightness:10` | `brightness:50` | Brightness fades from 10 to 50 |
+| `state:off` | `brightness:50` | Brightness fades from 0 to 50 |
+| `state:on`, `hs:[10,10]` | `hs:[50,50]` | Color fades `hs:[10,10]` to `hs:[50,50]` (similar for RGB, RGBW, etc.) |
+| `state:off` | `hs:[50,50]` | Color fades `hs:[0,0]` to `hs:[50,50]` (similar for RGB, RGBW, etc.) |
+| `state:on`, `color_temp:2500` | `color_temp:4000` | Color temperature fades from 2500 to 4000 |
+| `state:off` | `color_temp:4000` | Fades from min- or max-color temp (whichever is closest) to 4000 |
+| `state:on`, `color_temp:4000` | `hs:[0,100]` | Hybrid fade from `color_temp:4000` to `hs:[0,100]` |
+| `state:on`, `hs:[0,100]` | `color_temp:4000` | Hybrid fade from `hs:[0,100]` to `color_temp:4000` |
 
 
 
@@ -346,12 +346,12 @@ Fado uses the `previous brightness` to distinguish between
 turning a light on, and turning a light on while simultaneously
 changing the brightness level:
 
-| Old State                                                 | New State                                              | Description                                                                                       |
-| --------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `state:on`, `brightness: 10`                              | `state:off`, `brightness: None`                        | Light turned off. Fado stores old brightness as `previous brightness`.                            |
-| `state:on`, `brightness: 10`                              | `state:on`, `brightness: 20`                           | Brightness changed while on. Fado stores new level as `original brightness`.                      |
-| `state:off`, `brightness:None`, `previous brightness: 10` | `state:on`, `brightness:10`                            | Brightness matches `previous brightness`, so Fado restores `original brightness`.                 |
-| `state:off`, `brightness:None`                            | `state:on`, `brightness:10`, `previous brightness: 20` | Brightness differs from `previous brightness`, so Fado stores it as new `original brightness`.    |
+| Old State | New State | Description |
+| --- | --- | --- |
+| `state:on`, `brightness: 10` | `state:off`, `brightness: None` | Light turned off. Fado stores old brightness as `previous brightness`. |
+| `state:on`, `brightness: 10` | `state:on`, `brightness: 20` | Brightness changed while on. Fado stores new level as `original brightness`. |
+| `state:off`, `brightness:None`, `previous brightness: 10` | `state:on`, `brightness:10` | Brightness matches `previous brightness`, so Fado restores `original brightness`. |
+| `state:off`, `brightness:None` | `state:on`, `brightness:10`, `previous brightness: 20` | Brightness differs from `previous brightness`, so Fado stores it as new `original brightness`. |
 
 ## Usage: `fado.fade_lights`
 
@@ -567,15 +567,15 @@ Run **auto-configure** to automatically measure optimal step
 timing, support for native transitions, and minimum real
 brightness for each light
 
-| Setting                                             | Description                                                                             | Default          | Range                      |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------- | -------------------------- |
-| [**Min delay**](#minimum-delay)                     | Minimum delay (ms) between fade-steps without overloading slower devices                | Global min delay | global - `2000`            |
-| [**Min brightness**](#minimum-brightness)           | Minimum real brightness value that the light supports                                   | `1`              | `1` - `255`                |
-| [**Native transitions**](#native-transitions)       | Whether to use the device's native transitions to smooth fading                         | `No`             | `No`, `Yes`, `Disable`     |
-| [**Exclude**](#exclude)                             | Exclude this light from management by Fado                                              | `No`             | `No`, `Yes`                |
-| [**Log level**](#log-level)                         | Controls logging verbosity                                                              | `warning`        | `warning`, `info`, `debug` |
-| [**Global min delay**](#global-minimum-delay)       | Absolute minimum delay (ms) for all lights. Per-light min delay cannot be lower         | `100`            | `50` - `2000`              |
-| [**Download diagnostics**](#download-diagnostics)   | Download diagnostic data for debugging                                                  | —                | —                          |
+| Setting | Description | Default | Range |
+| --- | --- | --- | --- |
+| [**Min delay**](#minimum-delay) | Minimum delay (ms) between fade-steps without overloading slower devices | Global min delay | global - `2000` |
+| [**Min brightness**](#minimum-brightness) | Minimum real brightness value that the light supports | `1` | `1` - `255` |
+| [**Native transitions**](#native-transitions) | Whether to use the device's native transitions to smooth fading | `No` | `No`, `Yes`, `Disable` |
+| [**Exclude**](#exclude) | Exclude this light from management by Fado | `No` | `No`, `Yes` |
+| [**Log level**](#log-level) | Controls logging verbosity | `warning` | `warning`, `info`, `debug` |
+| [**Global min delay**](#global-minimum-delay) | Absolute minimum delay (ms) for all lights. Per-light min delay cannot be lower | `100` | `50` - `2000` |
+| [**Download diagnostics**](#download-diagnostics) | Download diagnostic data for debugging | — | — |
 
 
 ### Minimum delay
@@ -659,11 +659,11 @@ Go to the
 clicking **Fado** in the Home Assistant sidebar, and adjust the
 **Log level** verbosity setting:
 
-| Level     | What it shows                                                                                |
-| --------- | -------------------------------------------------------------------------------------------- |
-| `warning` | Default. Only logs exceptions.                                                               |
-| `info`    | Fade start/complete, manual interventions, brightness restoration, autoconfiguration         |
-| `debug`   | Every brightness step, expected state tracking, task cancellation internals                  |
+| Level | What it shows |
+| --- | --- |
+| `warning` | Default. Only logs exceptions. |
+| `info` | Fade start/complete, manual interventions, brightness restoration, autoconfiguration |
+| `debug` | Every brightness step, expected state tracking, task cancellation internals |
 
 For most troubleshooting, `info` level is sufficient and easier
 to follow.
