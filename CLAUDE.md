@@ -13,3 +13,4 @@
 - Before creating a PR, always run `ruff check .` and `ruff format .` to fix any linting issues
 - Before creating a PR, run `npx pyright` to check for Pylance/type errors and fix any that can be fixed
 - Before creating a release always update the docs and translations and tests
+- The `manifest.json` keys must be sorted: `domain`, `name` first, then all remaining keys in alphabetical order
