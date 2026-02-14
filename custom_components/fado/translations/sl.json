@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Vrednost svetlosti",
           "description": "Ciljna svetlost kot neposredna vrednost (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Napredne možnosti",
+          "description": "Dodatne možnosti za napredne primere uporabe."
         }
       }
     },

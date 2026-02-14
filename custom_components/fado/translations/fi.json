@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Kirkkausarvo",
           "description": "Tavoitekirkkaus raakaarvona (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Lisäasetukset",
+          "description": "Lisäasetukset edistyneille käyttötapauksille."
         }
       }
     },

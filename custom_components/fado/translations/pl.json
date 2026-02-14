@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Wartość jasności",
           "description": "Docelowa jasność jako wartość surowa (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opcje zaawansowane",
+          "description": "Dodatkowe opcje dla zaawansowanych przypadków użycia."
         }
       }
     },

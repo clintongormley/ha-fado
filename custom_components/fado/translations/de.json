@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Helligkeitswert",
           "description": "Zielhelligkeit als Rohwert (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Erweiterte Optionen",
+          "description": "Zusätzliche Optionen für erweiterte Anwendungsfälle."
         }
       }
     },

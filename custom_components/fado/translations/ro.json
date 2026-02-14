@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Valoare luminozitate",
           "description": "Luminozitate țintă ca valoare directă (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opțiuni avansate",
+          "description": "Opțiuni suplimentare pentru cazuri de utilizare avansate."
         }
       }
     },

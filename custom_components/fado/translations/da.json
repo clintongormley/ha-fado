@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Lysstyrkeværdi",
           "description": "Mållysstyrke som rå værdi (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Avancerede indstillinger",
+          "description": "Yderligere indstillinger til avancerede brugsscenarier."
         }
       }
     },

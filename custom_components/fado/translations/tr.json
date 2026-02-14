@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Parlaklık değeri",
           "description": "Hedef parlaklık ham değer olarak (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Gelişmiş seçenekler",
+          "description": "Gelişmiş kullanım senaryoları için ek seçenekler."
         }
       }
     },

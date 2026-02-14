@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Fényerő érték",
           "description": "Cél fényerő nyers értékként (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Speciális beállítások",
+          "description": "További lehetőségek haladó felhasználáshoz."
         }
       }
     },

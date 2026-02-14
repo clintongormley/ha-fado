@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Ljusstyrkevärde",
           "description": "Målljusstyrka som råvärde (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Avancerade alternativ",
+          "description": "Ytterligare alternativ för avancerade användningsfall."
         }
       }
     },

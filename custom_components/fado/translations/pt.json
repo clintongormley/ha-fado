@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Valor de brilho",
           "description": "Brilho alvo como valor direto (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opções avançadas",
+          "description": "Opções adicionais para casos de uso avançados."
         }
       }
     },

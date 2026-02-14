@@ -58,6 +58,10 @@
         "brightness": {
           "name": "밝기 값",
           "description": "목표 밝기(원시 값, 1-255)."
+        },
+        "advanced_fields": {
+          "name": "고급 옵션",
+          "description": "고급 사용 사례를 위한 추가 옵션."
         }
       }
     },

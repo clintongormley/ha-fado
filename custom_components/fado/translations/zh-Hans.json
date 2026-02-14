@@ -58,6 +58,10 @@
         "brightness": {
           "name": "亮度值",
           "description": "目标亮度原始值（1-255）。"
+        },
+        "advanced_fields": {
+          "name": "高级选项",
+          "description": "用于高级用例的附加选项。"
         }
       }
     },

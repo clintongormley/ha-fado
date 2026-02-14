@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Hodnota jasu",
           "description": "Cieľový jas ako priama hodnota (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Rozšírené možnosti",
+          "description": "Ďalšie možnosti pre pokročilé použitie."
         }
       }
     },

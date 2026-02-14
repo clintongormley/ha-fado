@@ -58,6 +58,10 @@
         "brightness": {
           "name": "明るさの値",
           "description": "目標の明るさ（生の値、1-255）。"
+        },
+        "advanced_fields": {
+          "name": "詳細オプション",
+          "description": "高度な使用例のための追加オプション。"
         }
       }
     },

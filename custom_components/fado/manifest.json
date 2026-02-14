@@ -3,6 +3,7 @@
   "name": "Fado Light Fader",
   "codeowners": ["@clintongormley"],
   "config_flow": true,
+  "dependencies": ["http"],
   "documentation": "https://github.com/clintongormley/ha-fado",
   "issue_tracker": "https://github.com/clintongormley/ha-fado/issues",
   "integration_type": "service",

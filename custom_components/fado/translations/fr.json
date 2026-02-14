@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Valeur de luminosité",
           "description": "Luminosité cible en valeur brute (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Options avancées",
+          "description": "Options supplémentaires pour les cas d'utilisation avancés."
         }
       }
     },

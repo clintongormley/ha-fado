@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Valore luminosità",
           "description": "Luminosità obiettivo come valore diretto (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opzioni avanzate",
+          "description": "Opzioni aggiuntive per casi d'uso avanzati."
         }
       }
     },

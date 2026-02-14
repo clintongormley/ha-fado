@@ -58,6 +58,10 @@
         "brightness": {
           "name": "Helderheidswaarde",
           "description": "Doelhelderheid als ruwe waarde (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Geavanceerde opties",
+          "description": "Extra opties voor geavanceerd gebruik."
         }
       }
     },

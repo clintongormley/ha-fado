@@ -11,28 +11,28 @@
     }
   },
   "services": {
-    "fado": {
+    "fade_lights": {
       "name": "Fade lights",
-      "description": "Fades lights to a desired level over a specified transition period.",
+      "description": "Fades lights to a desired brightness and/or color over a specified transition period.",
       "fields": {
         "brightness_pct": {
-          "name": "Brightness percentage",
-          "description": "Target brightness level as a percentage (0-100, default 40)."
+          "name": "Brightness",
+          "description": "Target brightness level as a percentage (0-100)."
         },
         "transition": {
           "name": "Transition time",
-          "description": "Transition time for fading in seconds. Accepts decimal values (default 3)."
+          "description": "Transition time for fading in seconds."
         },
         "color_temp_kelvin": {
           "name": "Color temperature",
-          "description": "Target color temperature in Kelvin (1000-40000)."
+          "description": "Target color temperature in Kelvin."
         },
         "hs_color": {
           "name": "HS color",
           "description": "Target color as [hue (0-360), saturation (0-100)]."
         },
         "rgb_color": {
-          "name": "RGB color",
+          "name": "Color",
           "description": "Target color as [red, green, blue] values (0-255 each)."
         },
         "rgbw_color": {
@@ -49,20 +49,29 @@
         },
         "from": {
           "name": "Starting values",
-          "description": "Override starting values. Accepts brightness_pct and one color parameter."
+          "description": "Override starting values instead of using current state."
         },
         "easing": {
           "name": "Easing curve",
           "description": "Controls how brightness changes over time. 'auto' selects based on fade direction: ease_in (slow start) for fading up, ease_out (slow end) for fading down."
         },
         "advanced_fields": {
-          "name": "Advanced options"
+          "name": "Advanced options",
+          "description": "Additional options for advanced use cases."
         },
         "brightness": {
           "name": "Brightness value",
-          "description": "Target brightness as raw value (1-255). Advanced option."
+          "description": "Target brightness as raw value (1-255)."
         }
       }
+    },
+    "exclude_lights": {
+      "name": "Exclude lights",
+      "description": "Excludes lights from Fado. Excluded lights are ignored by fade operations and state tracking."
+    },
+    "include_lights": {
+      "name": "Include lights",
+      "description": "Re-includes previously excluded lights so they respond to fade operations again."
     }
   }
 }

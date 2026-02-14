@@ -55,6 +55,10 @@
           "name": "Starting values",
           "description": "Override starting values instead of using current state."
         },
+        "advanced_fields": {
+          "name": "Advanced options",
+          "description": "Additional options for advanced use cases."
+        },
         "brightness": {
           "name": "Brightness value",
           "description": "Target brightness as raw value (1-255)."
