@@ -122,6 +122,7 @@ async def test_get_lights_returns_defaults_for_unconfigured(
 
     # Find kitchen light (unconfigured)
     kitchen = next((a for a in result["areas"] if a["area_id"] == "kitchen"), None)
+    assert kitchen is not None
     light = next(
         (lt for lt in kitchen["lights"] if lt["entity_id"] == "light.kitchen_main"),
         None,
@@ -387,9 +388,11 @@ async def test_get_lights_uses_state_friendly_name_and_icon(
         result = await async_get_lights(hass)
 
     unknown = next((a for a in result["areas"] if a["area_id"] is None), None)
+    assert unknown is not None
     light = next((lt for lt in unknown["lights"] if lt["entity_id"] == "light.test_light"), None)
 
     # Should prefer state values
+    assert light is not None
     assert light["name"] == "State Friendly Name"
     assert light["icon"] == "mdi:state-icon"
 
@@ -494,6 +497,7 @@ async def test_save_settings_updates_min_delay(hass: HomeAssistant, init_integra
     from custom_components.fado.websocket_api import _get_config_entry
 
     entry = _get_config_entry(hass)
+    assert entry is not None
 
     # Update options
     new_options = dict(entry.options)
@@ -502,6 +506,7 @@ async def test_save_settings_updates_min_delay(hass: HomeAssistant, init_integra
 
     # Verify update
     entry = _get_config_entry(hass)
+    assert entry is not None
     assert entry.options.get(OPTION_MIN_STEP_DELAY_MS) == 200
 
 
@@ -578,6 +583,7 @@ async def test_get_lights_includes_min_brightness(
 
     # Find bedroom area
     bedroom = next((a for a in result["areas"] if a["area_id"] == "bedroom"), None)
+    assert bedroom is not None
     light = next(
         (lt for lt in bedroom["lights"] if lt["entity_id"] == "light.bedroom_ceiling"),
         None,
@@ -599,6 +605,7 @@ async def test_get_lights_returns_none_for_unconfigured_min_brightness(
 
     # Find kitchen light (unconfigured)
     kitchen = next((a for a in result["areas"] if a["area_id"] == "kitchen"), None)
+    assert kitchen is not None
     light = next(
         (lt for lt in kitchen["lights"] if lt["entity_id"] == "light.kitchen_main"),
         None,

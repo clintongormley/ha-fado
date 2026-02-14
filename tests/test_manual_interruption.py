@@ -1265,6 +1265,7 @@ async def test_second_manual_event_during_restore_appends_to_queue(
 
     # Set an initial intended state queue (simulating the first OFF event)
     initial_off_state = hass.states.get(entity_id)
+    assert initial_off_state is not None
     # Queue format: [old_state, intended_state]
     # Simulating after first event was processed - queue has just the OFF state
     entity.intended_queue = [initial_off_state]

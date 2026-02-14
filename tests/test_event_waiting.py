@@ -49,12 +49,15 @@ async def test_add_expected_brightness_adds_multiple_entries(
 
     coordinator._add_expected_brightness(entity_id, 100)
     entity = coordinator.get_entity(entity_id)
+    assert entity is not None
+    assert entity.expected_state is not None
     assert len(entity.expected_state.values) == 1
 
     await asyncio.sleep(0.01)
 
     coordinator._add_expected_brightness(entity_id, 100)
     # New implementation appends to list, so we now have 2 entries
+    assert entity.expected_state is not None
     assert len(entity.expected_state.values) == 2
 
 
