@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura Fado",
+        "description": "Questa integrazione fornisce transizioni fluide di luminosità e colore per le luci con ripristino automatico della luminosità."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "È consentita una sola istanza."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Transizione luci",
+      "description": "Effettua una transizione delle luci alla luminosità e/o al colore desiderato in un periodo di tempo specificato.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Luminosità",
+          "description": "Livello di luminosità obiettivo in percentuale (0-100)."
+        },
+        "transition": {
+          "name": "Tempo di transizione",
+          "description": "Tempo di transizione in secondi. Accetta valori decimali, ad es. 0.5 per 500ms (predefinito 3)."
+        },
+        "hs_color": {
+          "name": "Colore HS",
+          "description": "Colore obiettivo come [tonalità (0-360), saturazione (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Colore",
+          "description": "Colore obiettivo come [rosso, verde, blu] (0-255 ciascuno)."
+        },
+        "rgbw_color": {
+          "name": "Colore RGBW",
+          "description": "Colore obiettivo come [rosso, verde, blu, bianco] (0-255 ciascuno)."
+        },
+        "rgbww_color": {
+          "name": "Colore RGBWW",
+          "description": "Colore obiettivo come [rosso, verde, blu, bianco_freddo, bianco_caldo] (0-255 ciascuno)."
+        },
+        "xy_color": {
+          "name": "Colore XY",
+          "description": "Colore obiettivo come coordinate CIE xy [x, y] (0-1 ciascuno)."
+        },
+        "color_temp_kelvin": {
+          "name": "Temperatura colore",
+          "description": "Temperatura colore obiettivo in Kelvin."
+        },
+        "easing": {
+          "name": "Curva di interpolazione",
+          "description": "Controlla come cambia la luminosità nel tempo. 'auto' seleziona in base alla direzione: ease_in (inizio lento) in aumento, ease_out (fine lenta) in diminuzione."
+        },
+        "from": {
+          "name": "Valori iniziali",
+          "description": "Valori iniziali personalizzati al posto dello stato attuale."
+        },
+        "brightness": {
+          "name": "Valore luminosità",
+          "description": "Luminosità obiettivo come valore diretto (1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Escludi luci",
+      "description": "Esclude le luci da Fado. Le luci escluse vengono ignorate dalle operazioni di transizione e dal monitoraggio dello stato."
+    },
+    "include_lights": {
+      "name": "Includi luci",
+      "description": "Re-include le luci precedentemente escluse in modo che rispondano nuovamente alle operazioni di transizione."
+    }
+  }
+}

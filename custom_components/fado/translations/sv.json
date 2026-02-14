@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfigurera Fado",
+        "description": "Denna integration ger mjuka ljusövergångar för ljusstyrka och färger med automatisk återställning av ljusstyrka."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Endast en instans är tillåten."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Tona lampor",
+      "description": "Tonar lampor till önskad ljusstyrka och/eller färg under en angiven tidsperiod.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Ljusstyrka",
+          "description": "Målljusstyrka i procent (0-100)."
+        },
+        "transition": {
+          "name": "Övergångstid",
+          "description": "Övergångstid i sekunder. Accepterar decimalvärden, t.ex. 0,5 för 500ms (standard 3)."
+        },
+        "hs_color": {
+          "name": "HS-färg",
+          "description": "Målfärg som [nyans (0-360), mättnad (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Färg",
+          "description": "Målfärg som [röd, grön, blå] (0-255 vardera)."
+        },
+        "rgbw_color": {
+          "name": "RGBW-färg",
+          "description": "Målfärg som [röd, grön, blå, vit] (0-255 vardera)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW-färg",
+          "description": "Målfärg som [röd, grön, blå, kallvit, varmvit] (0-255 vardera)."
+        },
+        "xy_color": {
+          "name": "XY-färg",
+          "description": "Målfärg som CIE xy-koordinater [x, y] (0-1 vardera)."
+        },
+        "color_temp_kelvin": {
+          "name": "Färgtemperatur",
+          "description": "Målfärgtemperatur i Kelvin."
+        },
+        "easing": {
+          "name": "Övergångskurva",
+          "description": "Styr hur ljusstyrkan ändras över tid. 'auto' väljer baserat på riktning: ease_in (långsam start) vid ökning, ease_out (långsamt slut) vid minskning."
+        },
+        "from": {
+          "name": "Startvärden",
+          "description": "Anpassade startvärden istället för aktuellt tillstånd."
+        },
+        "brightness": {
+          "name": "Ljusstyrkevärde",
+          "description": "Målljusstyrka som råvärde (1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Exkludera lampor",
+      "description": "Exkluderar lampor från Fado. Exkluderade lampor ignoreras vid toningsåtgärder och tillståndsövervakning."
+    },
+    "include_lights": {
+      "name": "Inkludera lampor",
+      "description": "Återinkluderar tidigare exkluderade lampor så att de åter svarar på toningsåtgärder."
+    }
+  }
+}

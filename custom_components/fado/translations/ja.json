@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fadoの設定",
+        "description": "この統合は、明るさの自動復元機能付きで、明るさと色のスムーズなライトフェードを提供します。"
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "インスタンスは1つのみ許可されています。"
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "ライトのフェード",
+      "description": "指定された時間をかけて、ライトを目的の明るさや色にフェードします。",
+      "fields": {
+        "brightness_pct": {
+          "name": "明るさ",
+          "description": "目標の明るさ（パーセント、0-100）。"
+        },
+        "transition": {
+          "name": "遷移時間",
+          "description": "遷移時間（秒）。小数値を使用可能、例：0.5 = 500ms（デフォルト3）。"
+        },
+        "hs_color": {
+          "name": "HS カラー",
+          "description": "目標色：[色相 (0-360)、彩度 (0-100)]。"
+        },
+        "rgb_color": {
+          "name": "カラー",
+          "description": "目標色：[赤、緑、青]（各0-255）。"
+        },
+        "rgbw_color": {
+          "name": "RGBW カラー",
+          "description": "目標色：[赤、緑、青、白]（各0-255）。"
+        },
+        "rgbww_color": {
+          "name": "RGBWW カラー",
+          "description": "目標色：[赤、緑、青、冷白、温白]（各0-255）。"
+        },
+        "xy_color": {
+          "name": "XY カラー",
+          "description": "目標色：CIE xy座標 [x, y]（各0-1）。"
+        },
+        "color_temp_kelvin": {
+          "name": "色温度",
+          "description": "目標色温度（ケルビン）。"
+        },
+        "easing": {
+          "name": "イージングカーブ",
+          "description": "時間経過に伴う明るさの変化を制御します。'auto'は方向に基づいて選択：ease_in（ゆっくり開始）明るくする時、ease_out（ゆっくり終了）暗くする時。"
+        },
+        "from": {
+          "name": "開始値",
+          "description": "現在の状態の代わりに使用するカスタム開始値。"
+        },
+        "brightness": {
+          "name": "明るさの値",
+          "description": "目標の明るさ（生の値、1-255）。"
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "ライトの除外",
+      "description": "Fadoからライトを除外します。除外されたライトはフェード操作と状態追跡で無視されます。"
+    },
+    "include_lights": {
+      "name": "ライトの追加",
+      "description": "以前除外されたライトを再び追加し、フェード操作に応答するようにします。"
+    }
+  }
+}

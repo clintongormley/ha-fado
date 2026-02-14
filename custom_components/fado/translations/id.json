@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Atur Fado",
+        "description": "Integrasi ini menyediakan transisi cahaya yang halus untuk kecerahan dan warna dengan pemulihan kecerahan otomatis."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Hanya satu instansi yang diizinkan."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Transisi lampu",
+      "description": "Melakukan transisi lampu ke kecerahan dan/atau warna yang diinginkan selama periode waktu tertentu.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Kecerahan",
+          "description": "Tingkat kecerahan target dalam persen (0-100)."
+        },
+        "transition": {
+          "name": "Waktu transisi",
+          "description": "Waktu transisi dalam detik. Menerima nilai desimal, misalnya 0,5 untuk 500ms (default 3)."
+        },
+        "hs_color": {
+          "name": "Warna HS",
+          "description": "Warna target sebagai [rona (0-360), saturasi (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Warna",
+          "description": "Warna target sebagai [merah, hijau, biru] (0-255 masing-masing)."
+        },
+        "rgbw_color": {
+          "name": "Warna RGBW",
+          "description": "Warna target sebagai [merah, hijau, biru, putih] (0-255 masing-masing)."
+        },
+        "rgbww_color": {
+          "name": "Warna RGBWW",
+          "description": "Warna target sebagai [merah, hijau, biru, putih_dingin, putih_hangat] (0-255 masing-masing)."
+        },
+        "xy_color": {
+          "name": "Warna XY",
+          "description": "Warna target sebagai koordinat CIE xy [x, y] (0-1 masing-masing)."
+        },
+        "color_temp_kelvin": {
+          "name": "Suhu warna",
+          "description": "Suhu warna target dalam Kelvin."
+        },
+        "easing": {
+          "name": "Kurva transisi",
+          "description": "Mengontrol bagaimana kecerahan berubah seiring waktu. 'auto' memilih berdasarkan arah: ease_in (mulai lambat) saat meningkat, ease_out (akhir lambat) saat menurun."
+        },
+        "from": {
+          "name": "Nilai awal",
+          "description": "Nilai awal kustom sebagai pengganti keadaan saat ini."
+        },
+        "brightness": {
+          "name": "Nilai kecerahan",
+          "description": "Kecerahan target sebagai nilai mentah (1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Kecualikan lampu",
+      "description": "Mengecualikan lampu dari Fado. Lampu yang dikecualikan diabaikan oleh operasi transisi dan pelacakan status."
+    },
+    "include_lights": {
+      "name": "Sertakan lampu",
+      "description": "Menyertakan kembali lampu yang sebelumnya dikecualikan agar merespons operasi transisi."
+    }
+  }
+}

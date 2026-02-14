@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Thiết lập Fado",
+        "description": "Tích hợp này cung cấp chuyển đổi ánh sáng mượt mà cho độ sáng và màu sắc với khôi phục độ sáng tự động."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Chỉ cho phép một phiên bản duy nhất."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Chuyển đổi đèn",
+      "description": "Chuyển đổi đèn đến độ sáng và/hoặc màu sắc mong muốn trong khoảng thời gian chỉ định.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Độ sáng",
+          "description": "Mức độ sáng mục tiêu theo phần trăm (0-100)."
+        },
+        "transition": {
+          "name": "Thời gian chuyển đổi",
+          "description": "Thời gian chuyển đổi tính bằng giây. Chấp nhận giá trị thập phân, ví dụ 0,5 cho 500ms (mặc định 3)."
+        },
+        "hs_color": {
+          "name": "Màu HS",
+          "description": "Màu mục tiêu dạng [sắc độ (0-360), độ bão hòa (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Màu sắc",
+          "description": "Màu mục tiêu dạng [đỏ, xanh lá, xanh dương] (mỗi giá trị 0-255)."
+        },
+        "rgbw_color": {
+          "name": "Màu RGBW",
+          "description": "Màu mục tiêu dạng [đỏ, xanh lá, xanh dương, trắng] (mỗi giá trị 0-255)."
+        },
+        "rgbww_color": {
+          "name": "Màu RGBWW",
+          "description": "Màu mục tiêu dạng [đỏ, xanh lá, xanh dương, trắng_lạnh, trắng_ấm] (mỗi giá trị 0-255)."
+        },
+        "xy_color": {
+          "name": "Màu XY",
+          "description": "Màu mục tiêu dạng tọa độ CIE xy [x, y] (mỗi giá trị 0-1)."
+        },
+        "color_temp_kelvin": {
+          "name": "Nhiệt độ màu",
+          "description": "Nhiệt độ màu mục tiêu tính bằng Kelvin."
+        },
+        "easing": {
+          "name": "Đường cong chuyển đổi",
+          "description": "Điều khiển cách độ sáng thay đổi theo thời gian. 'auto' chọn dựa trên hướng: ease_in (bắt đầu chậm) khi tăng, ease_out (kết thúc chậm) khi giảm."
+        },
+        "from": {
+          "name": "Giá trị ban đầu",
+          "description": "Giá trị ban đầu tùy chỉnh thay vì trạng thái hiện tại."
+        },
+        "brightness": {
+          "name": "Giá trị độ sáng",
+          "description": "Độ sáng mục tiêu dạng giá trị thô (1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Loại trừ đèn",
+      "description": "Loại trừ đèn khỏi Fado. Đèn bị loại trừ sẽ bị bỏ qua bởi các thao tác chuyển đổi và theo dõi trạng thái."
+    },
+    "include_lights": {
+      "name": "Bao gồm đèn",
+      "description": "Bao gồm lại các đèn đã bị loại trừ trước đó để chúng phản hồi các thao tác chuyển đổi."
+    }
+  }
+}

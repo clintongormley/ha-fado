@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "设置 Fado",
+        "description": "此集成提供平滑的亮度和颜色灯光渐变，并自动恢复亮度。"
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "仅允许一个实例。"
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "灯光渐变",
+      "description": "在指定的时间段内将灯光渐变到所需的亮度和/或颜色。",
+      "fields": {
+        "brightness_pct": {
+          "name": "亮度",
+          "description": "目标亮度百分比（0-100）。"
+        },
+        "transition": {
+          "name": "过渡时间",
+          "description": "过渡时间（秒）。接受小数值，例如 0.5 表示 500ms（默认 3）。"
+        },
+        "hs_color": {
+          "name": "HS 颜色",
+          "description": "目标颜色：[色相 (0-360)，饱和度 (0-100)]。"
+        },
+        "rgb_color": {
+          "name": "颜色",
+          "description": "目标颜色：[红，绿，蓝]（各 0-255）。"
+        },
+        "rgbw_color": {
+          "name": "RGBW 颜色",
+          "description": "目标颜色：[红，绿，蓝，白]（各 0-255）。"
+        },
+        "rgbww_color": {
+          "name": "RGBWW 颜色",
+          "description": "目标颜色：[红，绿，蓝，冷白，暖白]（各 0-255）。"
+        },
+        "xy_color": {
+          "name": "XY 颜色",
+          "description": "目标颜色：CIE xy 坐标 [x, y]（各 0-1）。"
+        },
+        "color_temp_kelvin": {
+          "name": "色温",
+          "description": "目标色温（开尔文）。"
+        },
+        "easing": {
+          "name": "缓动曲线",
+          "description": "控制亮度随时间的变化方式。'auto' 根据方向选择：ease_in（缓慢开始）增亮时，ease_out（缓慢结束）减暗时。"
+        },
+        "from": {
+          "name": "起始值",
+          "description": "自定义起始值，替代当前状态。"
+        },
+        "brightness": {
+          "name": "亮度值",
+          "description": "目标亮度原始值（1-255）。"
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "排除灯光",
+      "description": "从 Fado 中排除灯光。被排除的灯光在渐变操作和状态跟踪中将被忽略。"
+    },
+    "include_lights": {
+      "name": "包含灯光",
+      "description": "重新包含之前排除的灯光，使其再次响应渐变操作。"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fado 설정",
+        "description": "이 통합은 자동 밝기 복원과 함께 밝기 및 색상의 부드러운 조명 전환을 제공합니다."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "하나의 인스턴스만 허용됩니다."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "조명 전환",
+      "description": "지정된 시간 동안 조명을 원하는 밝기 및/또는 색상으로 전환합니다.",
+      "fields": {
+        "brightness_pct": {
+          "name": "밝기",
+          "description": "목표 밝기(백분율, 0-100)."
+        },
+        "transition": {
+          "name": "전환 시간",
+          "description": "전환 시간(초). 소수점 값 허용, 예: 0.5 = 500ms (기본값 3)."
+        },
+        "hs_color": {
+          "name": "HS 색상",
+          "description": "목표 색상: [색조 (0-360), 채도 (0-100)]."
+        },
+        "rgb_color": {
+          "name": "색상",
+          "description": "목표 색상: [빨강, 초록, 파랑] (각 0-255)."
+        },
+        "rgbw_color": {
+          "name": "RGBW 색상",
+          "description": "목표 색상: [빨강, 초록, 파랑, 흰색] (각 0-255)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW 색상",
+          "description": "목표 색상: [빨강, 초록, 파랑, 냉백색, 온백색] (각 0-255)."
+        },
+        "xy_color": {
+          "name": "XY 색상",
+          "description": "목표 색상: CIE xy 좌표 [x, y] (각 0-1)."
+        },
+        "color_temp_kelvin": {
+          "name": "색온도",
+          "description": "목표 색온도(켈빈)."
+        },
+        "easing": {
+          "name": "전환 곡선",
+          "description": "시간에 따른 밝기 변화를 제어합니다. 'auto'는 방향에 따라 선택: ease_in(느린 시작) 밝아질 때, ease_out(느린 종료) 어두워질 때."
+        },
+        "from": {
+          "name": "시작 값",
+          "description": "현재 상태 대신 사용할 사용자 정의 시작 값."
+        },
+        "brightness": {
+          "name": "밝기 값",
+          "description": "목표 밝기(원시 값, 1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "조명 제외",
+      "description": "Fado에서 조명을 제외합니다. 제외된 조명은 전환 작업 및 상태 추적에서 무시됩니다."
+    },
+    "include_lights": {
+      "name": "조명 포함",
+      "description": "이전에 제외된 조명을 다시 포함하여 전환 작업에 응답하도록 합니다."
+    }
+  }
+}

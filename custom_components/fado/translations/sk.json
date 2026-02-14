@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nastavenie Fado",
+        "description": "Táto integrácia poskytuje plynulé prechody jasu a farieb pre svetlá s automatickým obnovením jasu."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Je povolená iba jedna inštancia."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Prechod svetiel",
+      "description": "Vykoná plynulý prechod svetiel na požadovaný jas a/alebo farbu počas zadanej doby.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Jas",
+          "description": "Cieľový jas v percentách (0-100)."
+        },
+        "transition": {
+          "name": "Doba prechodu",
+          "description": "Doba prechodu v sekundách. Akceptuje desatinné hodnoty, napr. 0,5 pre 500ms (predvolené 3)."
+        },
+        "hs_color": {
+          "name": "HS farba",
+          "description": "Cieľová farba ako [odtieň (0-360), sýtosť (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Farba",
+          "description": "Cieľová farba ako [červená, zelená, modrá] (0-255 každá)."
+        },
+        "rgbw_color": {
+          "name": "RGBW farba",
+          "description": "Cieľová farba ako [červená, zelená, modrá, biela] (0-255 každá)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW farba",
+          "description": "Cieľová farba ako [červená, zelená, modrá, studená_biela, teplá_biela] (0-255 každá)."
+        },
+        "xy_color": {
+          "name": "XY farba",
+          "description": "Cieľová farba ako CIE xy súradnice [x, y] (0-1 každá)."
+        },
+        "color_temp_kelvin": {
+          "name": "Teplota farby",
+          "description": "Cieľová teplota farby v Kelvinoch."
+        },
+        "easing": {
+          "name": "Krivka prechodu",
+          "description": "Riadi, ako sa jas mení v čase. 'auto' vyberá podľa smeru: ease_in (pomalý začiatok) pri zvyšovaní, ease_out (pomalý koniec) pri znižovaní."
+        },
+        "from": {
+          "name": "Počiatočné hodnoty",
+          "description": "Vlastné počiatočné hodnoty namiesto aktuálneho stavu."
+        },
+        "brightness": {
+          "name": "Hodnota jasu",
+          "description": "Cieľový jas ako priama hodnota (1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Vylúčiť svetlá",
+      "description": "Vylúči svetlá z Fado. Vylúčené svetlá sú ignorované pri prechodových operáciách a sledovaní stavu."
+    },
+    "include_lights": {
+      "name": "Zahrnúť svetlá",
+      "description": "Znovu zahrnie predtým vylúčené svetlá, aby reagovali na prechodové operácie."
+    }
+  }
+}

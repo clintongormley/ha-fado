@@ -1,0 +1,73 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Fado",
+        "description": "Esta integración proporciona transiciones suaves de brillo y color para luces con restauración automática del brillo."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Solo se permite una única instancia."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Transición de luces",
+      "description": "Realiza una transición de luces al brillo y/o color deseado durante un periodo de tiempo especificado.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Brillo",
+          "description": "Nivel de brillo objetivo en porcentaje (0-100)."
+        },
+        "transition": {
+          "name": "Tiempo de transición",
+          "description": "Tiempo de transición en segundos. Acepta valores decimales, p. ej., 0.5 para 500ms (por defecto 3)."
+        },
+        "hs_color": {
+          "name": "Color HS",
+          "description": "Color objetivo como [tono (0-360), saturación (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Color",
+          "description": "Color objetivo como [rojo, verde, azul] (0-255 cada uno)."
+        },
+        "rgbw_color": {
+          "name": "Color RGBW",
+          "description": "Color objetivo como [rojo, verde, azul, blanco] (0-255 cada uno)."
+        },
+        "rgbww_color": {
+          "name": "Color RGBWW",
+          "description": "Color objetivo como [rojo, verde, azul, blanco_frío, blanco_cálido] (0-255 cada uno)."
+        },
+        "xy_color": {
+          "name": "Color XY",
+          "description": "Color objetivo como coordenadas CIE xy [x, y] (0-1 cada uno)."
+        },
+        "color_temp_kelvin": {
+          "name": "Temperatura de color",
+          "description": "Temperatura de color objetivo en Kelvin."
+        },
+        "easing": {
+          "name": "Curva de suavizado",
+          "description": "Controla cómo cambia el brillo a lo largo del tiempo. 'auto' selecciona según la dirección: ease_in (inicio lento) al subir, ease_out (final lento) al bajar."
+        },
+        "from": {
+          "name": "Valores iniciales",
+          "description": "Valores iniciales personalizados en lugar del estado actual."
+        },
+        "brightness": {
+          "name": "Valor de brillo",
+          "description": "Brillo objetivo como valor directo (1-255)."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Excluir luces",
+      "description": "Excluye luces de Fado. Las luces excluidas son ignoradas por las operaciones de transición y el seguimiento de estado."
+    },
+    "include_lights": {
+      "name": "Incluir luces",
+      "description": "Vuelve a incluir luces previamente excluidas para que respondan a las operaciones de transición."
+    }
+  }
+}
