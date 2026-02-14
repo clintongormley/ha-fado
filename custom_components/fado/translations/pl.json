@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja Fado",
+        "description": "Ta integracja zapewnia płynne przejścia jasności i kolorów dla świateł z automatycznym przywracaniem jasności."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Dozwolona jest tylko jedna instancja."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Przejście świateł",
+      "description": "Wykonuje płynne przejście świateł do pożądanej jasności i/lub koloru w określonym czasie.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Jasność",
+          "description": "Docelowa jasność w procentach (0-100)."
+        },
+        "transition": {
+          "name": "Czas przejścia",
+          "description": "Czas przejścia w sekundach. Akceptuje wartości dziesiętne, np. 0,5 dla 500ms (domyślnie 3)."
+        },
+        "hs_color": {
+          "name": "Kolor HS",
+          "description": "Kolor docelowy jako [odcień (0-360), nasycenie (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Kolor",
+          "description": "Kolor docelowy jako [czerwony, zielony, niebieski] (0-255 każdy)."
+        },
+        "rgbw_color": {
+          "name": "Kolor RGBW",
+          "description": "Kolor docelowy jako [czerwony, zielony, niebieski, biały] (0-255 każdy)."
+        },
+        "rgbww_color": {
+          "name": "Kolor RGBWW",
+          "description": "Kolor docelowy jako [czerwony, zielony, niebieski, zimny_biały, ciepły_biały] (0-255 każdy)."
+        },
+        "xy_color": {
+          "name": "Kolor XY",
+          "description": "Kolor docelowy jako współrzędne CIE xy [x, y] (0-1 każdy)."
+        },
+        "color_temp_kelvin": {
+          "name": "Temperatura barwowa",
+          "description": "Docelowa temperatura barwowa w Kelvinach."
+        },
+        "easing": {
+          "name": "Krzywa przejścia",
+          "description": "Kontroluje, jak zmienia się jasność w czasie. 'auto' wybiera na podstawie kierunku: ease_in (wolny start) przy rozjaśnianiu, ease_out (wolny koniec) przy ściemnianiu."
+        },
+        "from": {
+          "name": "Wartości początkowe",
+          "description": "Niestandardowe wartości początkowe zamiast bieżącego stanu."
+        },
+        "brightness": {
+          "name": "Wartość jasności",
+          "description": "Docelowa jasność jako wartość surowa (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opcje zaawansowane",
+          "description": "Dodatkowe opcje dla zaawansowanych przypadków użycia."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Wyklucz światła",
+      "description": "Wyklucza światła z Fado. Wykluczone światła są ignorowane przez operacje przejścia i śledzenie stanu."
+    },
+    "include_lights": {
+      "name": "Dołącz światła",
+      "description": "Ponownie dołącza wcześniej wykluczone światła, aby reagowały na operacje przejścia."
+    }
+  }
+}

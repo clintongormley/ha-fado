@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Fado",
+        "description": "Esta integração fornece transições suaves de brilho e cor para luzes com restauração automática do brilho."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Apenas uma instância é permitida."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Transição de luzes",
+      "description": "Realiza uma transição das luzes para o brilho e/ou cor desejada durante um período de tempo especificado.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Brilho",
+          "description": "Nível de brilho alvo em percentagem (0-100)."
+        },
+        "transition": {
+          "name": "Tempo de transição",
+          "description": "Tempo de transição em segundos. Aceita valores decimais, ex. 0,5 para 500ms (padrão 3)."
+        },
+        "hs_color": {
+          "name": "Cor HS",
+          "description": "Cor alvo como [matiz (0-360), saturação (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Cor",
+          "description": "Cor alvo como [vermelho, verde, azul] (0-255 cada)."
+        },
+        "rgbw_color": {
+          "name": "Cor RGBW",
+          "description": "Cor alvo como [vermelho, verde, azul, branco] (0-255 cada)."
+        },
+        "rgbww_color": {
+          "name": "Cor RGBWW",
+          "description": "Cor alvo como [vermelho, verde, azul, branco_frio, branco_quente] (0-255 cada)."
+        },
+        "xy_color": {
+          "name": "Cor XY",
+          "description": "Cor alvo como coordenadas CIE xy [x, y] (0-1 cada)."
+        },
+        "color_temp_kelvin": {
+          "name": "Temperatura de cor",
+          "description": "Temperatura de cor alvo em Kelvin."
+        },
+        "easing": {
+          "name": "Curva de transição",
+          "description": "Controla como o brilho muda ao longo do tempo. 'auto' seleciona com base na direção: ease_in (início lento) ao aumentar, ease_out (fim lento) ao diminuir."
+        },
+        "from": {
+          "name": "Valores iniciais",
+          "description": "Valores iniciais personalizados em vez do estado atual."
+        },
+        "brightness": {
+          "name": "Valor de brilho",
+          "description": "Brilho alvo como valor direto (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opções avançadas",
+          "description": "Opções adicionais para casos de uso avançados."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Excluir luzes",
+      "description": "Exclui luzes do Fado. Luzes excluídas são ignoradas pelas operações de transição e pelo rastreamento de estado."
+    },
+    "include_lights": {
+      "name": "Incluir luzes",
+      "description": "Reinclui luzes previamente excluídas para que respondam às operações de transição."
+    }
+  }
+}

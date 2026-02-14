@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fado einrichten",
+        "description": "Diese Integration ermöglicht sanfte Lichtübergänge für Helligkeit und Farben mit automatischer Helligkeitswiederherstellung."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Es ist nur eine einzige Instanz erlaubt."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Lichter überblenden",
+      "description": "Blendet Lichter über einen bestimmten Zeitraum zur gewünschten Helligkeit und/oder Farbe über.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Helligkeit",
+          "description": "Zielhelligkeit in Prozent (0-100)."
+        },
+        "transition": {
+          "name": "Übergangszeit",
+          "description": "Übergangszeit in Sekunden. Akzeptiert Dezimalwerte, z.B. 0,5 für 500ms (Standard 3)."
+        },
+        "hs_color": {
+          "name": "HS-Farbe",
+          "description": "Zielfarbe als [Farbton (0-360), Sättigung (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Farbe",
+          "description": "Zielfarbe als [Rot, Grün, Blau] (0-255 jeweils)."
+        },
+        "rgbw_color": {
+          "name": "RGBW-Farbe",
+          "description": "Zielfarbe als [Rot, Grün, Blau, Weiß] (0-255 jeweils)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW-Farbe",
+          "description": "Zielfarbe als [Rot, Grün, Blau, Kaltweiß, Warmweiß] (0-255 jeweils)."
+        },
+        "xy_color": {
+          "name": "XY-Farbe",
+          "description": "Zielfarbe als CIE-xy-Koordinaten [x, y] (0-1 jeweils)."
+        },
+        "color_temp_kelvin": {
+          "name": "Farbtemperatur",
+          "description": "Zielfarbtemperatur in Kelvin."
+        },
+        "easing": {
+          "name": "Übergangskurve",
+          "description": "Steuert, wie sich die Helligkeit über die Zeit ändert. 'auto' wählt basierend auf der Richtung: ease_in (langsamer Start) beim Aufblenden, ease_out (langsames Ende) beim Abblenden."
+        },
+        "from": {
+          "name": "Startwerte",
+          "description": "Benutzerdefinierte Startwerte anstelle des aktuellen Zustands."
+        },
+        "brightness": {
+          "name": "Helligkeitswert",
+          "description": "Zielhelligkeit als Rohwert (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Erweiterte Optionen",
+          "description": "Zusätzliche Optionen für erweiterte Anwendungsfälle."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Lichter ausschließen",
+      "description": "Schließt Lichter von Fado aus. Ausgeschlossene Lichter werden bei Überblendvorgängen und Zustandsverfolgung ignoriert."
+    },
+    "include_lights": {
+      "name": "Lichter einschließen",
+      "description": "Schließt zuvor ausgeschlossene Lichter wieder ein, damit sie auf Überblendvorgänge reagieren."
+    }
+  }
+}

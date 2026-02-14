@@ -1,12 +1,14 @@
 {
   "domain": "fado",
-  "name": "Fado",
+  "name": "Fado Light Fader",
   "codeowners": ["@clintongormley"],
   "config_flow": true,
+  "dependencies": ["http"],
   "documentation": "https://github.com/clintongormley/ha-fado",
-  "issue_tracker": "https://github.com/clintongormley/ha-fado/issues",
   "integration_type": "service",
   "iot_class": "calculated",
+  "issue_tracker": "https://github.com/clintongormley/ha-fado/issues",
   "requirements": [],
+  "single_config_entry": true,
   "version": "0.91.2"
 }

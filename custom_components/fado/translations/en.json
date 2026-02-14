@@ -10,27 +10,13 @@
       "single_instance_allowed": "Only a single instance is allowed."
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Configure Fado",
-        "description": "Customize how lights fade.",
-        "data": {
-          "min_step_delay_ms": "Minimum delay between steps"
-        },
-        "data_description": {
-          "min_step_delay_ms": "The lower this value (in milliseconds), the shorter the pause between each brightness step change and thus the smoother the transition, but too low values may cause transitions to last longer than expected and put unnecessary load on Home Assistant. (Default 100ms, minimum 50ms)"
-        }
-      }
-    }
-  },
   "services": {
-    "fado": {
+    "fade_lights": {
       "name": "Fade lights",
       "description": "Fades lights to a desired brightness and/or color over a specified transition period.",
       "fields": {
         "brightness_pct": {
-          "name": "Brightness percentage",
+          "name": "Brightness",
           "description": "Target brightness level as a percentage (0-100)."
         },
         "transition": {
@@ -39,33 +25,53 @@
         },
         "hs_color": {
           "name": "HS color",
-          "description": "Target color as [hue, saturation]. Hue is 0-360, saturation is 0-100."
+          "description": "Target color as [hue (0-360), saturation (0-100)]."
         },
         "rgb_color": {
-          "name": "RGB color",
-          "description": "Target color as [red, green, blue]. Each value is 0-255."
+          "name": "Color",
+          "description": "Target color as [red, green, blue] values (0-255 each)."
         },
         "rgbw_color": {
           "name": "RGBW color",
-          "description": "Target color as [red, green, blue, white]. Each value is 0-255."
+          "description": "Target color as [red, green, blue, white] values (0-255 each)."
         },
         "rgbww_color": {
           "name": "RGBWW color",
-          "description": "Target color as [red, green, blue, cold_white, warm_white]. Each value is 0-255."
+          "description": "Target color as [red, green, blue, cold_white, warm_white] values (0-255 each)."
         },
         "xy_color": {
           "name": "XY color",
-          "description": "Target color as [x, y]. Each value is 0-1."
+          "description": "Target color as CIE xy coordinates [x, y] (0-1 each)."
         },
         "color_temp_kelvin": {
           "name": "Color temperature",
-          "description": "Target color temperature in Kelvin (1000-40000)."
+          "description": "Target color temperature in Kelvin."
+        },
+        "easing": {
+          "name": "Easing curve",
+          "description": "Controls how brightness changes over time. 'auto' selects based on fade direction: ease_in (slow start) for fading up, ease_out (slow end) for fading down."
         },
         "from": {
           "name": "Starting values",
-          "description": "Optional starting values to override the current light state. Supports brightness_pct and all color parameters."
+          "description": "Override starting values instead of using current state."
+        },
+        "advanced_fields": {
+          "name": "Advanced options",
+          "description": "Additional options for advanced use cases."
+        },
+        "brightness": {
+          "name": "Brightness value",
+          "description": "Target brightness as raw value (1-255)."
         }
       }
+    },
+    "exclude_lights": {
+      "name": "Exclude lights",
+      "description": "Excludes lights from Fado. Excluded lights are ignored by fade operations and state tracking."
+    },
+    "include_lights": {
+      "name": "Include lights",
+      "description": "Re-includes previously excluded lights so they respond to fade operations again."
     }
   }
 }

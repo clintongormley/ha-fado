@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer Fado",
+        "description": "Cette intégration offre des transitions fluides de luminosité et de couleur pour les lumières avec restauration automatique de la luminosité."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Une seule instance est autorisée."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Transition des lumières",
+      "description": "Effectue une transition des lumières vers la luminosité et/ou la couleur souhaitée sur une période spécifiée.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Luminosité",
+          "description": "Niveau de luminosité cible en pourcentage (0-100)."
+        },
+        "transition": {
+          "name": "Temps de transition",
+          "description": "Temps de transition en secondes. Accepte les valeurs décimales, par ex. 0,5 pour 500ms (par défaut 3)."
+        },
+        "hs_color": {
+          "name": "Couleur HS",
+          "description": "Couleur cible sous forme [teinte (0-360), saturation (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Couleur",
+          "description": "Couleur cible sous forme [rouge, vert, bleu] (0-255 chacun)."
+        },
+        "rgbw_color": {
+          "name": "Couleur RGBW",
+          "description": "Couleur cible sous forme [rouge, vert, bleu, blanc] (0-255 chacun)."
+        },
+        "rgbww_color": {
+          "name": "Couleur RGBWW",
+          "description": "Couleur cible sous forme [rouge, vert, bleu, blanc_froid, blanc_chaud] (0-255 chacun)."
+        },
+        "xy_color": {
+          "name": "Couleur XY",
+          "description": "Couleur cible en coordonnées CIE xy [x, y] (0-1 chacun)."
+        },
+        "color_temp_kelvin": {
+          "name": "Température de couleur",
+          "description": "Température de couleur cible en Kelvin."
+        },
+        "easing": {
+          "name": "Courbe d'interpolation",
+          "description": "Contrôle comment la luminosité change au fil du temps. 'auto' sélectionne selon la direction : ease_in (début lent) en montée, ease_out (fin lente) en descente."
+        },
+        "from": {
+          "name": "Valeurs initiales",
+          "description": "Valeurs initiales personnalisées au lieu de l'état actuel."
+        },
+        "brightness": {
+          "name": "Valeur de luminosité",
+          "description": "Luminosité cible en valeur brute (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Options avancées",
+          "description": "Options supplémentaires pour les cas d'utilisation avancés."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Exclure des lumières",
+      "description": "Exclut des lumières de Fado. Les lumières exclues sont ignorées par les opérations de transition et le suivi d'état."
+    },
+    "include_lights": {
+      "name": "Inclure des lumières",
+      "description": "Réinclut les lumières précédemment exclues pour qu'elles répondent à nouveau aux opérations de transition."
+    }
+  }
+}

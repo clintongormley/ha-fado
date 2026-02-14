@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nastavení Fado",
+        "description": "Tato integrace poskytuje plynulé přechody jasu a barev pro světla s automatickým obnovením jasu."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Je povolena pouze jedna instance."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Přechod světel",
+      "description": "Provede plynulý přechod světel na požadovaný jas a/nebo barvu po zadanou dobu.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Jas",
+          "description": "Cílový jas v procentech (0-100)."
+        },
+        "transition": {
+          "name": "Doba přechodu",
+          "description": "Doba přechodu v sekundách. Přijímá desetinné hodnoty, např. 0,5 pro 500ms (výchozí 3)."
+        },
+        "hs_color": {
+          "name": "HS barva",
+          "description": "Cílová barva jako [odstín (0-360), sytost (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Barva",
+          "description": "Cílová barva jako [červená, zelená, modrá] (0-255 každá)."
+        },
+        "rgbw_color": {
+          "name": "RGBW barva",
+          "description": "Cílová barva jako [červená, zelená, modrá, bílá] (0-255 každá)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW barva",
+          "description": "Cílová barva jako [červená, zelená, modrá, studená_bílá, teplá_bílá] (0-255 každá)."
+        },
+        "xy_color": {
+          "name": "XY barva",
+          "description": "Cílová barva jako CIE xy souřadnice [x, y] (0-1 každá)."
+        },
+        "color_temp_kelvin": {
+          "name": "Teplota barvy",
+          "description": "Cílová teplota barvy v Kelvinech."
+        },
+        "easing": {
+          "name": "Křivka přechodu",
+          "description": "Řídí, jak se jas mění v čase. 'auto' vybírá podle směru: ease_in (pomalý začátek) při zvyšování, ease_out (pomalý konec) při snižování."
+        },
+        "from": {
+          "name": "Počáteční hodnoty",
+          "description": "Vlastní počáteční hodnoty místo aktuálního stavu."
+        },
+        "brightness": {
+          "name": "Hodnota jasu",
+          "description": "Cílový jas jako přímá hodnota (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Pokročilé možnosti",
+          "description": "Další možnosti pro pokročilé použití."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Vyloučit světla",
+      "description": "Vyloučí světla z Fado. Vyloučená světla jsou ignorována při přechodových operacích a sledování stavu."
+    },
+    "include_lights": {
+      "name": "Zahrnout světla",
+      "description": "Znovu zahrne dříve vyloučená světla, aby reagovala na přechodové operace."
+    }
+  }
+}

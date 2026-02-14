@@ -62,6 +62,8 @@ from .coordinator import FadeCoordinator
 from .notifications import _notify_unconfigured_lights
 from .websocket_api import async_register_websocket_api
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 _LOGGER = logging.getLogger(__name__)
 
 # =============================================================================

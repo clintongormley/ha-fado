@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nastavitev Fado",
+        "description": "Ta integracija zagotavlja gladke prehode svetlosti in barv za luči z avtomatsko obnovitvijo svetlosti."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Dovoljena je samo ena instanca."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Prehod luči",
+      "description": "Izvede gladek prehod luči na želeno svetlost in/ali barvo v določenem časovnem obdobju.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Svetlost",
+          "description": "Ciljna svetlost v odstotkih (0-100)."
+        },
+        "transition": {
+          "name": "Čas prehoda",
+          "description": "Čas prehoda v sekundah. Sprejema decimalne vrednosti, npr. 0,5 za 500ms (privzeto 3)."
+        },
+        "hs_color": {
+          "name": "HS barva",
+          "description": "Ciljna barva kot [odtenek (0-360), nasičenost (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Barva",
+          "description": "Ciljna barva kot [rdeča, zelena, modra] (0-255 vsaka)."
+        },
+        "rgbw_color": {
+          "name": "RGBW barva",
+          "description": "Ciljna barva kot [rdeča, zelena, modra, bela] (0-255 vsaka)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW barva",
+          "description": "Ciljna barva kot [rdeča, zelena, modra, hladno_bela, toplo_bela] (0-255 vsaka)."
+        },
+        "xy_color": {
+          "name": "XY barva",
+          "description": "Ciljna barva kot CIE xy koordinate [x, y] (0-1 vsaka)."
+        },
+        "color_temp_kelvin": {
+          "name": "Barvna temperatura",
+          "description": "Ciljna barvna temperatura v Kelvinih."
+        },
+        "easing": {
+          "name": "Prehodna krivulja",
+          "description": "Nadzoruje, kako se svetlost spreminja skozi čas. 'auto' izbere glede na smer: ease_in (počasen začetek) pri povečevanju, ease_out (počasen konec) pri zmanjševanju."
+        },
+        "from": {
+          "name": "Začetne vrednosti",
+          "description": "Prilagojene začetne vrednosti namesto trenutnega stanja."
+        },
+        "brightness": {
+          "name": "Vrednost svetlosti",
+          "description": "Ciljna svetlost kot neposredna vrednost (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Napredne možnosti",
+          "description": "Dodatne možnosti za napredne primere uporabe."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Izključi luči",
+      "description": "Izključi luči iz Fado. Izključene luči so prezrte pri prehodnih operacijah in sledenju stanja."
+    },
+    "include_lights": {
+      "name": "Vključi luči",
+      "description": "Ponovno vključi prej izključene luči, da se odzivajo na prehodne operacije."
+    }
+  }
+}

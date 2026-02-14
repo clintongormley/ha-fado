@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurare Fado",
+        "description": "Această integrare oferă tranziții line ale luminozității și culorilor pentru lumini cu restaurare automată a luminozității."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Este permisă o singură instanță."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Tranziție lumini",
+      "description": "Efectuează o tranziție a luminilor la luminozitatea și/sau culoarea dorită pe o perioadă specificată.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Luminozitate",
+          "description": "Nivel de luminozitate țintă în procente (0-100)."
+        },
+        "transition": {
+          "name": "Timp de tranziție",
+          "description": "Timp de tranziție în secunde. Acceptă valori zecimale, de ex. 0,5 pentru 500ms (implicit 3)."
+        },
+        "hs_color": {
+          "name": "Culoare HS",
+          "description": "Culoare țintă ca [nuanță (0-360), saturație (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Culoare",
+          "description": "Culoare țintă ca [roșu, verde, albastru] (0-255 fiecare)."
+        },
+        "rgbw_color": {
+          "name": "Culoare RGBW",
+          "description": "Culoare țintă ca [roșu, verde, albastru, alb] (0-255 fiecare)."
+        },
+        "rgbww_color": {
+          "name": "Culoare RGBWW",
+          "description": "Culoare țintă ca [roșu, verde, albastru, alb_rece, alb_cald] (0-255 fiecare)."
+        },
+        "xy_color": {
+          "name": "Culoare XY",
+          "description": "Culoare țintă ca coordonate CIE xy [x, y] (0-1 fiecare)."
+        },
+        "color_temp_kelvin": {
+          "name": "Temperatură de culoare",
+          "description": "Temperatură de culoare țintă în Kelvin."
+        },
+        "easing": {
+          "name": "Curbă de tranziție",
+          "description": "Controlează cum se schimbă luminozitatea în timp. 'auto' selectează pe baza direcției: ease_in (start lent) la creștere, ease_out (final lent) la scădere."
+        },
+        "from": {
+          "name": "Valori inițiale",
+          "description": "Valori inițiale personalizate în locul stării curente."
+        },
+        "brightness": {
+          "name": "Valoare luminozitate",
+          "description": "Luminozitate țintă ca valoare directă (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Opțiuni avansate",
+          "description": "Opțiuni suplimentare pentru cazuri de utilizare avansate."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Excludere lumini",
+      "description": "Exclude luminile din Fado. Luminile excluse sunt ignorate de operațiunile de tranziție și monitorizarea stării."
+    },
+    "include_lights": {
+      "name": "Includere lumini",
+      "description": "Reinclude luminile excluse anterior pentru a răspunde din nou la operațiunile de tranziție."
+    }
+  }
+}

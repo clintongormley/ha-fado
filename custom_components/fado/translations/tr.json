@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fado Kurulumu",
+        "description": "Bu entegrasyon, otomatik parlaklık geri yüklemesi ile parlaklık ve renkler için yumuşak ışık geçişleri sağlar."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Yalnızca tek bir örneğe izin verilir."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Işık geçişi",
+      "description": "Işıkları belirtilen süre boyunca istenen parlaklığa ve/veya renge geçirir.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Parlaklık",
+          "description": "Hedef parlaklık yüzdesi (0-100)."
+        },
+        "transition": {
+          "name": "Geçiş süresi",
+          "description": "Geçiş süresi saniye cinsinden. Ondalık değerler kabul eder, ör. 0,5 = 500ms (varsayılan 3)."
+        },
+        "hs_color": {
+          "name": "HS renk",
+          "description": "Hedef renk: [ton (0-360), doygunluk (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Renk",
+          "description": "Hedef renk: [kırmızı, yeşil, mavi] (her biri 0-255)."
+        },
+        "rgbw_color": {
+          "name": "RGBW renk",
+          "description": "Hedef renk: [kırmızı, yeşil, mavi, beyaz] (her biri 0-255)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW renk",
+          "description": "Hedef renk: [kırmızı, yeşil, mavi, soğuk_beyaz, sıcak_beyaz] (her biri 0-255)."
+        },
+        "xy_color": {
+          "name": "XY renk",
+          "description": "Hedef renk: CIE xy koordinatları [x, y] (her biri 0-1)."
+        },
+        "color_temp_kelvin": {
+          "name": "Renk sıcaklığı",
+          "description": "Hedef renk sıcaklığı Kelvin cinsinden."
+        },
+        "easing": {
+          "name": "Geçiş eğrisi",
+          "description": "Parlaklığın zaman içinde nasıl değiştiğini kontrol eder. 'auto' yöne göre seçer: ease_in (yavaş başlangıç) artırırken, ease_out (yavaş bitiş) azaltırken."
+        },
+        "from": {
+          "name": "Başlangıç değerleri",
+          "description": "Mevcut durum yerine özel başlangıç değerleri."
+        },
+        "brightness": {
+          "name": "Parlaklık değeri",
+          "description": "Hedef parlaklık ham değer olarak (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Gelişmiş seçenekler",
+          "description": "Gelişmiş kullanım senaryoları için ek seçenekler."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Işıkları hariç tut",
+      "description": "Işıkları Fado'dan hariç tutar. Hariç tutulan ışıklar geçiş işlemlerinde ve durum izlemede göz ardı edilir."
+    },
+    "include_lights": {
+      "name": "Işıkları dahil et",
+      "description": "Daha önce hariç tutulan ışıkları yeniden dahil eder, böylece geçiş işlemlerine yanıt verirler."
+    }
+  }
+}

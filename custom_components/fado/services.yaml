@@ -1,34 +1,3 @@
-# Filter definitions for capability-based field visibility
-.brightness_support: &brightness_support
-  attribute:
-    supported_color_modes:
-      - light.ColorMode.BRIGHTNESS
-      - light.ColorMode.COLOR_TEMP
-      - light.ColorMode.HS
-      - light.ColorMode.XY
-      - light.ColorMode.RGB
-      - light.ColorMode.RGBW
-      - light.ColorMode.RGBWW
-
-.color_support: &color_support
-  attribute:
-    supported_color_modes:
-      - light.ColorMode.HS
-      - light.ColorMode.XY
-      - light.ColorMode.RGB
-      - light.ColorMode.RGBW
-      - light.ColorMode.RGBWW
-
-.color_temp_support: &color_temp_support
-  attribute:
-    supported_color_modes:
-      - light.ColorMode.COLOR_TEMP
-      - light.ColorMode.HS
-      - light.ColorMode.XY
-      - light.ColorMode.RGB
-      - light.ColorMode.RGBW
-      - light.ColorMode.RGBWW
-
 fade_lights:
   name: Fade lights
   description: Fades lights to a desired brightness and/or color over a specified transition period.
@@ -39,7 +8,16 @@ fade_lights:
     transition:
       name: Transition time
       description: Transition time for fading in seconds.
-      filter: *brightness_support
+      filter:
+        attribute:
+          supported_color_modes:
+            - light.ColorMode.BRIGHTNESS
+            - light.ColorMode.COLOR_TEMP
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       example: "3"
       selector:
         number:
@@ -51,14 +29,29 @@ fade_lights:
     rgb_color:
       name: Color
       description: Target color as [red, green, blue] values (0-255 each).
-      filter: *color_support
+      filter:
+        attribute:
+          supported_color_modes:
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       example: "[255, 128, 0]"
       selector:
         color_rgb:
     color_temp_kelvin:
       name: Color temperature
       description: Target color temperature in Kelvin.
-      filter: *color_temp_support
+      filter:
+        attribute:
+          supported_color_modes:
+            - light.ColorMode.COLOR_TEMP
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       example: 4000
       selector:
         color_temp:
@@ -68,7 +61,16 @@ fade_lights:
     brightness_pct:
       name: Brightness
       description: Target brightness level as a percentage (0-100).
-      filter: *brightness_support
+      filter:
+        attribute:
+          supported_color_modes:
+            - light.ColorMode.BRIGHTNESS
+            - light.ColorMode.COLOR_TEMP
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       example: 75
       selector:
         number:
@@ -86,7 +88,16 @@ fade_lights:
             Controls how brightness changes over time. 'auto' selects based on fade
             direction: ease_in (slow start) for fading up, ease_out (slow end) for
             fading down.
-          filter: *brightness_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.BRIGHTNESS
+                - light.ColorMode.COLOR_TEMP
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: "auto"
           selector:
             select:
@@ -108,42 +119,88 @@ fade_lights:
         from:
           name: Starting values
           description: Override starting values instead of using current state.
-          filter: *brightness_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.BRIGHTNESS
+                - light.ColorMode.COLOR_TEMP
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: "{ brightness_pct: 0, color_temp_kelvin: 2700 }"
           selector:
             object:
         rgbw_color:
           name: RGBW color
           description: Target color as [red, green, blue, white] values (0-255 each).
-          filter: *color_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: "[255, 128, 0, 50]"
           selector:
             object:
         rgbww_color:
           name: RGBWW color
           description: Target color as [red, green, blue, cold_white, warm_white] values (0-255 each).
-          filter: *color_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: "[255, 128, 0, 50, 30]"
           selector:
             object:
         hs_color:
           name: HS color
           description: Target color as [hue (0-360), saturation (0-100)].
-          filter: *color_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: "[200, 80]"
           selector:
             object:
         xy_color:
           name: XY color
           description: Target color as CIE xy coordinates [x, y] (0-1 each).
-          filter: *color_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: "[0.3, 0.4]"
           selector:
             object:
         brightness:
           name: Brightness value
           description: Target brightness as raw value (1-255).
-          filter: *brightness_support
+          filter:
+            attribute:
+              supported_color_modes:
+                - light.ColorMode.BRIGHTNESS
+                - light.ColorMode.COLOR_TEMP
+                - light.ColorMode.HS
+                - light.ColorMode.XY
+                - light.ColorMode.RGB
+                - light.ColorMode.RGBW
+                - light.ColorMode.RGBWW
           example: 255
           selector:
             number:

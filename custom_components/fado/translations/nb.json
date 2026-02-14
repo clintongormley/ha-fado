@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sett opp Fado",
+        "description": "Denne integrasjonen gir jevne lysoverganger for lysstyrke og farger med automatisk gjenoppretting av lysstyrke."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Kun én instans er tillatt."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Tone lys",
+      "description": "Toner lys til ønsket lysstyrke og/eller farge over en angitt tidsperiode.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Lysstyrke",
+          "description": "Mållysstyrke i prosent (0-100)."
+        },
+        "transition": {
+          "name": "Overgangstid",
+          "description": "Overgangstid i sekunder. Godtar desimalverdier, f.eks. 0,5 for 500ms (standard 3)."
+        },
+        "hs_color": {
+          "name": "HS-farge",
+          "description": "Målfarge som [fargetone (0-360), metning (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Farge",
+          "description": "Målfarge som [rød, grønn, blå] (0-255 hver)."
+        },
+        "rgbw_color": {
+          "name": "RGBW-farge",
+          "description": "Målfarge som [rød, grønn, blå, hvit] (0-255 hver)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW-farge",
+          "description": "Målfarge som [rød, grønn, blå, kaldhvit, varmhvit] (0-255 hver)."
+        },
+        "xy_color": {
+          "name": "XY-farge",
+          "description": "Målfarge som CIE xy-koordinater [x, y] (0-1 hver)."
+        },
+        "color_temp_kelvin": {
+          "name": "Fargetemperatur",
+          "description": "Målfargetemperatur i Kelvin."
+        },
+        "easing": {
+          "name": "Overgangskurve",
+          "description": "Styrer hvordan lysstyrken endres over tid. 'auto' velger basert på retning: ease_in (langsom start) ved økning, ease_out (langsom slutt) ved reduksjon."
+        },
+        "from": {
+          "name": "Startverdier",
+          "description": "Egendefinerte startverdier i stedet for gjeldende tilstand."
+        },
+        "brightness": {
+          "name": "Lysstyrkerverdi",
+          "description": "Mållysstyrke som råverdi (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Avanserte innstillinger",
+          "description": "Tilleggsinnstillinger for avanserte brukstilfeller."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Ekskluder lys",
+      "description": "Ekskluderer lys fra Fado. Ekskluderte lys ignoreres ved toningsoperasjoner og tilstandsovervåking."
+    },
+    "include_lights": {
+      "name": "Inkluder lys",
+      "description": "Gjeninkluderer tidligere ekskluderte lys slik at de igjen reagerer på toningsoperasjoner."
+    }
+  }
+}

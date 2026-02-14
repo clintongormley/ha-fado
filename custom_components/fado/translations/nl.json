@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fado instellen",
+        "description": "Deze integratie biedt vloeiende lichtovergangen voor helderheid en kleuren met automatisch herstellen van de helderheid."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Er is slechts één instantie toegestaan."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Lampen dimmen",
+      "description": "Dimt lampen naar de gewenste helderheid en/of kleur over een opgegeven periode.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Helderheid",
+          "description": "Doelhelderheid als percentage (0-100)."
+        },
+        "transition": {
+          "name": "Overgangstijd",
+          "description": "Overgangstijd in seconden. Accepteert decimale waarden, bijv. 0,5 voor 500ms (standaard 3)."
+        },
+        "hs_color": {
+          "name": "HS-kleur",
+          "description": "Doelkleur als [tint (0-360), verzadiging (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Kleur",
+          "description": "Doelkleur als [rood, groen, blauw] (0-255 elk)."
+        },
+        "rgbw_color": {
+          "name": "RGBW-kleur",
+          "description": "Doelkleur als [rood, groen, blauw, wit] (0-255 elk)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW-kleur",
+          "description": "Doelkleur als [rood, groen, blauw, koudwit, warmwit] (0-255 elk)."
+        },
+        "xy_color": {
+          "name": "XY-kleur",
+          "description": "Doelkleur als CIE xy-coördinaten [x, y] (0-1 elk)."
+        },
+        "color_temp_kelvin": {
+          "name": "Kleurtemperatuur",
+          "description": "Doelkleurtemperatuur in Kelvin."
+        },
+        "easing": {
+          "name": "Overgangscurve",
+          "description": "Bepaalt hoe de helderheid verandert in de tijd. 'auto' selecteert op basis van richting: ease_in (langzame start) bij opfaden, ease_out (langzaam einde) bij uitfaden."
+        },
+        "from": {
+          "name": "Startwaarden",
+          "description": "Aangepaste startwaarden in plaats van de huidige status."
+        },
+        "brightness": {
+          "name": "Helderheidswaarde",
+          "description": "Doelhelderheid als ruwe waarde (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Geavanceerde opties",
+          "description": "Extra opties voor geavanceerd gebruik."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Lampen uitsluiten",
+      "description": "Sluit lampen uit van Fado. Uitgesloten lampen worden genegeerd bij dimbewerkingen en statusregistratie."
+    },
+    "include_lights": {
+      "name": "Lampen insluiten",
+      "description": "Sluit eerder uitgesloten lampen weer in zodat ze reageren op dimbewerkingen."
+    }
+  }
+}

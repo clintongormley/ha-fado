@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fado beállítása",
+        "description": "Ez az integráció sima fényerő- és színátmeneteket biztosít a lámpákhoz automatikus fényerő-visszaállítással."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Csak egy példány engedélyezett."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Lámpák átmenet",
+      "description": "A lámpákat a kívánt fényerőre és/vagy színre állítja egy megadott időszak alatt.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Fényerő",
+          "description": "Cél fényerő százalékban (0-100)."
+        },
+        "transition": {
+          "name": "Átmeneti idő",
+          "description": "Átmeneti idő másodpercben. Tizedes értékeket fogad el, pl. 0,5 = 500ms (alapértelmezett 3)."
+        },
+        "hs_color": {
+          "name": "HS szín",
+          "description": "Célszín [árnyalat (0-360), telítettség (0-100)] formában."
+        },
+        "rgb_color": {
+          "name": "Szín",
+          "description": "Célszín [piros, zöld, kék] formában (0-255 mindegyik)."
+        },
+        "rgbw_color": {
+          "name": "RGBW szín",
+          "description": "Célszín [piros, zöld, kék, fehér] formában (0-255 mindegyik)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW szín",
+          "description": "Célszín [piros, zöld, kék, hideg_fehér, meleg_fehér] formában (0-255 mindegyik)."
+        },
+        "xy_color": {
+          "name": "XY szín",
+          "description": "Célszín CIE xy koordinátákkal [x, y] (0-1 mindegyik)."
+        },
+        "color_temp_kelvin": {
+          "name": "Színhőmérséklet",
+          "description": "Cél színhőmérséklet Kelvinben."
+        },
+        "easing": {
+          "name": "Átmeneti görbe",
+          "description": "Szabályozza, hogyan változik a fényerő az idő múlásával. 'auto' az irány alapján választ: ease_in (lassú indulás) növelésnél, ease_out (lassú befejezés) csökkentésnél."
+        },
+        "from": {
+          "name": "Kezdőértékek",
+          "description": "Egyéni kezdőértékek az aktuális állapot helyett."
+        },
+        "brightness": {
+          "name": "Fényerő érték",
+          "description": "Cél fényerő nyers értékként (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Speciális beállítások",
+          "description": "További lehetőségek haladó felhasználáshoz."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Lámpák kizárása",
+      "description": "Kizárja a lámpákat a Fado-ból. A kizárt lámpákat az átmeneti műveletek és az állapotkövetés figyelmen kívül hagyja."
+    },
+    "include_lights": {
+      "name": "Lámpák befoglalása",
+      "description": "Újra befoglalja a korábban kizárt lámpákat, hogy reagáljanak az átmeneti műveletekre."
+    }
+  }
+}

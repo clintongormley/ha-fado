@@ -1,0 +1,77 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Määritä Fado",
+        "description": "Tämä integraatio tarjoaa tasaiset valosiirtymät kirkkaudelle ja väreille automaattisella kirkkauden palautuksella."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Vain yksi instanssi on sallittu."
+    }
+  },
+  "services": {
+    "fade_lights": {
+      "name": "Häivytä valoja",
+      "description": "Häivyttää valot haluttuun kirkkauteen ja/tai väriin määritetyn ajanjakson aikana.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Kirkkaus",
+          "description": "Tavoitekirkkaus prosentteina (0-100)."
+        },
+        "transition": {
+          "name": "Siirtymäaika",
+          "description": "Siirtymäaika sekunteina. Hyväksyy desimaalilukuja, esim. 0,5 = 500ms (oletus 3)."
+        },
+        "hs_color": {
+          "name": "HS-väri",
+          "description": "Tavoiteväri muodossa [sävy (0-360), kylläisyys (0-100)]."
+        },
+        "rgb_color": {
+          "name": "Väri",
+          "description": "Tavoiteväri muodossa [punainen, vihreä, sininen] (0-255 kukin)."
+        },
+        "rgbw_color": {
+          "name": "RGBW-väri",
+          "description": "Tavoiteväri muodossa [punainen, vihreä, sininen, valkoinen] (0-255 kukin)."
+        },
+        "rgbww_color": {
+          "name": "RGBWW-väri",
+          "description": "Tavoiteväri muodossa [punainen, vihreä, sininen, kylmävalkoinen, lämminvalkoinen] (0-255 kukin)."
+        },
+        "xy_color": {
+          "name": "XY-väri",
+          "description": "Tavoiteväri CIE xy-koordinaatteina [x, y] (0-1 kukin)."
+        },
+        "color_temp_kelvin": {
+          "name": "Värilämpötila",
+          "description": "Tavoitevärilämpötila kelvineinä."
+        },
+        "easing": {
+          "name": "Siirtymäkäyrä",
+          "description": "Ohjaa kuinka kirkkaus muuttuu ajan kuluessa. 'auto' valitsee suunnan mukaan: ease_in (hidas alku) kirkastettaessa, ease_out (hidas loppu) himmennettäessä."
+        },
+        "from": {
+          "name": "Aloitusarvot",
+          "description": "Mukautetut aloitusarvot nykyisen tilan sijaan."
+        },
+        "brightness": {
+          "name": "Kirkkausarvo",
+          "description": "Tavoitekirkkaus raakaarvona (1-255)."
+        },
+        "advanced_fields": {
+          "name": "Lisäasetukset",
+          "description": "Lisäasetukset edistyneille käyttötapauksille."
+        }
+      }
+    },
+    "exclude_lights": {
+      "name": "Sulje pois valoja",
+      "description": "Sulkee valot pois Fadosta. Pois suljetut valot ohitetaan häivytystoiminnoissa ja tilanseurannassa."
+    },
+    "include_lights": {
+      "name": "Sisällytä valoja",
+      "description": "Sisällyttää aiemmin poissuljetut valot uudelleen, jotta ne vastaavat häivytystoimintoihin."
+    }
+  }
+}
