@@ -141,7 +141,7 @@ class TestCleanupEntityData:
 
         assert "light.test" not in coordinator.data
         assert "light.other" in coordinator.data
-        coordinator.store.async_save.assert_called_once()
+        coordinator.store.async_save.assert_called_once()  # type: ignore[union-attr]
 
     async def test_cleanup_cancels_active_fade(self, hass_with_full_state: HomeAssistant) -> None:
         """Test that cleanup cancels active fade task."""

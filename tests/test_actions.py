@@ -657,6 +657,10 @@ async def test_service_excludes_configured_lights(
     )
 
     # Only included light should have changed
-    assert hass.states.get("light.included").attributes[ATTR_BRIGHTNESS] == 127
+    included_state = hass.states.get("light.included")
+    assert included_state is not None
+    assert included_state.attributes[ATTR_BRIGHTNESS] == 127
     # Excluded light unchanged
-    assert hass.states.get("light.excluded").attributes[ATTR_BRIGHTNESS] == 200
+    excluded_state = hass.states.get("light.excluded")
+    assert excluded_state is not None
+    assert excluded_state.attributes[ATTR_BRIGHTNESS] == 200

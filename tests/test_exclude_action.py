@@ -145,8 +145,12 @@ async def test_excluded_light_skipped_by_fade(
     assert "light.living_room" not in called_entities
 
     # Verify brightness: excluded unchanged, included changed
-    assert hass.states.get("light.living_room").attributes[ATTR_BRIGHTNESS] == 200
-    assert hass.states.get("light.bedroom").attributes[ATTR_BRIGHTNESS] == 127
+    living_room = hass.states.get("light.living_room")
+    assert living_room is not None
+    assert living_room.attributes[ATTR_BRIGHTNESS] == 200
+    bedroom = hass.states.get("light.bedroom")
+    assert bedroom is not None
+    assert bedroom.attributes[ATTR_BRIGHTNESS] == 127
 
 
 async def test_include_then_fade_works(
@@ -184,7 +188,9 @@ async def test_include_then_fade_works(
     await hass.async_block_till_done()
 
     # Light should have been faded
-    assert hass.states.get("light.living_room").attributes[ATTR_BRIGHTNESS] == 127
+    living_room = hass.states.get("light.living_room")
+    assert living_room is not None
+    assert living_room.attributes[ATTR_BRIGHTNESS] == 127
 
 
 async def test_exclude_fires_config_updated_event(

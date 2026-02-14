@@ -4,7 +4,7 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
+from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CoreState, HomeAssistant
 
@@ -274,7 +274,7 @@ class TestNotifySkippedBeforeStart:
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
         # HA is still starting at this point
@@ -309,7 +309,7 @@ class TestSetupNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None  # Skip panel registration
+            hass.http = None  # type: ignore[assignment]  # Skip panel registration
             await async_setup_entry(hass, mock_entry)
 
             # Not called during setup (states may not be loaded yet)
@@ -339,7 +339,7 @@ class TestEntityRegistryNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
             # Reset mock to clear the call from setup
@@ -368,7 +368,7 @@ class TestEntityRegistryNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
             # Reset mock to clear the call from setup
@@ -401,7 +401,7 @@ class TestEntityRegistryNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
             # Reset mock to clear the call from setup
@@ -430,7 +430,7 @@ class TestEntityRegistryNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
             # Reset mock to clear the call from setup
@@ -459,7 +459,7 @@ class TestEntityRegistryNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
             # Reset mock to clear the call from setup
@@ -496,7 +496,7 @@ class TestDailyNotificationTimer:
             patch("custom_components.fado._apply_stored_log_level"),
             patch("custom_components.fado.async_track_time_interval") as mock_timer,
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
         # Verify timer was registered with 24 hour interval
@@ -533,7 +533,7 @@ class TestPruneStaleStorage:
         assert "light.bedroom" in coordinator.data
         assert "event.kitchen_input_1" not in coordinator.data
         assert "sensor.temperature" not in coordinator.data
-        coordinator.store.async_save.assert_called_once()
+        coordinator.store.async_save.assert_called_once()  # type: ignore[union-attr]
 
     async def test_keeps_valid_light_entities(self, hass: HomeAssistant) -> None:
         """Test that valid light entities are kept in storage."""
@@ -560,7 +560,7 @@ class TestPruneStaleStorage:
 
         assert "light.bedroom" in coordinator.data
         assert "light.kitchen" in coordinator.data
-        coordinator.store.async_save.assert_not_called()
+        coordinator.store.async_save.assert_not_called()  # type: ignore[union-attr]
 
 
 class TestSaveConfigNotification:
