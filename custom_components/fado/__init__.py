@@ -14,6 +14,7 @@ from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import (
+    CoreState,
     Event,
     EventStateChangedData,
     HomeAssistant,
@@ -44,13 +45,16 @@ from .const import (
     ATTR_XY_COLOR,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
+    DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
     EVENT_CONFIG_UPDATED,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
+    NOTIFICATION_ID,
     OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
+    OPTION_SHOW_SIDEBAR,
     SERVICE_EXCLUDE_LIGHTS,
     SERVICE_FADE_LIGHTS,
     SERVICE_INCLUDE_LIGHTS,
@@ -244,9 +248,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register WebSocket API
     async_register_websocket_api(hass)
 
-    # Register panel (only if HTTP component is available - won't be in tests)
+    # Register frontend (only if HTTP component is available - won't be in tests)
+    show_sidebar = entry.options.get(OPTION_SHOW_SIDEBAR, DEFAULT_SHOW_SIDEBAR)
+
     if hass.http is not None:
-        # Register static path for frontend files
+        # Register static path for frontend files (needed for both panel and card)
         await hass.http.async_register_static_paths(
             [
                 StaticPathConfig(
@@ -257,27 +263,51 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ]
         )
 
-        # Register the panel
-        await panel_custom.async_register_panel(
-            hass,
-            frontend_url_path="fado",
-            webcomponent_name="fado-panel",
-            sidebar_title="Fado Light Fader",
-            sidebar_icon="mdi:lightbulb-variant",
-            module_url="/fado_panel/panel.js",
-            require_admin=False,
-        )
+        # Always register card and strategy JS so they're available
+        hass.data.setdefault(frontend.DATA_EXTRA_MODULE_URL, set())  # type: ignore[arg-type]
+        frontend.add_extra_js_url(hass, "/fado_panel/fado-card.js")
+        frontend.add_extra_js_url(hass, "/fado_panel/fado-strategy.js")
+
+        if show_sidebar:
+            await panel_custom.async_register_panel(
+                hass,
+                frontend_url_path="fado",
+                webcomponent_name="fado-panel",
+                sidebar_title="Fado Light Fader",
+                sidebar_icon="mdi:lightbulb-variant",
+                module_url="/fado_panel/panel.js",
+                require_admin=False,
+            )
 
     # Apply stored log level on startup
     await _apply_stored_log_level(hass, entry)
 
     # Prune stale storage and check for unconfigured lights after HA has fully
-    # started (all entity states are available, so light groups can be detected)
-    async def _prune_on_start(_event: Event) -> None:
+    # started (all entity states are available, so light groups can be detected).
+    # If HA is already running (e.g. after an options-flow reload), run immediately.
+    if hass.state is CoreState.running:
         await coordinator.async_prune_stale_storage()
         await _notify_unconfigured_lights(hass)
+    else:
+        # Track whether the listener has fired so we only cancel if it hasn't.
+        # async_listen_once auto-removes after firing, so calling cancel() again
+        # would log an error in HA core.
+        fired = False
 
-    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _prune_on_start))
+        async def _prune_on_start(_event: Event) -> None:
+            nonlocal fired
+            fired = True
+            await coordinator.async_prune_stale_storage()
+            await _notify_unconfigured_lights(hass)
+
+        cancel = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _prune_on_start)
+
+        @callback
+        def _safe_cancel() -> None:
+            if not fired:
+                cancel()
+
+        entry.async_on_unload(_safe_cancel)
 
     return True
 
@@ -304,7 +334,7 @@ async def _apply_stored_log_level(hass: HomeAssistant, entry: ConfigEntry) -> No
         )
 
 
-async def async_unload_entry(hass: HomeAssistant, _entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     coordinator: FadeCoordinator = hass.data[DOMAIN]
     await coordinator.shutdown()
@@ -314,7 +344,23 @@ async def async_unload_entry(hass: HomeAssistant, _entry: ConfigEntry) -> bool:
     hass.services.async_remove(DOMAIN, SERVICE_INCLUDE_LIGHTS)
     hass.data.pop(DOMAIN, None)
 
-    # Remove the panel
-    frontend.async_remove_panel(hass, "fado")
+    # Remove frontend resources
+    frontend.remove_extra_js_url(hass, "/fado_panel/fado-card.js")
+    frontend.remove_extra_js_url(hass, "/fado_panel/fado-strategy.js")
+
+    # Always try to remove the panel — during an options-flow reload,
+    # entry.options already has the NEW values, so we can't check the option.
+    if "fado" in hass.data.get(frontend.DATA_PANELS, {}):
+        frontend.async_remove_panel(hass, "fado")
 
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, _entry: ConfigEntry) -> None:
+    """Remove a config entry — delete stored data and dismiss notifications."""
+    store: Store[dict[str, int]] = Store(hass, 1, STORAGE_KEY)
+    await store.async_remove()
+
+    from homeassistant.components import persistent_notification  # noqa: PLC0415
+
+    persistent_notification.async_dismiss(hass, NOTIFICATION_ID)

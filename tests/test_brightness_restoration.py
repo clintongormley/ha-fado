@@ -85,6 +85,16 @@ async def test_restore_brightness_on_turn_on(
         entity_id: {"orig_brightness": stored_brightness},
     }
 
+    # Set entity state BEFORE setup so prune doesn't remove it
+    hass.states.async_set(
+        entity_id,
+        STATE_OFF,
+        {
+            ATTR_BRIGHTNESS: None,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        },
+    )
+
     mock_config_entry.add_to_hass(hass)
 
     mock_store = AsyncMock()
@@ -97,17 +107,6 @@ async def test_restore_brightness_on_turn_on(
     ):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
-
-    # Create dimmable light that is OFF
-    hass.states.async_set(
-        entity_id,
-        STATE_OFF,
-        {
-            ATTR_BRIGHTNESS: None,
-            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
-        },
-    )
-    await hass.async_block_till_done()
 
     # Simulate turning the light ON at a different brightness (e.g., 100)
     hass.states.async_set(
@@ -299,6 +298,16 @@ async def test_storage_persists_across_reload(
         entity_id: {"orig_brightness": stored_brightness},
     }
 
+    # Set entity state BEFORE setup so prune doesn't remove it
+    hass.states.async_set(
+        entity_id,
+        STATE_OFF,
+        {
+            ATTR_BRIGHTNESS: None,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        },
+    )
+
     mock_config_entry.add_to_hass(hass)
 
     mock_store = AsyncMock()
@@ -374,6 +383,16 @@ async def test_restore_uses_correct_brightness(
     mock_storage_data = {
         entity_id: {"orig_brightness": stored_brightness},
     }
+
+    # Set entity state BEFORE setup so prune doesn't remove it
+    hass.states.async_set(
+        entity_id,
+        STATE_OFF,
+        {
+            ATTR_BRIGHTNESS: None,
+            ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+        },
+    )
 
     mock_config_entry.add_to_hass(hass)
 

@@ -27,6 +27,7 @@ from .const import (
     AUTOCONFIGURE_MAX_PARALLEL,
     DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
+    DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -35,6 +36,7 @@ from .const import (
     MIN_STEP_DELAY_MS,
     OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
+    OPTION_SHOW_SIDEBAR,
 )
 from .coordinator import FadeCoordinator
 from .notifications import _notify_unconfigured_lights
@@ -512,12 +514,15 @@ async def ws_get_settings(
     default_min_delay_ms = entry.options.get(OPTION_MIN_STEP_DELAY_MS, DEFAULT_MIN_STEP_DELAY_MS)
     log_level = entry.options.get(OPTION_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
+    show_sidebar = entry.options.get(OPTION_SHOW_SIDEBAR, DEFAULT_SHOW_SIDEBAR)
+
     connection.send_result(
         msg["id"],
         {
             "default_min_delay_ms": default_min_delay_ms,
             "log_level": log_level,
             "entry_id": entry.entry_id,
+            "show_sidebar": show_sidebar,
         },
     )
 
