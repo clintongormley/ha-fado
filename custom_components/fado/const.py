@@ -35,6 +35,14 @@ KEY_CURR_BRIGHTNESS = "curr"
 # Option keys
 OPTION_MIN_STEP_DELAY_MS = "min_step_delay_ms"
 OPTION_LOG_LEVEL = "log_level"
+OPTION_SHOW_SIDEBAR = "show_sidebar_panel"
+OPTION_NOTIFICATIONS_ENABLED = "notifications_enabled"
+OPTION_DASHBOARD_URL = "dashboard_url"
+
+# Option defaults
+DEFAULT_SHOW_SIDEBAR = True
+DEFAULT_NOTIFICATIONS_ENABLED = True
+DEFAULT_DASHBOARD_URL = ""
 
 # Log levels (matching Python logging module)
 LOG_LEVEL_WARNING = "warning"
