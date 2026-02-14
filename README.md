@@ -567,6 +567,9 @@ Run **auto-configure** to automatically measure optimal step
 timing, support for native transitions, and minimum real
 brightness for each light
 
+
+### Settings
+
 | Setting | Description | Default | Range |
 | --- | --- | --- | --- |
 | [**Min delay**](#minimum-delay) | Minimum delay (ms) between fade-steps without overloading slower devices | Global min delay | global - `2000` |
@@ -578,7 +581,7 @@ brightness for each light
 | [**Download diagnostics**](#download-diagnostics) | Download diagnostic data for debugging | — | — |
 
 
-### Minimum delay
+#### Minimum delay
 
 Autoconfiguration measures how long it takes for a light to
 apply changes to brightness and to report back its new state to
@@ -597,7 +600,7 @@ Accepts 50ms - 2000ms and defaults to the
 for an individual light cannot be set lower than the global
 minimum delay.
 
-### Minimum brightness
+#### Minimum brightness
 
 Home Assistant allows setting a brightness value anywhere from 1
 to 255, but internally lights often use a different scale, for
@@ -609,7 +612,7 @@ light is still emitted. With Fado, setting a brightness
 percentage or brightness value lower than this setting will
 instead apply the minimum real brightness.
 
-### Native transitions
+#### Native transitions
 
 Some lights support native transitions, that is the light
 hardware knows how to fade between two brightness levels. This
@@ -627,28 +630,105 @@ By setting native transitions manually to `Disable`, Fado will
 disable native transitions when autoconfiguring the minimum step
 delay, and when applying fades to a light.
 
-### Exclude
+#### Exclude
 
 Checking the `Exclude` checkbox next to a light will prevent
 Fado from fading a light and also from autorestoring the
 original brightness level.
 
-### Global minimum delay
+#### Global minimum delay
 
 This is the absolute minimum delay for all lights. No light may
 have a custom [minimum delay](#minimum-delay) setting below this
 value. It defaults to 100ms and has a minimum value of 50ms.
 
-### Log level
+#### Log level
 
 See [**Troubleshooting**](#troubleshooting)
 
-### Download diagnostics
+#### Download diagnostics
 
 The **Download diagnostics** link will download a JSON file
 containing all of the data used by Fado for debugging purposes.
 Important when submitting bug reports.
 
+### Disabling the sidebar panel
+
+By default, Fado adds a **Fado Light Fader** entry to the Home
+Assistant sidebar, visible to all users. If you prefer to control
+who can access the Fado UI, you can disable the sidebar panel and
+use a [custom dashboard](#custom-autoconfiguration-dashboard)
+instead.
+
+To disable the sidebar panel:
+
+1. Go to **Settings → Devices & Services → Fado → Configure**
+2. Uncheck **Show sidebar panel**
+3. Click **Submit**
+
+The sidebar entry will be removed immediately. The Fado card and
+dashboard strategy remain available for use in any Lovelace
+dashboard.
+
+### Custom Autoconfiguration dashboard
+
+Fado provides a custom Lovelace card (`custom:fado-card`) and a
+dashboard strategy (`custom:fado`) that give you the same
+autoconfiguration UI as the sidebar panel, but with full control
+over dashboard visibility and placement.
+
+#### Adding the Fado card to an existing dashboard
+
+You can add the Fado card to any Lovelace dashboard:
+
+1. Edit your dashboard and click **Add Card**
+2. Search for **Fado Light Fader** in the card picker
+3. Add the card
+
+Or add it manually in YAML mode:
+
+```yaml
+type: custom:fado-card
+```
+
+For best results, use the card in a **Panel** view (single card
+filling the full page).
+
+#### Creating a dedicated Fado dashboard
+
+To create a standalone Fado dashboard using the built-in strategy:
+
+1. Go to **Settings → Dashboards → Add Dashboard**
+2. Set the URL to something like `lovelace-fado`
+3. Configure visibility (e.g. admin only, or specific users)
+4. Open the dashboard and switch to raw configuration editor
+   (**Edit Dashboard → Raw configuration editor**)
+5. Replace the contents with:
+
+```yaml
+strategy:
+  type: custom:fado
+```
+
+This creates a full-page dashboard with the Fado card. You can
+then control which users see it via the dashboard visibility
+settings.
+
+### Notifications
+
+When Fado detects lights that haven't been autoconfigured yet,
+it shows a persistent notification to prompt you to configure
+them.
+
+You can control this behaviour in **Settings → Devices &
+Services → Fado → Configure**:
+
+- **Enable notifications** — Uncheck to disable unconfigured
+  light notifications entirely.
+- **Dashboard URL** — When the sidebar panel is disabled,
+  notification links point to this URL (e.g.
+  `/lovelace-fado/0`). Leave blank to omit the link from
+  notifications.
 
 ## Troubleshooting
 
