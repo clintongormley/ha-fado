@@ -7,11 +7,19 @@ import pytest
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CoreState, HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado import async_setup_entry
-from custom_components.fado.const import DOMAIN, NOTIFICATION_ID
+from custom_components.fado.const import (
+    DOMAIN,
+    NOTIFICATION_ID,
+    OPTION_DASHBOARD_URL,
+    OPTION_NOTIFICATIONS_ENABLED,
+    OPTION_SHOW_SIDEBAR,
+)
 from custom_components.fado.coordinator import FadeCoordinator
 from custom_components.fado.notifications import (
+    _get_notification_link_url,
     _get_unconfigured_lights,
     _notify_unconfigured_lights,
 )
@@ -298,11 +306,14 @@ class TestSetupNotification:
     """Test notification on setup."""
 
     async def test_checks_unconfigured_after_start(self, hass: HomeAssistant) -> None:
-        """Test that unconfigured check runs after HA has fully started."""
+        """Test that unconfigured check waits for homeassistant_started during initial boot."""
         mock_entry = MagicMock(spec=ConfigEntry)
         mock_entry.entry_id = "test_entry"
         mock_entry.options = {}
         mock_entry.async_on_unload = MagicMock()
+
+        # Simulate HA still starting (initial boot, not a reload)
+        hass.state = CoreState.starting
 
         with (
             patch("custom_components.fado.async_register_websocket_api"),
@@ -319,6 +330,26 @@ class TestSetupNotification:
             hass.bus.async_fire("homeassistant_started")
             await hass.async_block_till_done()
 
+        mock_notify.assert_called_once_with(hass)
+
+    async def test_checks_unconfigured_immediately_when_running(self, hass: HomeAssistant) -> None:
+        """Test that unconfigured check runs immediately during a reload."""
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        # hass.is_running is True by default (simulating a reload)
+
+        with (
+            patch("custom_components.fado.async_register_websocket_api"),
+            patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
+            patch("custom_components.fado._apply_stored_log_level"),
+        ):
+            hass.http = None
+            await async_setup_entry(hass, mock_entry)
+
+        # Called immediately during setup since HA is already running
         mock_notify.assert_called_once_with(hass)
 
 
@@ -578,3 +609,158 @@ class TestSaveConfigNotification:
             await async_save_light_config(hass, "light.bedroom", min_delay_ms=100)
 
         mock_notify.assert_called_once_with(hass)
+
+
+class TestNotificationLinkUrl:
+    """Test _get_notification_link_url returns correct URL based on options."""
+
+    def test_sidebar_enabled_returns_fado(self, hass: HomeAssistant) -> None:
+        """Test sidebar enabled returns /fado."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_SHOW_SIDEBAR: True},
+        )
+        entry.add_to_hass(hass)
+
+        assert _get_notification_link_url(hass) == "/fado"
+
+    def test_sidebar_disabled_returns_dashboard_url(self, hass: HomeAssistant) -> None:
+        """Test sidebar disabled returns configured dashboard URL."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_DASHBOARD_URL: "/lovelace-fado/0",
+            },
+        )
+        entry.add_to_hass(hass)
+
+        assert _get_notification_link_url(hass) == "/lovelace-fado/0"
+
+    def test_sidebar_disabled_blank_url_returns_empty(self, hass: HomeAssistant) -> None:
+        """Test sidebar disabled with blank URL returns empty string."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_DASHBOARD_URL: "",
+            },
+        )
+        entry.add_to_hass(hass)
+
+        assert _get_notification_link_url(hass) == ""
+
+    def test_sidebar_disabled_no_url_returns_empty(self, hass: HomeAssistant) -> None:
+        """Test sidebar disabled with no dashboard URL returns empty string."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_SHOW_SIDEBAR: False},
+        )
+        entry.add_to_hass(hass)
+
+        assert _get_notification_link_url(hass) == ""
+
+    def test_no_config_entry_returns_fado(self, hass: HomeAssistant) -> None:
+        """Test returns /fado when no config entry exists."""
+        assert _get_notification_link_url(hass) == "/fado"
+
+
+class TestNotificationsDisabled:
+    """Test notifications can be disabled via options."""
+
+    async def test_disabled_notifications_dismisses(self, hass: HomeAssistant) -> None:
+        """Test disabled notifications dismisses any existing notification."""
+        _make_coordinator(hass)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_NOTIFICATIONS_ENABLED: False},
+        )
+        entry.add_to_hass(hass)
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.bedroom"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with (
+            patch("custom_components.fado.notifications.er.async_get") as mock_er,
+            patch(
+                "custom_components.fado.notifications.persistent_notification.async_create"
+            ) as mock_create,
+            patch(
+                "custom_components.fado.notifications.persistent_notification.async_dismiss"
+            ) as mock_dismiss,
+        ):
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            await _notify_unconfigured_lights(hass)
+
+        # Should dismiss, not create
+        mock_create.assert_not_called()
+        mock_dismiss.assert_called_once_with(hass, NOTIFICATION_ID)
+
+    async def test_sidebar_disabled_uses_dashboard_url(self, hass: HomeAssistant) -> None:
+        """Test notification uses dashboard URL when sidebar is disabled."""
+        _make_coordinator(hass)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_DASHBOARD_URL: "/lovelace-fado/0",
+                OPTION_NOTIFICATIONS_ENABLED: True,
+            },
+        )
+        entry.add_to_hass(hass)
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.bedroom"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with (
+            patch("custom_components.fado.notifications.er.async_get") as mock_er,
+            patch(
+                "custom_components.fado.notifications.persistent_notification.async_create"
+            ) as mock_create,
+        ):
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            await _notify_unconfigured_lights(hass)
+
+        mock_create.assert_called_once()
+        call_args = mock_create.call_args
+        assert "/lovelace-fado/0" in call_args[0][1]
+        assert "/fado" not in call_args[0][1]
+
+    async def test_sidebar_disabled_no_url_no_link(self, hass: HomeAssistant) -> None:
+        """Test notification has no link when sidebar disabled and no dashboard URL."""
+        _make_coordinator(hass)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_NOTIFICATIONS_ENABLED: True,
+            },
+        )
+        entry.add_to_hass(hass)
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.bedroom"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with (
+            patch("custom_components.fado.notifications.er.async_get") as mock_er,
+            patch(
+                "custom_components.fado.notifications.persistent_notification.async_create"
+            ) as mock_create,
+        ):
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            await _notify_unconfigured_lights(hass)
+
+        mock_create.assert_called_once()
+        call_args = mock_create.call_args
+        # Should have base message without any link
+        assert "Configure now" not in call_args[0][1]
+        assert "1 light" in call_args[0][1]
