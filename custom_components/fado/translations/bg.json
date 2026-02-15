@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "Показване на панел в страничната лента",
+          "notifications_enabled": "Включване на известия",
+          "dashboard_url": "URL на таблото"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "Показва интерфейса на Fado като панел в страничната лента, видим за всички потребители. Деактивирайте, ако предпочитате да използвате Lovelace табло с custom:fado-card.",
+          "notifications_enabled": "Показва постоянни известия при откриване на неконфигурирани светлини.",
+          "dashboard_url": "URL път до вашето персонализирано Fado табло (напр. /lovelace-fado/0). Използва се в линковете на известията, когато панелът в страничната лента е деактивиран. Оставете празно, за да пропуснете линка."
         }
       }
     }

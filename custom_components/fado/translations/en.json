@@ -19,7 +19,7 @@
     "step": {
       "user": {
         "title": "Set up Fado",
-        "description": "This integration provides smooth light fading for brightness and colors with automatic brightness restoration."
+        "description": "This integration provides smooth light fading with automatic brightness restoration."
       }
     },
     "abort": {
@@ -37,7 +37,7 @@
         },
         "transition": {
           "name": "Transition time",
-          "description": "Transition time for fading in seconds. Accepts decimal values, e.g., 0.5 for 500ms (default 3)."
+          "description": "Transition time for fading in seconds."
         },
         "hs_color": {
           "name": "HS color",

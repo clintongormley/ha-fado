@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "Kenar çubuğu panelini göster",
+          "notifications_enabled": "Bildirimleri etkinleştir",
+          "dashboard_url": "Pano URL'si"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "Fado arayüzünü tüm kullanıcılara görünen bir kenar çubuğu paneli olarak gösterir. Bunun yerine custom:fado-card ile bir Lovelace panosu kullanmayı tercih ediyorsanız devre dışı bırakın.",
+          "notifications_enabled": "Yapılandırılmamış ışıklar algılandığında kalıcı bildirimler göster.",
+          "dashboard_url": "Özel Fado panonuzun URL yolu (ör. /lovelace-fado/0). Kenar çubuğu paneli devre dışı olduğunda bildirim bağlantılarında kullanılır. Bağlantıyı atlamak için boş bırakın."
         }
       }
     }
