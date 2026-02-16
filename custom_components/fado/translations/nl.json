@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "Zijbalkpaneel tonen",
+          "notifications_enabled": "Meldingen inschakelen",
+          "dashboard_url": "Dashboard-URL"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "Toont de Fado-interface als een zijbalkpaneel dat zichtbaar is voor alle gebruikers. Schakel dit uit als u liever een Lovelace-dashboard met custom:fado-card gebruikt.",
+          "notifications_enabled": "Toon permanente meldingen wanneer niet-geconfigureerde lampen worden gedetecteerd.",
+          "dashboard_url": "URL-pad naar uw aangepaste Fado-dashboard (bijv. /lovelace-fado/0). Wordt gebruikt in meldingslinks wanneer het zijbalkpaneel is uitgeschakeld. Laat leeg om de link weg te laten."
         }
       }
     }

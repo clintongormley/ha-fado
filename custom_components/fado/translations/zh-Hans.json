@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "显示侧边栏面板",
+          "notifications_enabled": "启用通知",
+          "dashboard_url": "仪表盘 URL"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "将 Fado 界面显示为所有用户可见的侧边栏面板。如果您更喜欢使用带有 custom:fado-card 的 Lovelace 仪表盘，请禁用此选项。",
+          "notifications_enabled": "当检测到未配置的灯光时显示持久通知。",
+          "dashboard_url": "自定义 Fado 仪表盘的 URL 路径（例如 /lovelace-fado/0）。在侧边栏面板禁用时用于通知链接。留空以省略链接。"
         }
       }
     }

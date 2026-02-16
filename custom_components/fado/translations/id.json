@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "Tampilkan panel bilah sisi",
+          "notifications_enabled": "Aktifkan notifikasi",
+          "dashboard_url": "URL dasbor"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "Menampilkan antarmuka Fado sebagai panel bilah sisi yang terlihat oleh semua pengguna. Nonaktifkan jika Anda lebih suka menggunakan dasbor Lovelace dengan custom:fado-card.",
+          "notifications_enabled": "Tampilkan notifikasi persisten saat lampu yang belum dikonfigurasi terdeteksi.",
+          "dashboard_url": "Jalur URL untuk dasbor Fado kustom Anda (misalnya /lovelace-fado/0). Digunakan dalam tautan notifikasi saat panel bilah sisi dinonaktifkan. Biarkan kosong untuk menghilangkan tautan."
         }
       }
     }

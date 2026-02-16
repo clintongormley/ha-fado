@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "Mostra pannello laterale",
+          "notifications_enabled": "Abilita notifiche",
+          "dashboard_url": "URL della dashboard"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "Mostra l'interfaccia Fado come pannello laterale visibile a tutti gli utenti. Disattiva questa opzione se preferisci usare una dashboard Lovelace con custom:fado-card.",
+          "notifications_enabled": "Mostra notifiche persistenti quando vengono rilevate luci non configurate.",
+          "dashboard_url": "Percorso URL della tua dashboard Fado personalizzata (es. /lovelace-fado/0). Utilizzato nei link delle notifiche quando il pannello laterale è disattivato. Lascia vuoto per omettere il link."
         }
       }
     }

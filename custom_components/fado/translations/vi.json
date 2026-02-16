@@ -3,14 +3,14 @@
     "step": {
       "init": {
         "data": {
-          "show_sidebar_panel": "Show sidebar panel",
-          "notifications_enabled": "Enable notifications",
-          "dashboard_url": "Dashboard URL"
+          "show_sidebar_panel": "Hiển thị bảng thanh bên",
+          "notifications_enabled": "Bật thông báo",
+          "dashboard_url": "URL bảng điều khiển"
         },
         "data_description": {
-          "show_sidebar_panel": "Show the Fado UI as a sidebar panel visible to all users. Disable this if you prefer to use a Lovelace dashboard with the custom:fado-card instead.",
-          "notifications_enabled": "Show persistent notifications when unconfigured lights are detected.",
-          "dashboard_url": "URL path for your custom Fado dashboard (e.g. /lovelace-fado/0). Used in notification links when the sidebar panel is disabled. Leave blank to omit the link."
+          "show_sidebar_panel": "Hiển thị giao diện Fado dưới dạng bảng thanh bên hiển thị cho tất cả người dùng. Tắt nếu bạn muốn sử dụng bảng điều khiển Lovelace với custom:fado-card thay thế.",
+          "notifications_enabled": "Hiển thị thông báo liên tục khi phát hiện đèn chưa được cấu hình.",
+          "dashboard_url": "Đường dẫn URL đến bảng điều khiển Fado tùy chỉnh của bạn (ví dụ: /lovelace-fado/0). Được sử dụng trong liên kết thông báo khi bảng thanh bên bị tắt. Để trống để bỏ qua liên kết."
         }
       }
     }
