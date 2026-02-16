@@ -4,7 +4,6 @@
 
 - **NEVER commit directly to main** - always create a feature branch first
 - **Branch naming**: Use descriptive names like `fix/cancel-autoconfigure` or `ci/add-hacs-validation`. **Never** include version numbers in branch names (e.g. avoid `release/0.90.1`) — HACS scans all branches and will complain about non-compliant ones, even after deletion
-- All changes must go through a Pull Request (PR)
 - Do NOT merge PRs automatically - wait for user approval before merging
 - When merging a PR (after approval), delete the feature branch
 
