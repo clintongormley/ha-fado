@@ -39,6 +39,10 @@
           "name": "Transition time",
           "description": "Transition time for fading in seconds."
         },
+        "color_temp_kelvin": {
+          "name": "Color temperature",
+          "description": "Target color temperature in Kelvin."
+        },
         "hs_color": {
           "name": "HS color",
           "description": "Target color as [hue (0-360), saturation (0-100)]."
@@ -59,17 +63,13 @@
           "name": "XY color",
           "description": "Target color as CIE xy coordinates [x, y] (0-1 each)."
         },
-        "color_temp_kelvin": {
-          "name": "Color temperature",
-          "description": "Target color temperature in Kelvin."
+        "from": {
+          "name": "Starting values",
+          "description": "Override starting values instead of using current state."
         },
         "easing": {
           "name": "Easing curve",
           "description": "Controls how brightness changes over time. 'auto' selects based on fade direction: ease_in (slow start) for fading up, ease_out (slow end) for fading down."
-        },
-        "from": {
-          "name": "Starting values",
-          "description": "Override starting values instead of using current state."
         },
         "advanced_fields": {
           "name": "Advanced options",
