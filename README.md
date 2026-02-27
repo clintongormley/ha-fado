@@ -35,29 +35,29 @@ and support for native transitions.
 
 ## Features
 
-- Fade lights smoothly to any brightness level (0-100%) over a
-  specified transition period, with easing
-- Fade colors smoothly using HS, RGB, RGBW, RGBWW, XY, or color
-  temperature (Kelvin)
-- Hybrid transitions between color modes (e.g., color temperature
+- Fade lights smoothly to any **brightness** level (0-100%) over a
+  specified transition period, with **easing**
+- Fade **colors** smoothly using HS, RGB, RGBW, RGBWW, XY, or **color
+  temperature** (Kelvin)
+- **Hybrid transitions** between color modes (e.g., color temperature
   to saturated color)
 - Target lights by entity, device, area, floor, or label, or
-  light groups
-- Optionally specify starting values with the `from:` parameter
+  **light groups**
+- Optionally specify **starting values** with the `from:` parameter
   for precise control
 - Mostly drop-in replacement for the `light.turn_on` action
 - Capability-aware: skips lights that don't support requested
   color modes
-- Uses native transitions (where available) to smooth out each
+- Uses **native transitions** (where available) to smooth out each
   step for flicker-free fading
-- Cancels fade when lights are manually adjusted
-- Setting brightness to 1% automatically sets the minimum real
-  brightness supported by the light
-- Autoconfiguration UI to determine optimal configuration for
+- Plays nicely with **manual adjustments** from the wall switch
+- Setting brightness to 1% automatically sets the **minimum real
+  brightness** supported by the light
+- **Autoconfiguration UI** to determine optimal configuration for
   individual lights
-- Exclude/include lights from fades and brightness restoration
+- **Exclude/include** lights from fades and brightness restoration
   via actions or the configuration panel
-- Automatic restoration of original (pre-fade) brightness when
+- **Automatic restoration** of original (pre-fade) brightness when
   turning light on
 
 ## Installation
