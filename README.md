@@ -796,7 +796,7 @@ with:
 
 ### Running Tests
 
-The integration includes a comprehensive test suite with 654
+The integration includes a comprehensive test suite with 668
 tests covering config flow, action handling, fade execution,
 color fading, manual interruption detection, and brightness
 restoration.
