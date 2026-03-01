@@ -28,9 +28,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ "${{ matrix.ha-version }}" = "dev" ]; then
-            pip install pytest pytest-asyncio pytest-cov pytest-homeassistant-custom-component syrupy --pre
+            python -m pip install pytest pytest-asyncio pytest-cov syrupy
+            python -m pip install --pre pytest-homeassistant-custom-component
           else
-            pip install pytest pytest-asyncio pytest-cov pytest-homeassistant-custom-component syrupy
+            python -m pip install pytest pytest-asyncio pytest-cov pytest-homeassistant-custom-component syrupy
           fi
 
       - name: Run tests with coverage
