@@ -2,6 +2,7 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/clintongormley/ha-fado)](https://github.com/clintongormley/ha-fado/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/clintongormley/ha-fado/total)](https://github.com/clintongormley/ha-fado/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Home Assistant custom integration that provides smooth light
