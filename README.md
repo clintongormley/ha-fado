@@ -34,6 +34,9 @@ and support for native transitions.
 - **Home Assistant:** 2024.1.0 or newer
 - **Python:** 3.13 or newer
 
+![Autoconfiguration panel](docs/images/autoconfig.png "Autoconfiguration panel")
+
+
 ## Features
 
 - Fade lights smoothly to any **brightness** level (0-100%) over a
