@@ -745,15 +745,14 @@ export const FadoCoreMixin = (superClass) =>
         <ha-card>
           <div class="settings-row">
             <label>Global min delay:</label>
-            <ha-textfield
-              type="number"
-              min="50"
-              max="2000"
-              step="10"
-              suffix="ms"
-              .value=${this._globalMinDelayMs || ""}
-              @change=${(e) => this._handleGlobalDelayChange(e)}
-            ></ha-textfield>
+            ${this._renderNumberInput({
+              value: this._globalMinDelayMs || "",
+              min: 50,
+              max: 2000,
+              step: 10,
+              suffix: "ms",
+              onChange: (e) => this._handleGlobalDelayChange(e),
+            })}
             <span class="hint">The absolute minimum delay for all lights</span>
           </div>
           ${this._entryId ? html`
@@ -811,6 +810,39 @@ export const FadoCoreMixin = (superClass) =>
       `;
     }
 
+    _renderNumberInput({ value, min, max, step, placeholder, disabled, suffix, onChange }) {
+      // ha-textfield is being phased out in HA in favor of ha-input as part of
+      // the migration from Material Design to Web Awesome. Pick whichever is
+      // registered so the field renders on both old and new HA versions.
+      if (customElements.get("ha-input")) {
+        return html`
+          <ha-input
+            type="number"
+            min="${min}"
+            max="${max}"
+            step="${step}"
+            placeholder="${placeholder || ""}"
+            ?disabled=${disabled}
+            .value=${value}
+            @change=${onChange}
+          >${suffix ? html`<span slot="end">${suffix}</span>` : ""}</ha-input>
+        `;
+      }
+      return html`
+        <ha-textfield
+          type="number"
+          min="${min}"
+          max="${max}"
+          step="${step}"
+          placeholder="${placeholder || ""}"
+          suffix="${suffix || ""}"
+          ?disabled=${disabled}
+          .value=${value}
+          @change=${onChange}
+        ></ha-textfield>
+      `;
+    }
+
     _renderLightRow(light) {
       const lightIcon = light.icon || "mdi:lightbulb";
       const state = this.hass.states[light.entity_id];
@@ -834,16 +866,14 @@ export const FadoCoreMixin = (superClass) =>
             ${isTesting
               ? html`<div class="testing-spinner"><div class="spinner"></div></div>`
               : html`
-                  <ha-textfield
-                    type="number"
-                    min="${this._globalMinDelayMs}"
-                    max="2000"
-                    step="10"
-                    placeholder="global"
-                    ?disabled=${isExcluded}
-                    .value=${light.min_delay_ms || ""}
-                    @change=${(e) => this._handleDelayChange(light.entity_id, e)}
-                  ></ha-textfield>
+                  ${this._renderNumberInput({
+                    value: light.min_delay_ms || "",
+                    min: this._globalMinDelayMs,
+                    max: 2000,
+                    step: 10,
+                    disabled: isExcluded,
+                    onChange: (e) => this._handleDelayChange(light.entity_id, e),
+                  })}
                   ${errorMessage ? html`<div class="test-error">${errorMessage}</div>` : ""}
                 `
             }
@@ -928,7 +958,8 @@ export const fadoStyles = css`
 
   .settings-row label { font-weight: 500; color: var(--primary-text-color); }
 
-  .settings-row ha-textfield {
+  .settings-row ha-textfield,
+  .settings-row ha-input {
     width: 140px;
     --mdc-text-field-fill-color: transparent;
   }
@@ -1015,7 +1046,8 @@ export const fadoStyles = css`
   .lights-table td.col-exclude,
   .lights-table td.col-configure { text-align: center; }
 
-  ha-textfield { width: 120px; --mdc-text-field-fill-color: transparent; }
+  ha-textfield,
+  ha-input { width: 120px; --mdc-text-field-fill-color: transparent; }
 
   ha-checkbox { --mdc-checkbox-unchecked-color: var(--secondary-text-color); }
 
