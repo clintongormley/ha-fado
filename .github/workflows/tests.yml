@@ -62,6 +62,22 @@ jobs:
               "pytest-homeassistant-custom-component${{ matrix.phccc }}" syrupy
           fi
 
+      # The min leg pins HA transitively via the plugin version, so the
+      # ha-version label and the phccc pin are two sources of truth that could
+      # drift. Assert they agree, failing loudly if a future pin bump forgets
+      # to update the label (or vice versa).
+      - name: Verify pinned HA version (min leg)
+        if: ${{ matrix.leg == 'min' }}
+        env:
+          EXPECTED_HA: ${{ matrix.ha-version }}
+        run: |
+          INSTALLED=$(python -c "from homeassistant.const import __version__; print(__version__)")
+          echo "Installed HA: $INSTALLED (expected $EXPECTED_HA)"
+          if [ "$INSTALLED" != "$EXPECTED_HA" ]; then
+            echo "::error::min leg installed HA $INSTALLED but matrix declares $EXPECTED_HA — update the phccc pin to match"
+            exit 1
+          fi
+
       - name: Run tests with coverage
         run: |
           pytest tests/ \
