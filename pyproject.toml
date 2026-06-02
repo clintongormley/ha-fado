@@ -10,6 +10,8 @@ test = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
     "pytest-homeassistant-custom-component>=0.13.300",
+    "pytest-timeout>=2.3.0",
+    "pytest-xdist>=3.5.0",
     "syrupy>=4.6.0",
 ]
 
@@ -17,6 +19,11 @@ test = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+# Run tests in parallel: many fade tests are wall-clock sleep-bound, so they
+# parallelise almost perfectly. Disable for debugging with `-p no:xdist`.
+# timeout is a safety net so a hung test fails fast instead of wedging the run.
+addopts = "-n auto"
+timeout = 60
 
 [tool.ruff]
 line-length = 100

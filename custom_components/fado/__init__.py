@@ -242,6 +242,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass,
             _daily_unconfigured_check,
             timedelta(hours=UNCONFIGURED_CHECK_INTERVAL_HOURS),
+            cancel_on_shutdown=True,
         )
     )
 
