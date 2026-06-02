@@ -13,3 +13,5 @@ docs/plans/
 CLAUDE.local.md
 .claude/settings.local.json
 docs/Fado TODO.txt
+.ha-changes-state.json
+HA_CHANGES_REPORT.md
