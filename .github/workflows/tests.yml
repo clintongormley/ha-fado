@@ -13,34 +13,43 @@ on:
     - cron: "17 3 * * *"
 
 jobs:
+  # Build the test matrix dynamically. Python is coupled to the HA version, so
+  # each leg pairs them explicitly rather than crossing the two axes (older HA
+  # can't run on 3.14, and current HA requires it). On the nightly schedule we
+  # drop the pinned "min" leg — it can't change, so re-running it adds no signal.
+  # (The matrix must be built here, not via a job-level `if`, because the
+  # `matrix` context is unavailable in `jobs.<id>.if`.)
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+    steps:
+      - id: set
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          # Floor: oldest supported HA. 2026.1.0 is the first release shipping
+          # homeassistant.helpers.target.TargetSelection, which the integration
+          # imports. Pinned to the matching plugin version.
+          MIN='{"leg":"min","ha-version":"2026.1.0","python-version":"3.13","phccc":"==0.13.305"}'
+          # Latest stable HA release (plugin unpinned → newest on PyPI).
+          STABLE='{"leg":"stable","ha-version":"stable","python-version":"3.14"}'
+          # HA dev / pre-release. Non-blocking.
+          DEV='{"leg":"dev","ha-version":"dev","python-version":"3.14"}'
+          if [ "$EVENT" = "schedule" ]; then
+            echo "include=[$STABLE,$DEV]" >> "$GITHUB_OUTPUT"
+          else
+            echo "include=[$MIN,$STABLE,$DEV]" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: configure
     name: HA ${{ matrix.ha-version }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    # Skip the pinned "min" leg on the nightly schedule — only stable + dev
-    # are worth running against a fresh upstream.
-    if: ${{ github.event_name != 'schedule' || matrix.leg != 'min' }}
     strategy:
       fail-fast: false
       matrix:
-        # Python is coupled to the HA version, so pair each leg explicitly
-        # rather than crossing the two axes (older HA can't run on 3.14, and
-        # current HA requires it).
-        include:
-          # Floor: oldest supported HA. 2026.1.0 is the first release that
-          # ships homeassistant.helpers.target.TargetSelection, which the
-          # integration imports. Pinned via the matching plugin version.
-          - leg: min
-            ha-version: "2026.1.0"
-            python-version: "3.13"
-            phccc: "==0.13.305"
-          # Latest stable HA release (plugin unpinned → newest on PyPI).
-          - leg: stable
-            ha-version: "stable"
-            python-version: "3.14"
-          # HA dev / pre-release. Non-blocking.
-          - leg: dev
-            ha-version: "dev"
-            python-version: "3.14"
+        include: ${{ fromJSON(needs.configure.outputs.include) }}
     continue-on-error: ${{ matrix.ha-version == 'dev' }}
 
     steps:
