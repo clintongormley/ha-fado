@@ -13,7 +13,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.components.light.const import ColorMode
 from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
@@ -357,8 +357,15 @@ async def test_manual_change_during_fade_updates_orig(
     # Event listener to detect when the fade makes its first light.turn_on call
     fade_started = asyncio.Event()
 
+    @callback
     def on_fade_state_change(event):
-        """Detect when the fade changes the light state."""
+        """Detect when the fade changes the light state.
+
+        Must be a @callback so HA runs it in the event-loop thread; a plain
+        sync listener is dispatched to an executor thread, where the
+        non-thread-safe ``asyncio.Event.set()`` raises RuntimeError on
+        Python 3.14 and the event is never set (test hangs).
+        """
         if event.data.get("entity_id") == entity_id:
             fade_started.set()
 
