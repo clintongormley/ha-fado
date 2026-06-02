@@ -5,15 +5,51 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Nightly at 03:17 UTC. Catches upstream HA breakage: the "stable" leg
+    # tracks each monthly release automatically (it installs the latest
+    # published pytest-homeassistant-custom-component), and the "dev" leg
+    # tracks pre-releases. The pinned "min" leg is skipped on schedule.
+    - cron: "17 3 * * *"
 
 jobs:
+  # Build the test matrix dynamically. Python is coupled to the HA version, so
+  # each leg pairs them explicitly rather than crossing the two axes (older HA
+  # can't run on 3.14, and current HA requires it). On the nightly schedule we
+  # drop the pinned "min" leg — it can't change, so re-running it adds no signal.
+  # (The matrix must be built here, not via a job-level `if`, because the
+  # `matrix` context is unavailable in `jobs.<id>.if`.)
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+    steps:
+      - id: set
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          # Floor: oldest supported HA. 2026.1.0 is the first release shipping
+          # homeassistant.helpers.target.TargetSelection, which the integration
+          # imports. Pinned to the matching plugin version.
+          MIN='{"leg":"min","ha-version":"2026.1.0","python-version":"3.13","phccc":"==0.13.305"}'
+          # Latest stable HA release (plugin unpinned → newest on PyPI).
+          STABLE='{"leg":"stable","ha-version":"stable","python-version":"3.14"}'
+          # HA dev / pre-release. Non-blocking.
+          DEV='{"leg":"dev","ha-version":"dev","python-version":"3.14"}'
+          if [ "$EVENT" = "schedule" ]; then
+            echo "include=[$STABLE,$DEV]" >> "$GITHUB_OUTPUT"
+          else
+            echo "include=[$MIN,$STABLE,$DEV]" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: configure
+    name: HA ${{ matrix.ha-version }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
-        ha-version: ["stable", "dev"]
+        include: ${{ fromJSON(needs.configure.outputs.include) }}
     continue-on-error: ${{ matrix.ha-version == 'dev' }}
 
     steps:
@@ -31,7 +67,24 @@ jobs:
             python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout syrupy
             python -m pip install --pre pytest-homeassistant-custom-component
           else
-            python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout pytest-homeassistant-custom-component syrupy
+            python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout \
+              "pytest-homeassistant-custom-component${{ matrix.phccc }}" syrupy
+          fi
+
+      # The min leg pins HA transitively via the plugin version, so the
+      # ha-version label and the phccc pin are two sources of truth that could
+      # drift. Assert they agree, failing loudly if a future pin bump forgets
+      # to update the label (or vice versa).
+      - name: Verify pinned HA version (min leg)
+        if: ${{ matrix.leg == 'min' }}
+        env:
+          EXPECTED_HA: ${{ matrix.ha-version }}
+        run: |
+          INSTALLED=$(python -c "from homeassistant.const import __version__; print(__version__)")
+          echo "Installed HA: $INSTALLED (expected $EXPECTED_HA)"
+          if [ "$INSTALLED" != "$EXPECTED_HA" ]; then
+            echo "::error::min leg installed HA $INSTALLED but matrix declares $EXPECTED_HA — update the phccc pin to match"
+            exit 1
           fi
 
       - name: Run tests with coverage
@@ -49,3 +102,26 @@ jobs:
         with:
           name: coverage-report-${{ matrix.python-version }}-${{ matrix.ha-version }}
           path: coverage.xml
+
+  # Stable-named gate for branch protection. The individual test legs carry
+  # dynamic names (the HA version moves), so requiring them directly would
+  # break the rule on every floor bump. This aggregates them into one fixed
+  # check that is green only when every blocking leg passed. The "dev" leg is
+  # continue-on-error, so its failure does not flip needs.test.result.
+  # 90% coverage is enforced inside each leg via --cov-fail-under=90, so a
+  # green "tests-passed" also guarantees the coverage floor.
+  tests-passed:
+    name: tests-passed
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all blocking test legs to pass
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          echo "Aggregated test result: $TEST_RESULT"
+          if [ "$TEST_RESULT" != "success" ]; then
+            echo "::error::one or more required test legs failed or were skipped"
+            exit 1
+          fi
