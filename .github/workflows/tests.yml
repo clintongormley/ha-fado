@@ -5,15 +5,42 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Nightly at 03:17 UTC. Catches upstream HA breakage: the "stable" leg
+    # tracks each monthly release automatically (it installs the latest
+    # published pytest-homeassistant-custom-component), and the "dev" leg
+    # tracks pre-releases. The pinned "min" leg is skipped on schedule.
+    - cron: "17 3 * * *"
 
 jobs:
   test:
+    name: HA ${{ matrix.ha-version }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    # Skip the pinned "min" leg on the nightly schedule — only stable + dev
+    # are worth running against a fresh upstream.
+    if: ${{ github.event_name != 'schedule' || matrix.leg != 'min' }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
-        ha-version: ["stable", "dev"]
+        # Python is coupled to the HA version, so pair each leg explicitly
+        # rather than crossing the two axes (older HA can't run on 3.14, and
+        # current HA requires it).
+        include:
+          # Floor: oldest supported HA. 2026.1.0 is the first release that
+          # ships homeassistant.helpers.target.TargetSelection, which the
+          # integration imports. Pinned via the matching plugin version.
+          - leg: min
+            ha-version: "2026.1.0"
+            python-version: "3.13"
+            phccc: "==0.13.305"
+          # Latest stable HA release (plugin unpinned → newest on PyPI).
+          - leg: stable
+            ha-version: "stable"
+            python-version: "3.14"
+          # HA dev / pre-release. Non-blocking.
+          - leg: dev
+            ha-version: "dev"
+            python-version: "3.14"
     continue-on-error: ${{ matrix.ha-version == 'dev' }}
 
     steps:
@@ -31,7 +58,8 @@ jobs:
             python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout syrupy
             python -m pip install --pre pytest-homeassistant-custom-component
           else
-            python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout pytest-homeassistant-custom-component syrupy
+            python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout \
+              "pytest-homeassistant-custom-component${{ matrix.phccc }}" syrupy
           fi
 
       - name: Run tests with coverage
