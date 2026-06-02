@@ -102,3 +102,26 @@ jobs:
         with:
           name: coverage-report-${{ matrix.python-version }}-${{ matrix.ha-version }}
           path: coverage.xml
+
+  # Stable-named gate for branch protection. The individual test legs carry
+  # dynamic names (the HA version moves), so requiring them directly would
+  # break the rule on every floor bump. This aggregates them into one fixed
+  # check that is green only when every blocking leg passed. The "dev" leg is
+  # continue-on-error, so its failure does not flip needs.test.result.
+  # 90% coverage is enforced inside each leg via --cov-fail-under=90, so a
+  # green "tests-passed" also guarantees the coverage floor.
+  tests-passed:
+    name: tests-passed
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all blocking test legs to pass
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          echo "Aggregated test result: $TEST_RESULT"
+          if [ "$TEST_RESULT" != "success" ]; then
+            echo "::error::one or more required test legs failed or were skipped"
+            exit 1
+          fi
