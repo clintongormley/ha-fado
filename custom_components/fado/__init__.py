@@ -31,6 +31,12 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
+from .card_resources import (
+    CARD_RESOURCE_KEY,
+    STRATEGY_RESOURCE_KEY,
+    async_register_card_resource,
+    async_unregister_card_resource,
+)
 from .const import (
     ATTR_BRIGHTNESS,
     ATTR_BRIGHTNESS_PCT,
@@ -69,6 +75,10 @@ from .websocket_api import async_register_websocket_api
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
+
+# Frontend module URLs served from the integration's frontend/ directory.
+FADO_CARD_URL = "/fado_panel/fado-card.js"
+FADO_STRATEGY_URL = "/fado_panel/fado-strategy.js"
 
 # =============================================================================
 # Service Schema
@@ -264,10 +274,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ]
         )
 
-        # Always register card and strategy JS so they're available
-        hass.data.setdefault(frontend.DATA_EXTRA_MODULE_URL, set())  # type: ignore[arg-type]
-        frontend.add_extra_js_url(hass, "/fado_panel/fado-card.js")
-        frontend.add_extra_js_url(hass, "/fado_panel/fado-strategy.js")
+        # Register the card and dashboard strategy as Lovelace resources (NOT
+        # via add_extra_js_url) so they survive HA's custom-element registry
+        # swap and load reliably on a cold/hard refresh. See card_resources.py
+        # for the full explanation. Falls back to add_extra_js_url in YAML mode.
+        await async_register_card_resource(hass, FADO_CARD_URL, FADO_CARD_URL, CARD_RESOURCE_KEY)
+        await async_register_card_resource(
+            hass, FADO_STRATEGY_URL, FADO_STRATEGY_URL, STRATEGY_RESOURCE_KEY
+        )
 
         if show_sidebar:
             await panel_custom.async_register_panel(
@@ -345,9 +359,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_remove(DOMAIN, SERVICE_INCLUDE_LIGHTS)
     hass.data.pop(DOMAIN, None)
 
-    # Remove frontend resources
-    frontend.remove_extra_js_url(hass, "/fado_panel/fado-card.js")
-    frontend.remove_extra_js_url(hass, "/fado_panel/fado-strategy.js")
+    # Remove the card and strategy Lovelace resources (or their extra-js fallback).
+    await async_unregister_card_resource(hass, FADO_CARD_URL, CARD_RESOURCE_KEY)
+    await async_unregister_card_resource(hass, FADO_STRATEGY_URL, STRATEGY_RESOURCE_KEY)
 
     # Always try to remove the panel — during an options-flow reload,
     # entry.options already has the NEW values, so we can't check the option.
