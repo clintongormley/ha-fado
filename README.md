@@ -681,7 +681,10 @@ over dashboard visibility and placement.
 You can add the Fado card to any Lovelace dashboard:
 
 1. Edit your dashboard and click **Add Card**
-2. Search for **Fado Light Fader** in the card picker
+2. Select the **By card** tab, then search for **Fado Light Fader**
+   (in Home Assistant 2026.6+ the card picker opens on the **By entity**
+   tab; the Fado card configures the whole integration rather than a
+   single entity, so it only appears under **By card**)
 3. Add the card
 
 Or add it manually in YAML mode:
