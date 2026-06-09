@@ -1,40 +1,178 @@
 name: Release
 
+# Publishes a GitHub Release when a v* tag is pushed (HACS reads GitHub
+# releases), then opens and auto-merges a follow-up PR bumping main to the next
+# minor so unreleased work no longer carries the just-released version.
+#
+# Release flow:
+#   1. bin/release.sh <version>  -> opens the chore/release PR (bumps manifest)
+#   2. merge the PR
+#   3. git tag v<version> && git push origin v<version>  -> triggers this workflow
+#
+# Requires a RELEASE_PAT repo secret (fine-grained PAT, contents:write +
+# pull-requests:write) and the repo "Allow auto-merge" setting enabled — the
+# post-release bump PR must be opened by a PAT so it triggers the required
+# status checks; a GITHUB_TOKEN-created PR never does and can't be auto-merged.
+
 on:
   push:
     tags:
       - "v*.*.*"
 
+# Least privilege: grant nothing by default, scope per job below.
+permissions: {}
+
 jobs:
-  release:
-    name: Create Release
+  publish:
     runs-on: ubuntu-latest
+    name: Publish GitHub Release
+    # Creating the GitHub Release needs contents:write; nothing else.
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Get version from tag
-        id: tag_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Get version from manifest
-        id: manifest_version
+      - name: Extract and validate version from tag
+        id: version
+        env:
+          REF: ${{ github.ref }}
         run: |
-          VERSION=$(jq -r '.version' custom_components/fado/manifest.json)
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          VERSION="${REF#refs/tags/v}"
+          # Reject off-spec tags (the same semver contract bin/release.sh enforces),
+          # so a hand-pushed bad tag can't slip through to a published release.
+          bin/bump-version.sh --validate "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Any semver pre-release (a hyphen) is a pre-release; matches the regex,
+          # which only permits -alpha/-beta/-rc.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Verify versions match
+      - name: Validate manifest version matches tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if [ "${{ steps.tag_version.outputs.VERSION }}" != "${{ steps.manifest_version.outputs.VERSION }}" ]; then
-            echo "Error: Tag version (${{ steps.tag_version.outputs.VERSION }}) does not match manifest version (${{ steps.manifest_version.outputs.VERSION }})"
+          MANIFEST_VER=$(python3 -c "import json; print(json.load(open('custom_components/fado/manifest.json'))['version'])")
+          if [ "$VERSION" != "$MANIFEST_VER" ]; then
+            echo "::error::Tag v$VERSION does not match manifest.json version $MANIFEST_VER"
             exit 1
           fi
-          echo "Versions match: ${{ steps.tag_version.outputs.VERSION }}"
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
-          prerelease: ${{ startsWith(steps.tag_version.outputs.VERSION, '0.') }}
+          # Pre-releases (alpha/beta/rc) stay off "latest" until promoted via:
+          #   gh release edit v<version> --prerelease=false --latest=true
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+
+  bump:
+    needs: publish
+    # Only final releases roll main forward; pre-releases leave the version alone.
+    if: needs.publish.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    name: Bump main to next minor
+    # GITHUB_TOKEN only needs to read for the checkout below — all PR/merge
+    # operations use RELEASE_PAT, not GITHUB_TOKEN.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # The bump PR must be opened by a PAT/App token, NOT the default
+      # GITHUB_TOKEN: GitHub deliberately does not trigger `on: pull_request`
+      # workflows for token-created PRs, so a GITHUB_TOKEN-created PR never runs
+      # the required status checks and stays permanently blocked by the
+      # `main protection` ruleset (no bypass), making auto-merge impossible.
+      # Create a fine-grained PAT with contents:write + pull-requests:write and
+      # store it as the RELEASE_PAT repo secret.
+      - name: Ensure release token is configured
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "::error::RELEASE_PAT secret is not set. Create a fine-grained PAT with contents:write + pull-requests:write and add it as the RELEASE_PAT repo secret. Without it the bump PR is created by GITHUB_TOKEN, never triggers the required status checks, and cannot be auto-merged."
+            exit 1
+          fi
+
+      - name: Compute next minor and bump version files
+        id: bump
+        env:
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          NEXT=$(python3 -c "import os; mj, mn, _ = os.environ['VERSION'].split('-')[0].split('.'); print(f'{mj}.{int(mn)+1}.0')")
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+
+          CURRENT=$(python3 -c "import json; print(json.load(open('custom_components/fado/manifest.json'))['version'])")
+
+          # Forward-only guard: only bump if NEXT > CURRENT (semver tuple compare
+          # of the X.Y.Z parts). A v* tag push for an OLD release (e.g. a backport
+          # patch tagged while main is already on a later minor) also triggers this
+          # workflow; without the guard it would regress main's version.
+          if NEXT="$NEXT" CURRENT="$CURRENT" python3 -c "
+          import os
+          def parts(v):
+              return tuple(int(x) for x in v.split('-')[0].split('.'))
+          import sys
+          sys.exit(0 if parts(os.environ['NEXT']) > parts(os.environ['CURRENT']) else 1)
+          "; then
+            echo "do_bump=true" >> "$GITHUB_OUTPUT"
+            echo "Next minor $NEXT is ahead of current manifest version $CURRENT; will open bump PR."
+            # Same verified bump bin/release.sh uses, so the two can't drift.
+            bin/bump-version.sh "$NEXT"
+          else
+            echo "do_bump=false" >> "$GITHUB_OUTPUT"
+            echo "Next minor $NEXT is not ahead of current manifest version $CURRENT (an old/patch tag was pushed); skipping bump."
+          fi
+
+      - name: Open next-minor bump PR
+        id: cpr
+        if: steps.bump.outputs.do_bump == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # PAT (not GITHUB_TOKEN) so the PR triggers the required status checks
+          # — see the "Ensure release token is configured" step above.
+          token: ${{ secrets.RELEASE_PAT }}
+          # Version-less branch name: HACS rejects version numbers in branch names.
+          branch: chore/post-release-bump
+          base: main
+          delete-branch: true
+          title: "chore: bump to ${{ steps.bump.outputs.next }} for development"
+          commit-message: "chore: bump version to ${{ steps.bump.outputs.next }}"
+          body: |
+            Post-release bump of `manifest.json` to `${{ steps.bump.outputs.next }}`.
+
+            Released `v${{ needs.publish.outputs.version }}`; this rolls `main`
+            forward to the next minor so unreleased work no longer carries the
+            just-released version. Auto-merged by the release workflow.
+
+      # main requires a PR (can't push directly), but the bump is trivial,
+      # machine-generated, and already verified by bin/bump-version.sh — so
+      # enable auto-merge: GitHub merges once the required status checks pass.
+      # (Immediate `--merge` would fail here because the ruleset's checks are
+      # still pending right after the PR opens.) Retry briefly: GitHub computes
+      # mergeability asynchronously right after the PR is created.
+      - name: Enable auto-merge on the bump PR
+        if: steps.cpr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          PR: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if gh pr merge "$PR" --auto --merge --delete-branch; then
+              echo "Auto-merge enabled for bump PR #$PR; it will merge once checks pass."
+              exit 0
+            fi
+            echo "enable-auto-merge attempt $attempt failed (mergeability may still be computing); retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::failed to enable auto-merge on bump PR #$PR after retries"
+          exit 1
