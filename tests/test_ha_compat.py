@@ -10,12 +10,14 @@ genuinely supported.
 
 from __future__ import annotations
 
+import pytest
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from custom_components.fado.const import DOMAIN
 from custom_components.fado.ha_compat import (
     _extract_via_service,
     _extract_via_target,
+    _has_target_selection,
     extract_referenced_entity_ids,
 )
 
@@ -52,6 +54,10 @@ async def test_service_fallback_resolves_entity_list(
     assert {mock_light_entity, mock_light_off} <= _resolved(selected)
 
 
+@pytest.mark.skipif(
+    not _has_target_selection(),
+    reason="homeassistant.helpers.target only exists on HA >= 2026.1.0",
+)
 async def test_target_and_service_paths_resolve_identically(
     hass: HomeAssistant, mock_light_entity: str, mock_light_off: str
 ) -> None:

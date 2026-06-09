@@ -13,7 +13,41 @@ each import on the branch that is only taken when the symbol exists.
 
 from __future__ import annotations
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from typing import TYPE_CHECKING, Any
+
+from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.core import HomeAssistant, ServiceCall, callback
+
+if TYPE_CHECKING:
+    # The type checker always sees the upstream class; the runtime fallback
+    # below is behaviourally identical from a caller's perspective.
+    from homeassistant.config_entries import OptionsFlowWithReload
+else:
+    try:  # HA >= 2025.8.0
+        from homeassistant.config_entries import OptionsFlowWithReload
+    except ImportError:  # pragma: no cover - exercised only on HA < 2025.8.0
+        from homeassistant.config_entries import OptionsFlow
+
+        class OptionsFlowWithReload(OptionsFlow):
+            """Backport of HA 2025.8.0's ``OptionsFlowWithReload`` for older HA.
+
+            Schedules a config-entry reload when the options flow finishes with
+            changed options, matching upstream behaviour. The reload is scoped to
+            flow completion, so unrelated entry updates (e.g. the live websocket
+            settings save) do not trigger a reload. Upstream forbids combining
+            its version with config-entry update listeners; this backport adds
+            none, so the same constraint holds.
+            """
+
+            @callback
+            def async_create_entry(self, *, data: Any = None, **kwargs: Any) -> ConfigFlowResult:
+                result = super().async_create_entry(data=data, **kwargs)
+                if data is not None and dict(data) != dict(self.config_entry.options):
+                    self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+                return result
+
+
+__all__ = ["OptionsFlowWithReload", "extract_referenced_entity_ids"]
 
 
 def _extract_via_target(hass: HomeAssistant, call: ServiceCall):
@@ -33,8 +67,8 @@ def _extract_via_service(hass: HomeAssistant, call: ServiceCall):
     a ``ServiceCall`` directly and predates the ``target`` helper. It is
     deprecated on newer HA (removed in 2026.8), but this path only runs on older
     HA where it remains the canonical API. Once the integration's floor reaches
-    2026.1.0, this whole module can be dropped in favour of importing the target
-    helper directly.
+    2026.1.0, this resolver shim can be dropped in favour of importing the target
+    helper directly (the OptionsFlowWithReload backport above can go at 2025.8.0).
     """
     from homeassistant.helpers.service import (  # noqa: PLC0415
         async_extract_referenced_entity_ids,
