@@ -42,6 +42,13 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
 done
 [ -n "$range" ] || range="$(default_base)..HEAD"
 
+# The remote SHA in the range may be absent locally (shallow clone, not fetched
+# recently) — fall back to a base we know exists so downstream consumers of the
+# range (e.g. check_docs.py, which has no fallback of its own) don't crash on an
+# invalid revision.
+range_base="${range%%..*}"
+git rev-parse --verify --quiet "${range_base}^{commit}" >/dev/null 2>&1 || range="$(default_base)..HEAD"
+
 changed="$(git diff --name-only "$range" 2>/dev/null || git diff --name-only HEAD~1)"
 echo "pre-push: $(printf '%s\n' "$changed" | grep -c . || true) changed file(s) in range $range"
 
@@ -74,8 +81,8 @@ else fail "Docs — structural change needs a docs update"; fi
 # --- Step 4: tests + coverage (slower; only if Python changed) ---
 if [ -n "$py_changed" ]; then
   step "Tests + coverage"
-  if need python && (unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; \
-       python -m pytest tests/ --cov=custom_components.fado --cov-report=term-missing --cov-fail-under=90); then
+  if need python3 && (unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; \
+       python3 -m pytest tests/ --cov=custom_components.fado --cov-report=term-missing --cov-fail-under=90); then
     pass "Tests + coverage"
   else
     fail "Tests + coverage"
