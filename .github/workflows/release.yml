@@ -117,13 +117,17 @@ jobs:
           # of the X.Y.Z parts). A v* tag push for an OLD release (e.g. a backport
           # patch tagged while main is already on a later minor) also triggers this
           # workflow; without the guard it would regress main's version.
-          if NEXT="$NEXT" CURRENT="$CURRENT" python3 -c "
+          #
+          # Print a boolean instead of encoding the result in the exit code, so a
+          # Python crash (e.g. a malformed version) fails the step loudly under
+          # `set -e` rather than being mistaken for "not ahead" and silently skipped.
+          AHEAD=$(NEXT="$NEXT" CURRENT="$CURRENT" python3 -c "
           import os
           def parts(v):
               return tuple(int(x) for x in v.split('-')[0].split('.'))
-          import sys
-          sys.exit(0 if parts(os.environ['NEXT']) > parts(os.environ['CURRENT']) else 1)
-          "; then
+          print('true' if parts(os.environ['NEXT']) > parts(os.environ['CURRENT']) else 'false')
+          ")
+          if [ "$AHEAD" = "true" ]; then
             echo "do_bump=true" >> "$GITHUB_OUTPUT"
             echo "Next minor $NEXT is ahead of current manifest version $CURRENT; will open bump PR."
             # Same verified bump bin/release.sh uses, so the two can't drift.
