@@ -19,14 +19,16 @@ on:
     tags:
       - "v*.*.*"
 
-permissions:
-  contents: write
-  pull-requests: write
+# Least privilege: grant nothing by default, scope per job below.
+permissions: {}
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     name: Publish GitHub Release
+    # Creating the GitHub Release needs contents:write; nothing else.
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -76,9 +78,10 @@ jobs:
     if: needs.publish.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     name: Bump main to next minor
+    # GITHUB_TOKEN only needs to read for the checkout below — all PR/merge
+    # operations use RELEASE_PAT, not GITHUB_TOKEN.
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,11 +110,32 @@ jobs:
         run: |
           NEXT=$(python3 -c "import os; mj, mn, _ = os.environ['VERSION'].split('-')[0].split('.'); print(f'{mj}.{int(mn)+1}.0')")
           echo "next=$NEXT" >> "$GITHUB_OUTPUT"
-          # Same verified bump bin/release.sh uses, so the two can't drift.
-          bin/bump-version.sh "$NEXT"
+
+          CURRENT=$(python3 -c "import json; print(json.load(open('custom_components/fado/manifest.json'))['version'])")
+
+          # Forward-only guard: only bump if NEXT > CURRENT (semver tuple compare
+          # of the X.Y.Z parts). A v* tag push for an OLD release (e.g. a backport
+          # patch tagged while main is already on a later minor) also triggers this
+          # workflow; without the guard it would regress main's version.
+          if NEXT="$NEXT" CURRENT="$CURRENT" python3 -c "
+          import os
+          def parts(v):
+              return tuple(int(x) for x in v.split('-')[0].split('.'))
+          import sys
+          sys.exit(0 if parts(os.environ['NEXT']) > parts(os.environ['CURRENT']) else 1)
+          "; then
+            echo "do_bump=true" >> "$GITHUB_OUTPUT"
+            echo "Next minor $NEXT is ahead of current manifest version $CURRENT; will open bump PR."
+            # Same verified bump bin/release.sh uses, so the two can't drift.
+            bin/bump-version.sh "$NEXT"
+          else
+            echo "do_bump=false" >> "$GITHUB_OUTPUT"
+            echo "Next minor $NEXT is not ahead of current manifest version $CURRENT (an old/patch tag was pushed); skipping bump."
+          fi
 
       - name: Open next-minor bump PR
         id: cpr
+        if: steps.bump.outputs.do_bump == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           # PAT (not GITHUB_TOKEN) so the PR triggers the required status checks
