@@ -5,10 +5,12 @@ the rest of the integration can stay version-agnostic.
 
 Imports inside the resolver functions are intentionally deferred to call time,
 not hoisted to module scope: the two helpers have *non-overlapping* lifetimes.
-``helpers.target`` only exists from HA 2026.1.0; ``helpers.service``'s variant
-is removed in HA 2026.8. A module-scope import of either would crash the
-integration on the HA versions where that symbol is absent. Deferring keeps
-each import on the branch that is only taken when the symbol exists.
+``helpers.target.TargetSelection`` only exists from HA 2026.1.0 (the
+``helpers.target`` module itself is older, but did not expose that symbol);
+``helpers.service``'s extractor is removed in HA 2026.8. A module-scope import
+of either symbol would crash the integration on the HA versions where it is
+absent. Deferring keeps each import on the branch that is only taken when the
+symbol exists.
 """
 
 from __future__ import annotations
