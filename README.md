@@ -31,7 +31,7 @@ and support for native transitions.
 
 ## Compatibility
 
-- **Home Assistant:** 2024.1.0 or newer
+- **Home Assistant:** 2025.2.0 or newer
 - **Python:** 3.13 or newer
 
 ![Autoconfiguration panel](docs/images/autoconfig.png "Autoconfiguration panel")

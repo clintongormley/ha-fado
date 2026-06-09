@@ -28,10 +28,12 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          # Floor: oldest supported HA. 2026.1.0 is the first release shipping
-          # homeassistant.helpers.target.TargetSelection, which the integration
-          # imports. Pinned to the matching plugin version.
-          MIN='{"leg":"min","ha-version":"2026.1.0","python-version":"3.13","phccc":"==0.13.305"}'
+          # Floor: oldest supported HA (see hacs.json). The integration resolves
+          # service-call targets via a version shim (custom_components/fado/ha_compat.py):
+          # the modern homeassistant.helpers.target.TargetSelection on HA >= 2026.1.0,
+          # and the legacy homeassistant.helpers.service helper on older HA. This leg
+          # exercises that fallback path. Pinned to the matching plugin version.
+          MIN='{"leg":"min","ha-version":"2025.2.0","python-version":"3.13","phccc":"==0.13.210"}'
           # Latest stable HA release (plugin unpinned → newest on PyPI).
           STABLE='{"leg":"stable","ha-version":"stable","python-version":"3.14"}'
           # HA dev / pre-release. Non-blocking.

@@ -9,7 +9,6 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlowWithReload,
 )
 from homeassistant.core import callback
 
@@ -22,6 +21,7 @@ from .const import (
     OPTION_NOTIFICATIONS_ENABLED,
     OPTION_SHOW_SIDEBAR,
 )
+from .ha_compat import OptionsFlowWithReload
 
 
 class FadoConfigFlow(ConfigFlow, domain=DOMAIN):

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -100,6 +102,31 @@ async def test_options_flow_saves_options(
     assert result["data"][OPTION_SHOW_SIDEBAR] is False
     assert result["data"][OPTION_DASHBOARD_URL] == "/lovelace-fado/0"
     assert result["data"][OPTION_NOTIFICATIONS_ENABLED] is False
+
+
+async def test_options_flow_reloads_entry_when_options_change(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+) -> None:
+    """Changing options via the options flow reloads the entry.
+
+    On HA >= 2025.8.0 this is provided by OptionsFlowWithReload; on older HA it
+    is provided by the ha_compat backport. Either way the new settings must take
+    effect, which requires reloading the config entry.
+    """
+    result = await hass.config_entries.options.async_init(init_integration.entry_id)
+
+    with patch.object(hass.config_entries, "async_schedule_reload") as mock_reload:
+        await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            user_input={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_NOTIFICATIONS_ENABLED: False,
+                OPTION_DASHBOARD_URL: "/lovelace-fado/0",
+            },
+        )
+
+    mock_reload.assert_called_once_with(init_integration.entry_id)
 
 
 async def test_options_flow_defaults(
