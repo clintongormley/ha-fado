@@ -40,10 +40,6 @@ from homeassistant.core import (
 )
 from homeassistant.helpers.service import remove_entity_service_fields
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.target import (
-    TargetSelection,
-    async_extract_referenced_entity_ids,
-)
 
 from .const import (
     DOMAIN,
@@ -54,6 +50,7 @@ from .entity_fade_state import EntityFadeState
 from .expected_state import ExpectedState, ExpectedValues
 from .fade_change import FadeChange, FadeStep
 from .fade_params import FadeParams
+from .ha_compat import extract_referenced_entity_ids
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -120,7 +117,7 @@ class FadeCoordinator:
     async def handle_fade_lights(self, call: ServiceCall) -> None:
         """Handle the fade_lights service call."""
         # Remove target fields (entity_id, device_id, area_id, etc.) from service data
-        # before parsing fade parameters - these are handled separately via TargetSelection
+        # before parsing fade parameters - these are handled separately via target resolution
         service_data = remove_entity_service_fields(call)
         fade_params = FadeParams.from_service_data(service_data)
 
@@ -140,8 +137,7 @@ class FadeCoordinator:
 
     def resolve_target_entity_ids(self, call: ServiceCall) -> list[str]:
         """Resolve service call targets to a list of light entity IDs."""
-        target_selection = TargetSelection(call.data)
-        selected = async_extract_referenced_entity_ids(self.hass, target_selection)
+        selected = extract_referenced_entity_ids(self.hass, call)
         all_ids = selected.referenced | selected.indirectly_referenced
         light_prefix = f"{LIGHT_DOMAIN}."
         return [eid for eid in all_ids if eid.startswith(light_prefix)]
@@ -151,8 +147,7 @@ class FadeCoordinator:
 
         Returns entity IDs that are available and support the requested fade parameters.
         """
-        target_selection = TargetSelection(call.data)
-        selected = async_extract_referenced_entity_ids(self.hass, target_selection)
+        selected = extract_referenced_entity_ids(self.hass, call)
         all_entity_ids = selected.referenced | selected.indirectly_referenced
 
         expanded_entities = self._expand_light_groups(list(all_entity_ids))
