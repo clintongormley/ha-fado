@@ -98,8 +98,10 @@ def _normalize_only_if(value: object) -> str | None:
         return None
     if isinstance(value, bool):
         return STATE_ON if value else STATE_OFF
-    if isinstance(value, str) and value.lower() in (STATE_ON, STATE_OFF):
-        return value.lower()
+    if isinstance(value, str):
+        normalised = value.lower()
+        if normalised in (STATE_ON, STATE_OFF):
+            return normalised
     raise vol.Invalid(f"only_if must be one of: on, off (got {value!r})")
 
 
