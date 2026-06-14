@@ -60,9 +60,11 @@ class TestGetUnconfiguredLights:
             result = _get_unconfigured_lights(hass)
         assert result == set()
 
-    def test_returns_unconfigured_light(self, hass: HomeAssistant) -> None:
+    async def test_returns_unconfigured_light(self, hass: HomeAssistant) -> None:
         """Test returns light missing min_delay_ms."""
         _make_coordinator(hass)
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
@@ -75,7 +77,7 @@ class TestGetUnconfiguredLights:
 
         assert result == {"light.bedroom"}
 
-    def test_excludes_configured_light(self, hass: HomeAssistant) -> None:
+    async def test_excludes_configured_light(self, hass: HomeAssistant) -> None:
         """Test excludes light with all required fields configured."""
         _make_coordinator(
             hass,
@@ -87,6 +89,8 @@ class TestGetUnconfiguredLights:
                 }
             },
         )
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
@@ -114,9 +118,11 @@ class TestGetUnconfiguredLights:
 
         assert result == set()
 
-    def test_excludes_excluded_light(self, hass: HomeAssistant) -> None:
+    async def test_excludes_excluded_light(self, hass: HomeAssistant) -> None:
         """Test excludes lights marked as excluded."""
         _make_coordinator(hass, {"light.bedroom": {"exclude": True}})
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
@@ -144,12 +150,111 @@ class TestGetUnconfiguredLights:
 
         assert result == set()
 
+    async def test_excludes_unavailable_light_group(self, hass: HomeAssistant) -> None:
+        """An unavailable light group is not counted as unconfigured.
+
+        When every member of a group is unavailable the group's own state
+        becomes ``unavailable`` and HA strips its attributes, so the member-list
+        ``entity_id`` attribute used for group detection is gone. The group must
+        still be skipped rather than mistaken for an unconfigured plain light.
+        """
+        _make_coordinator(hass)
+        hass.states.async_set("light.group", "unavailable")
+        await hass.async_block_till_done()
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.group"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with patch("custom_components.fado.notifications.er.async_get") as mock_er:
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            result = _get_unconfigured_lights(hass)
+
+        assert result == set()
+
+    async def test_excludes_unavailable_light(self, hass: HomeAssistant) -> None:
+        """An unavailable plain light is not counted as unconfigured."""
+        _make_coordinator(hass)
+        hass.states.async_set("light.bedroom", "unavailable")
+        await hass.async_block_till_done()
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.bedroom"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with patch("custom_components.fado.notifications.er.async_get") as mock_er:
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            result = _get_unconfigured_lights(hass)
+
+        assert result == set()
+
+    def test_excludes_light_without_state(self, hass: HomeAssistant) -> None:
+        """A registered light with no live state is not counted.
+
+        A group whose providing integration isn't currently set up (startup
+        race, reload, or setup-retry) stays in the registry but is absent from
+        the state machine. With no State we can't read its member-list attribute
+        to recognise it as a group, so it must not be mistaken for an
+        unconfigured plain light.
+        """
+        _make_coordinator(hass)
+        assert hass.states.get("light.ghost") is None
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.ghost"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with patch("custom_components.fado.notifications.er.async_get") as mock_er:
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            result = _get_unconfigured_lights(hass)
+
+        assert result == set()
+
+    async def test_excludes_available_light_group(self, hass: HomeAssistant) -> None:
+        """Regression guard: an available group is still skipped via its attribute."""
+        _make_coordinator(hass)
+        hass.states.async_set("light.group", "on", {"entity_id": ["light.a", "light.b"]})
+        await hass.async_block_till_done()
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.group"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with patch("custom_components.fado.notifications.er.async_get") as mock_er:
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            result = _get_unconfigured_lights(hass)
+
+        assert result == set()
+
+    async def test_counts_available_unconfigured_light(self, hass: HomeAssistant) -> None:
+        """Regression guard: an available, unconfigured plain light is still counted."""
+        _make_coordinator(hass)
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
+
+        mock_entry = MagicMock()
+        mock_entry.entity_id = "light.bedroom"
+        mock_entry.domain = LIGHT_DOMAIN
+        mock_entry.disabled = False
+
+        with patch("custom_components.fado.notifications.er.async_get") as mock_er:
+            mock_er.return_value.entities.values.return_value = [mock_entry]
+            result = _get_unconfigured_lights(hass)
+
+        assert result == {"light.bedroom"}
+
 
 class TestNotifyUnconfiguredLights:
     """_notify_unconfigured_lights drives the issue registry."""
 
     async def test_creates_issue_when_unconfigured(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
         mock_entry.domain = LIGHT_DOMAIN
@@ -175,6 +280,9 @@ class TestNotifyUnconfiguredLights:
 
     async def test_issue_count_placeholder_plural(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
+        hass.states.async_set("light.bedroom", "on")
+        hass.states.async_set("light.kitchen", "on")
+        await hass.async_block_till_done()
         mock_entries = []
         for name in ["bedroom", "kitchen"]:
             entry = MagicMock()
@@ -204,6 +312,8 @@ class TestNotifyUnconfiguredLights:
                 }
             },
         )
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
         mock_entry.domain = LIGHT_DOMAIN
@@ -326,7 +436,7 @@ class TestSetupNotification:
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
             patch("custom_components.fado._apply_stored_log_level"),
         ):
-            hass.http = None
+            hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
         # Called immediately during setup since HA is already running
@@ -573,6 +683,35 @@ class TestPruneStaleStorage:
         assert "light.kitchen" in coordinator.data
         coordinator.store.async_save.assert_not_called()  # type: ignore[union-attr]
 
+    async def test_keeps_unavailable_light_config(self, hass: HomeAssistant) -> None:
+        """An unavailable light keeps its stored config.
+
+        Config is only removed when the entity is actually deleted (absent from
+        both the registry AND the state machine). An unavailable light still has
+        a state, so its config is preserved even if a registry lookup misses it.
+        This guards the guarantee that skipping unavailable lights elsewhere
+        never purges their configuration.
+        """
+        coordinator = _make_coordinator(
+            hass,
+            {"light.offline": {"min_delay_ms": 100}},
+        )
+        hass.states.async_set("light.offline", "unavailable")
+        await hass.async_block_till_done()
+
+        # Registry lookup misses it; the unavailable *state* must still protect it.
+        mock_registry = MagicMock()
+        mock_registry.async_get = lambda eid: None
+
+        with patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ):
+            await coordinator.async_prune_stale_storage()
+
+        assert "light.offline" in coordinator.data
+        coordinator.store.async_save.assert_not_called()  # type: ignore[union-attr]
+
 
 class TestSaveConfigNotification:
     """Test notification after saving config."""
@@ -683,6 +822,8 @@ class TestNotificationsDisabled:
             },
         )
         entry.add_to_hass(hass)
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
@@ -709,6 +850,8 @@ class TestNotificationsDisabled:
             },
         )
         entry.add_to_hass(hass)
+        hass.states.async_set("light.bedroom", "on")
+        await hass.async_block_till_done()
 
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"

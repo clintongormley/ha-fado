@@ -11,7 +11,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
-from homeassistant.const import ATTR_ENTITY_ID
+from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     area_registry as ar,
@@ -75,8 +75,20 @@ async def async_get_lights(hass: HomeAssistant) -> dict[str, Any]:
         if entity.disabled_by is not None:
             continue
 
-        # Skip light groups (they have entity_id in state attributes)
         state = hass.states.get(entity.entity_id)
+
+        # Skip unavailable lights: we can't act on them, and an unavailable
+        # group loses its member-list `entity_id` attribute (HA strips
+        # attributes when unavailable), so it would otherwise show up here as a
+        # plain light. A registered light with no state yet is still shown so it
+        # can be configured (a group with no state at all can't be told apart
+        # from a plain light here, but resolves once it has a state). Its stored
+        # config is preserved regardless (only removed when the entity is
+        # actually deleted from the registry).
+        if state is not None and state.state == STATE_UNAVAILABLE:
+            continue
+
+        # Skip light groups (they have entity_id in state attributes)
         if state and "entity_id" in state.attributes:
             continue
 

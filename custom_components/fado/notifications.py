@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
@@ -39,6 +40,8 @@ def _get_unconfigured_lights(hass: HomeAssistant) -> set[str]:
 
     A light is considered unconfigured if:
     - It is enabled (not disabled)
+    - It is currently present and available (has a state that is not
+      ``unavailable``)
     - It is NOT a light group (has entity_id in state attributes)
     - It is NOT excluded (exclude: true in storage)
     - It is missing any required config field (currently just min_delay_ms)
@@ -62,9 +65,19 @@ def _get_unconfigured_lights(hass: HomeAssistant) -> set[str]:
 
         entity_id = entry.entity_id
 
-        # Skip light groups (they have entity_id in state attributes)
         state = hass.states.get(entity_id)
-        if state and "entity_id" in state.attributes:
+
+        # Skip lights we can't act on: those with no live state (registered but
+        # absent from the state machine — integration starting up, reloading or
+        # failing setup) and those that are unavailable. An unavailable group
+        # also loses its member-list `entity_id` attribute (HA strips attributes
+        # when unavailable), so without this it would masquerade as a plain
+        # light and be miscounted as unconfigured.
+        if state is None or state.state == STATE_UNAVAILABLE:
+            continue
+
+        # Skip light groups (they have entity_id in state attributes)
+        if "entity_id" in state.attributes:
             continue
 
         config = storage_data.get(entity_id, {})
