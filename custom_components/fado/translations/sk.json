@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Zobraziť panel v bočnom paneli",
-          "notifications_enabled": "Povoliť oznámenia",
+          "notifications_enabled": "Upozorňovať na nenakonfigurované svetlá",
           "dashboard_url": "URL nástenky"
         },
         "data_description": {
           "show_sidebar_panel": "Zobrazí rozhranie Fado ako panel v bočnom paneli viditeľný pre všetkých používateľov. Vypnite, ak uprednostňujete použitie Lovelace nástenky s custom:fado-card.",
-          "notifications_enabled": "Zobrazovať trvalé oznámenia pri detekcii nenakonfigurovaných svetiel.",
-          "dashboard_url": "URL cesta k vašej vlastnej Fado nástenke (napr. /lovelace-fado/0). Používa sa v odkazoch oznámení, keď je bočný panel vypnutý. Ponechajte prázdne pre vynechanie odkazu."
+          "notifications_enabled": "Vytvoriť opravu v Nastavenia → Systém → Opravy, keď sú zistené svetlá bez konfigurácie Fado.",
+          "dashboard_url": "URL cesta k vašej vlastnej Fado nástenke (napr. /lovelace-fado/0). Používa sa ako odkaz opravy, keď je bočný panel vypnutý. Ponechajte prázdne pre vynechanie odkazu."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Svetlá vyžadujú konfiguráciu",
+      "description": "Zistených {count} svetiel bez konfigurácie Fado. Otvorte Fado a nakonfigurujte ich, aby prelínanie fungovalo plynulo."
     }
   },
   "config": {

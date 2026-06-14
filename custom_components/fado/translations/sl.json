@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Prikaži stransko ploščo",
-          "notifications_enabled": "Omogoči obvestila",
+          "notifications_enabled": "Obveščaj o nenastavljenih lučeh",
           "dashboard_url": "URL nadzorne plošče"
         },
         "data_description": {
           "show_sidebar_panel": "Prikaže vmesnik Fado kot stransko ploščo, vidno vsem uporabnikom. Onemogočite, če raje uporabljate Lovelace nadzorno ploščo s custom:fado-card.",
-          "notifications_enabled": "Prikaži trajna obvestila ob zaznavi nenastavljenih luči.",
-          "dashboard_url": "URL pot do vaše prilagojene Fado nadzorne plošče (npr. /lovelace-fado/0). Uporablja se v povezavah obvestil, ko je stranska plošča onemogočena. Pustite prazno, da izpustite povezavo."
+          "notifications_enabled": "Ustvari popravilo v Nastavitve → Sistem → Popravila, ko so zaznane luči brez konfiguracije Fado.",
+          "dashboard_url": "URL pot do vaše prilagojene Fado nadzorne plošče (npr. /lovelace-fado/0). Uporablja se kot povezava popravila, ko je stranska plošča onemogočena. Pustite prazno, da izpustite povezavo."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Luči potrebujejo konfiguracijo",
+      "description": "Zaznanih je {count} luči brez konfiguracije Fado. Odprite Fado in jih nastavite, da bo prehajanje delovalo gladko."
     }
   },
   "config": {

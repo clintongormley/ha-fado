@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Afficher le panneau latéral",
-          "notifications_enabled": "Activer les notifications",
+          "notifications_enabled": "Notifier les lumières non configurées",
           "dashboard_url": "URL du tableau de bord"
         },
         "data_description": {
           "show_sidebar_panel": "Affiche l'interface Fado comme un panneau latéral visible par tous les utilisateurs. Désactivez cette option si vous préférez utiliser un tableau de bord Lovelace avec custom:fado-card.",
-          "notifications_enabled": "Afficher des notifications persistantes lorsque des lumières non configurées sont détectées.",
-          "dashboard_url": "Chemin URL de votre tableau de bord Fado personnalisé (ex. /lovelace-fado/0). Utilisé dans les liens de notification lorsque le panneau latéral est désactivé. Laissez vide pour omettre le lien."
+          "notifications_enabled": "Créer une réparation sous Paramètres → Système → Réparations lorsque des lumières sont détectées sans configuration Fado.",
+          "dashboard_url": "Chemin URL de votre tableau de bord Fado personnalisé (ex. /lovelace-fado/0). Utilisé comme lien de la réparation lorsque le panneau latéral est désactivé. Laissez vide pour omettre le lien."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Les lumières nécessitent une configuration",
+      "description": "{count} lumière(s) détectée(s) sans configuration Fado. Ouvrez Fado pour les configurer afin que les transitions fonctionnent en douceur."
     }
   },
   "config": {

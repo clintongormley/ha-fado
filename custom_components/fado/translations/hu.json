@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Oldalsáv panel megjelenítése",
-          "notifications_enabled": "Értesítések engedélyezése",
+          "notifications_enabled": "Értesítés a nem konfigurált lámpákról",
           "dashboard_url": "Vezérlőpult URL"
         },
         "data_description": {
           "show_sidebar_panel": "A Fado felületet oldalsáv panelként jeleníti meg, amely minden felhasználó számára látható. Kapcsolja ki, ha inkább Lovelace vezérlőpultot szeretne használni a custom:fado-card kártyával.",
-          "notifications_enabled": "Állandó értesítések megjelenítése, ha nem konfigurált lámpákat észlel.",
-          "dashboard_url": "URL útvonal az egyéni Fado vezérlőpulthoz (pl. /lovelace-fado/0). Az értesítési hivatkozásokban használatos, ha az oldalsáv panel ki van kapcsolva. Hagyja üresen a hivatkozás kihagyásához."
+          "notifications_enabled": "Javítás létrehozása a Beállítások → Rendszer → Javítások menüben, ha Fado konfiguráció nélküli lámpákat észlel.",
+          "dashboard_url": "URL útvonal az egyéni Fado vezérlőpulthoz (pl. /lovelace-fado/0). A javítás hivatkozásaként használatos, ha az oldalsáv panel ki van kapcsolva. Hagyja üresen a hivatkozás kihagyásához."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "A lámpák konfigurációt igényelnek",
+      "description": "{count} lámpa észlelve Fado konfiguráció nélkül. Nyissa meg a Fado-t a konfigurálásukhoz, hogy az átúsztatás zökkenőmentesen működjön."
     }
   },
   "config": {

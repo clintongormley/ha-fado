@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Mostrar painel lateral",
-          "notifications_enabled": "Ativar notificações",
+          "notifications_enabled": "Notificar sobre luzes não configuradas",
           "dashboard_url": "URL do painel"
         },
         "data_description": {
           "show_sidebar_panel": "Mostra a interface do Fado como um painel lateral visível para todos os utilizadores. Desative se preferir usar um painel Lovelace com custom:fado-card.",
-          "notifications_enabled": "Mostrar notificações persistentes quando são detetadas luzes não configuradas.",
-          "dashboard_url": "Caminho URL para o seu painel Fado personalizado (ex. /lovelace-fado/0). Usado nos links de notificação quando o painel lateral está desativado. Deixe em branco para omitir o link."
+          "notifications_enabled": "Criar uma reparação em Definições → Sistema → Reparações quando forem detetadas luzes sem configuração Fado.",
+          "dashboard_url": "Caminho URL para o seu painel Fado personalizado (ex. /lovelace-fado/0). Usado como link da reparação quando o painel lateral está desativado. Deixe em branco para omitir o link."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "As luzes precisam de configuração",
+      "description": "{count} luz(es) detetada(s) sem configuração Fado. Abra o Fado para as configurar para que as transições funcionem sem problemas."
     }
   },
   "config": {

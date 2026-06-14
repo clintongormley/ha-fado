@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Vis sidepanel",
-          "notifications_enabled": "Aktiver notifikationer",
+          "notifications_enabled": "Underret om ukonfigurerede lys",
           "dashboard_url": "Dashboard-URL"
         },
         "data_description": {
           "show_sidebar_panel": "Vis Fado-brugerfladen som et sidepanel synligt for alle brugere. Deaktiver dette, hvis du foretrækker at bruge et Lovelace-dashboard med custom:fado-card i stedet.",
-          "notifications_enabled": "Vis vedvarende notifikationer, når ukonfigurerede lys opdages.",
-          "dashboard_url": "URL-sti til dit brugerdefinerede Fado-dashboard (f.eks. /lovelace-fado/0). Bruges i notifikationslinks, når sidepanelet er deaktiveret. Lad stå tomt for at udelade linket."
+          "notifications_enabled": "Opret en reparation under Indstillinger → System → Reparationer, når der opdages lys uden Fado-konfiguration.",
+          "dashboard_url": "URL-sti til dit brugerdefinerede Fado-dashboard (f.eks. /lovelace-fado/0). Bruges som reparationens link, når sidepanelet er deaktiveret. Lad stå tomt for at udelade linket."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Lys kræver konfiguration",
+      "description": "{count} lys registreret uden Fado-konfiguration. Åbn Fado for at konfigurere dem, så toning fungerer problemfrit."
     }
   },
   "config": {

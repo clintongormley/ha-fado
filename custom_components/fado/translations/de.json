@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Seitenleistenpanel anzeigen",
-          "notifications_enabled": "Benachrichtigungen aktivieren",
+          "notifications_enabled": "Über unkonfigurierte Lichter benachrichtigen",
           "dashboard_url": "Dashboard-URL"
         },
         "data_description": {
           "show_sidebar_panel": "Zeigt die Fado-Oberfläche als Seitenleistenpanel an, das für alle Benutzer sichtbar ist. Deaktivieren Sie dies, wenn Sie stattdessen ein Lovelace-Dashboard mit der custom:fado-card verwenden möchten.",
-          "notifications_enabled": "Dauerhafte Benachrichtigungen anzeigen, wenn unkonfigurierte Lichter erkannt werden.",
-          "dashboard_url": "URL-Pfad zu Ihrem benutzerdefinierten Fado-Dashboard (z.B. /lovelace-fado/0). Wird in Benachrichtigungslinks verwendet, wenn das Seitenleistenpanel deaktiviert ist. Leer lassen, um den Link wegzulassen."
+          "notifications_enabled": "Eine Reparatur unter Einstellungen → System → Reparaturen erstellen, wenn Lichter ohne Fado-Konfiguration erkannt werden.",
+          "dashboard_url": "URL-Pfad zu Ihrem benutzerdefinierten Fado-Dashboard (z.B. /lovelace-fado/0). Wird als Link der Reparatur verwendet, wenn das Seitenleistenpanel deaktiviert ist. Leer lassen, um den Link wegzulassen."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Lichter benötigen Konfiguration",
+      "description": "{count} Licht(er) ohne Fado-Konfiguration erkannt. Öffnen Sie Fado, um sie zu konfigurieren, damit das Überblenden reibungslos funktioniert."
     }
   },
   "config": {
