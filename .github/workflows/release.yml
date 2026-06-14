@@ -33,7 +33,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract and validate version from tag
         id: version
@@ -83,7 +83,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
 
@@ -140,7 +140,7 @@ jobs:
       - name: Open next-minor bump PR
         id: cpr
         if: steps.bump.outputs.do_bump == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           # PAT (not GITHUB_TOKEN) so the PR triggers the required status checks
           # — see the "Ensure release token is configured" step above.
