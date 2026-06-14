@@ -67,10 +67,13 @@ if [ -n "$py_changed" ]; then
 fi
 
 # --- Step 2: i18n drift (when strings/translations or any Python changed) ---
+# --strict: a string added to strings.json but not yet translated into every
+# language fails the push, so a new key can't slip through to a release
+# English-only (the default check only errors on *stale* keys).
 if [ -n "$i18n_changed$py_changed" ]; then
   step "Translations"
-  if python3 "$ROOT/scripts/check_translations.py"; then pass "Translations"
-  else fail "Translations — see above"; fi
+  if python3 "$ROOT/scripts/check_translations.py" --strict; then pass "Translations"
+  else fail "Translations — translate the missing keys (or git push --no-verify to bypass)"; fi
 fi
 
 # --- Step 3: docs drift ---
