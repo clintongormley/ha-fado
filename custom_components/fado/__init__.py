@@ -168,6 +168,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN] = coordinator
 
+    # One-time cleanup: drop the pre-Repairs persistent notification so an
+    # in-place reload after upgrade doesn't show it alongside the new issue.
+    from homeassistant.components import persistent_notification  # noqa: PLC0415
+
+    persistent_notification.async_dismiss(hass, LEGACY_NOTIFICATION_ID)
+
     async def handle_fade_lights(call: ServiceCall) -> None:
         """Service handler wrapper."""
         await coordinator.handle_fade_lights(call)

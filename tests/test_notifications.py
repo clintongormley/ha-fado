@@ -13,6 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.fado import async_setup_entry
 from custom_components.fado.const import (
     DOMAIN,
+    LEGACY_NOTIFICATION_ID,
     OPTION_DASHBOARD_URL,
     OPTION_NOTIFICATIONS_ENABLED,
     OPTION_SHOW_SIDEBAR,
@@ -722,3 +723,43 @@ class TestNotificationsDisabled:
 
         _, kwargs = mock_create.call_args
         assert kwargs["learn_more_url"] is None
+
+
+class TestUpgradeCleanup:
+    """Legacy persistent notification is cleaned up; issue cleared on removal."""
+
+    async def test_setup_dismisses_legacy_notification(self, hass: HomeAssistant) -> None:
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fado.async_register_websocket_api"),
+            patch("custom_components.fado._notify_unconfigured_lights"),
+            patch("custom_components.fado._apply_stored_log_level"),
+            patch("homeassistant.components.persistent_notification.async_dismiss") as mock_dismiss,
+        ):
+            hass.http = None  # type: ignore[assignment]
+            await async_setup_entry(hass, mock_entry)
+
+        mock_dismiss.assert_any_call(hass, LEGACY_NOTIFICATION_ID)
+
+    async def test_remove_entry_deletes_issue(self, hass: HomeAssistant) -> None:
+        from custom_components.fado import async_remove_entry
+
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            UNCONFIGURED_ISSUE_ID,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=UNCONFIGURED_ISSUE_ID,
+        )
+        assert ir.async_get(hass).async_get_issue(DOMAIN, UNCONFIGURED_ISSUE_ID) is not None
+
+        entry = MockConfigEntry(domain=DOMAIN)
+        entry.add_to_hass(hass)
+        await async_remove_entry(hass, entry)
+
+        assert ir.async_get(hass).async_get_issue(DOMAIN, UNCONFIGURED_ISSUE_ID) is None
