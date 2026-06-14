@@ -366,6 +366,10 @@ class FadeCoordinator:
         _LOGGER.debug("%s: Applying from step: %s", entity_id, fade.from_step)
         await self._track_and_apply_step(entity_id, fade.from_step)
         entity = self.get_or_create_entity(entity_id)
+        # Wait for the discrete from-step to settle (point-matched) before the fade
+        # loop enables moving-anchor mode, so its late state event isn't misread as
+        # manual intervention. Bounded by wait_for_expected_state_flush's ~5s timeout
+        # (degrades gracefully: on timeout the fade simply proceeds).
         await entity.wait_for_expected_state_flush()
 
     async def _run_fade_loop(
@@ -891,17 +895,17 @@ class FadeCoordinator:
         Seeds per-dimension anchors from the fade's start values so the first
         step has a window (not a point) and lagging/coalesced device reports match.
         """
-        ent = self.get_or_create_entity(entity_id)
+        entity = self.get_or_create_entity(entity_id)
         if native_transitions:
-            if ent.expected_state is None:
-                ent.expected_state = ExpectedState(entity_id=entity_id)
-            ent.expected_state.set_moving_anchor(
+            if entity.expected_state is None:
+                entity.expected_state = ExpectedState(entity_id=entity_id)
+            entity.expected_state.set_moving_anchor(
                 brightness=fade.anchor_brightness,
                 hs_color=fade.anchor_hs,
                 color_temp_kelvin=fade.anchor_color_temp_kelvin,
             )
-        elif ent.expected_state is not None:
-            ent.expected_state.clear_moving_anchor()
+        elif entity.expected_state is not None:
+            entity.expected_state.clear_moving_anchor()
 
     def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:
         """Register expected values before making a service call."""
