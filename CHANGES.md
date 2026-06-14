@@ -44,3 +44,15 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
   enable/disable option is unchanged in effect; its label is now "Notify about
   unconfigured lights". The repair text is fully translated across all supported
   languages.
+
+### Fixed
+
+- **Unavailable light groups are no longer flagged as needing configuration.**
+  When every member of a light group is unavailable, the group's own state
+  becomes `unavailable` and Home Assistant strips its attributes — including the
+  member list Fado uses to recognise it as a group, so the group looked like an
+  ordinary unconfigured light. Fado now skips unavailable lights both when
+  counting unconfigured lights for the Repairs issue and when listing lights in
+  the configuration panel, so such a group is no longer mistaken for one. Any
+  existing configuration for an unavailable light is preserved until the light
+  is actually removed.

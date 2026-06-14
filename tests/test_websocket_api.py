@@ -156,6 +156,8 @@ async def test_get_lights_excludes_light_groups(
     light_group.entity_id = "light.living_room_group"
     light_group.name = "Living Room Group"
     light_group.area_id = None
+    light_group.device_id = None
+    light_group.disabled_by = None
     light_group.platform = "group"
 
     # Set state with entity_id attribute (indicating it's a group)
@@ -182,6 +184,80 @@ async def test_get_lights_excludes_light_groups(
     for area in result["areas"]:
         all_lights.extend(area["lights"])
 
+    assert not any(lt["entity_id"] == "light.living_room_group" for lt in all_lights)
+
+
+async def test_get_lights_excludes_unavailable_lights(
+    hass: HomeAssistant,
+    init_integration,
+) -> None:
+    """An unavailable plain light is not shown in the panel."""
+    from custom_components.fado.websocket_api import async_get_lights
+
+    entity = MagicMock()
+    entity.entity_id = "light.offline"
+    entity.name = "Offline"
+    entity.original_name = "Offline"
+    entity.area_id = None
+    entity.device_id = None
+    entity.disabled_by = None
+    entity.platform = "hue"
+
+    hass.states.async_set("light.offline", "unavailable")
+
+    with (
+        patch(
+            "homeassistant.helpers.area_registry.async_get",
+            return_value=MagicMock(areas={}, async_get_area=lambda aid: None),
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(entities=MagicMock(values=lambda: [entity])),
+        ),
+    ):
+        result = await async_get_lights(hass)
+
+    all_lights = [lt for area in result["areas"] for lt in area["lights"]]
+    assert not any(lt["entity_id"] == "light.offline" for lt in all_lights)
+
+
+async def test_get_lights_excludes_unavailable_light_group(
+    hass: HomeAssistant,
+    init_integration,
+) -> None:
+    """An unavailable light group is not shown as a plain light.
+
+    When unavailable, HA strips the member-list ``entity_id`` attribute used to
+    detect groups, so without an availability guard the group would appear in
+    the panel as a configurable plain light.
+    """
+    from custom_components.fado.websocket_api import async_get_lights
+
+    group = MagicMock()
+    group.entity_id = "light.living_room_group"
+    group.name = "Living Room Group"
+    group.original_name = "Living Room Group"
+    group.area_id = None
+    group.device_id = None
+    group.disabled_by = None
+    group.platform = "group"
+
+    # Unavailable: the member-list entity_id attribute is gone.
+    hass.states.async_set("light.living_room_group", "unavailable")
+
+    with (
+        patch(
+            "homeassistant.helpers.area_registry.async_get",
+            return_value=MagicMock(areas={}, async_get_area=lambda aid: None),
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(entities=MagicMock(values=lambda: [group])),
+        ),
+    ):
+        result = await async_get_lights(hass)
+
+    all_lights = [lt for area in result["areas"] for lt in area["lights"]]
     assert not any(lt["entity_id"] == "light.living_room_group" for lt in all_lights)
 
 
