@@ -216,9 +216,9 @@ fade_lights:
           selector:
             select:
               options:
-                - label: "On (only lights currently on)"
+                - label: On (only lights currently on)
                   value: "on"
-                - label: "Off (only lights currently off)"
+                - label: Off (only lights currently off)
                   value: "off"
 
 exclude_lights:
