@@ -154,3 +154,31 @@ class TestResolveTargetsOnlyIf:
         )
         faded = await self._faded_entities(hass, [mock_light_entity, "light.unknown_state"], "on")
         assert faded == {mock_light_entity}
+
+    async def test_only_if_filters_group_members_individually(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_group: str,  # group of mock_light_entity (on) + mock_light_off (off)
+        mock_light_entity: str,
+        mock_light_off: str,
+    ) -> None:
+        # The group is expanded to its members, then the filter applies per-member.
+        faded = await self._faded_entities(hass, [mock_light_group], "on")
+        assert faded == {mock_light_entity}
+
+    async def test_only_if_off_excludes_unavailable(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_off: str,
+    ) -> None:
+        # An unavailable light is skipped before the only_if check, so even
+        # only_if="off" does not fade it (it is not a usable "off" target).
+        hass.states.async_set(
+            "light.unavail",
+            "unavailable",
+            {ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
+        )
+        faded = await self._faded_entities(hass, [mock_light_off, "light.unavail"], "off")
+        assert faded == {mock_light_off}
