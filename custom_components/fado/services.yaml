@@ -206,6 +206,20 @@ fade_lights:
             number:
               min: 1
               max: 255
+        only_if:
+          name: Only if state
+          description: >-
+            Only fade lights currently in this state. 'On' affects only lights
+            that are already on; 'off' affects only lights that are off. Leave
+            unset to fade all targeted lights.
+          example: "on"
+          selector:
+            select:
+              options:
+                - label: "On (only lights currently on)"
+                  value: "on"
+                - label: "Off (only lights currently off)"
+                  value: "off"
 
 exclude_lights:
   name: Exclude lights
