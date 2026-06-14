@@ -123,6 +123,10 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
 
     if unconfigured:
         link_url = _get_notification_link_url(hass)
+        # Use the homeassistant:// scheme so the Repairs dialog navigates in-app
+        # (and closes) instead of opening the panel in a new tab. The frontend
+        # rewrites homeassistant://<path> -> /<path>. Empty link -> no button.
+        learn_more_url = f"homeassistant://{link_url.lstrip('/')}" if link_url else None
         ir.async_create_issue(
             hass,
             DOMAIN,
@@ -131,7 +135,7 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
             severity=ir.IssueSeverity.WARNING,
             translation_key=UNCONFIGURED_ISSUE_ID,
             translation_placeholders={"count": str(len(unconfigured))},
-            learn_more_url=link_url or None,
+            learn_more_url=learn_more_url,
         )
     else:
         ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)

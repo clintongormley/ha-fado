@@ -170,7 +170,7 @@ class TestNotifyUnconfiguredLights:
         assert kwargs["severity"] == ir.IssueSeverity.WARNING
         assert kwargs["translation_key"] == UNCONFIGURED_ISSUE_ID
         assert kwargs["translation_placeholders"] == {"count": "1"}
-        assert kwargs["learn_more_url"] == "/fado"
+        assert kwargs["learn_more_url"] == "homeassistant://fado"
 
     async def test_issue_count_placeholder_plural(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
@@ -696,7 +696,7 @@ class TestNotificationsDisabled:
             await _notify_unconfigured_lights(hass)
 
         _, kwargs = mock_create.call_args
-        assert kwargs["learn_more_url"] == "/lovelace-fado/0"
+        assert kwargs["learn_more_url"] == "homeassistant://lovelace-fado/0"
 
     async def test_sidebar_disabled_no_url_no_link(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
