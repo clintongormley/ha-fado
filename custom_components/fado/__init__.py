@@ -56,7 +56,6 @@ from .const import (
     DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
     EVENT_CONFIG_UPDATED,
-    LEGACY_NOTIFICATION_ID,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
@@ -72,7 +71,7 @@ from .const import (
     VALID_EASING,
 )
 from .coordinator import FadeCoordinator
-from .notifications import _notify_unconfigured_lights
+from .notifications import _dismiss_legacy_notification, _notify_unconfigured_lights
 from .websocket_api import async_register_websocket_api
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -168,11 +167,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN] = coordinator
 
-    # One-time cleanup: drop the pre-Repairs persistent notification so an
-    # in-place reload after upgrade doesn't show it alongside the new issue.
-    from homeassistant.components import persistent_notification  # noqa: PLC0415
-
-    persistent_notification.async_dismiss(hass, LEGACY_NOTIFICATION_ID)
+    # Drop the pre-Repairs persistent notification so an in-place reload after
+    # upgrade doesn't show it alongside the new issue.
+    _dismiss_legacy_notification(hass)
 
     async def handle_fade_lights(call: ServiceCall) -> None:
         """Service handler wrapper."""
@@ -393,6 +390,4 @@ async def async_remove_entry(hass: HomeAssistant, _entry: ConfigEntry) -> None:
 
     # Clean up the pre-Repairs persistent notification for upgraders that remove
     # the entry without restarting HA.
-    from homeassistant.components import persistent_notification  # noqa: PLC0415
-
-    persistent_notification.async_dismiss(hass, LEGACY_NOTIFICATION_ID)
+    _dismiss_legacy_notification(hass)

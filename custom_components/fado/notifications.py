@@ -18,6 +18,7 @@ from .const import (
     DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
+    LEGACY_NOTIFICATION_ID,
     OPTION_DASHBOARD_URL,
     OPTION_NOTIFICATIONS_ENABLED,
     OPTION_SHOW_SIDEBAR,
@@ -139,3 +140,15 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
         )
     else:
         ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
+
+
+def _dismiss_legacy_notification(hass: HomeAssistant) -> None:
+    """Dismiss the pre-Repairs persistent notification (upgrade cleanup).
+
+    Idempotent no-op once the notification is gone — kept so an in-place reload
+    or entry removal after upgrade doesn't leave the old notification alongside
+    the new issue.
+    """
+    from homeassistant.components import persistent_notification  # noqa: PLC0415
+
+    persistent_notification.async_dismiss(hass, LEGACY_NOTIFICATION_ID)
