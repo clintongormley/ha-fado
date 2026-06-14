@@ -88,7 +88,19 @@ every check, so it should not survive a restart on its own.
 `ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)`, and also dismiss
 the legacy notification (`LEGACY_NOTIFICATION_ID`) for upgraders.
 
-### `strings.json` + `translations/*.json`
+### i18n: `strings.json` + all `translations/*.json`
+
+**Every user-facing string for the repair is internationalized** — there is no
+hardcoded English in Python (unlike today's notification, whose title and
+message are f-strings in `notifications.py`). The Python code passes only a
+`translation_key` and a `{count}` placeholder; HA renders the localized
+title/description.
+
+`strings.json` is the source of truth. `en.json` mirrors it. There are **25
+locale files** in `translations/` (en + 24 others); none currently have an
+`issues` section.
+
+Changes, applied to `strings.json` **and** every `translations/<lang>.json`:
 
 - Add an `issues` section:
 
@@ -101,15 +113,32 @@ the legacy notification (`LEGACY_NOTIFICATION_ID`) for upgraders.
   }
   ```
 
-  Keep the `{count}` placeholder; the exact copy may be polished during
+  Keep the `{count}` placeholder; exact copy may be polished during
   implementation but the title/description structure above is the contract.
-- Reword the two option strings that currently mention persistent
-  notifications / notification links to point at the Repairs dashboard
-  (Settings → System → Repairs). The option **key**
-  `notifications_enabled` is kept (no config-entry migration → no reset of
-  existing users' preference); only the human-facing label/description change.
-- Mirror the same changes into each `translations/<lang>.json` that already
-  carries these keys.
+  Placeholder substitution is plain `{count}` only (no ICU plural), so phrase
+  for count-independence — title is always plural ("Lights need
+  configuration"); description uses "light(s)" or each language's natural
+  phrasing. The old Python `light{'s' if count != 1 else ''}` pluralization is
+  dropped.
+
+- Reword the two existing option strings that mention persistent notifications
+  / notification links to point at the Repairs dashboard (Settings → System →
+  Repairs). This is a **content** change to already-present keys — the
+  key-based `check_translations.py` will NOT flag it, so the translated
+  *values* must be updated in every locale, not just `strings.json`/`en.json`.
+  The option **key** `notifications_enabled` is kept (no config-entry migration
+  → no reset of existing users' preference); only the human-facing
+  label/description change.
+
+**Translations must be complete.** The new `issues` block and the reworded
+option strings are translated into **all 25 locales** — this is a hard
+acceptance criterion for the change, not best-effort. `check_translations.py`
+treats missing keys as warnings only, so a green checker is necessary but **not
+sufficient**: completeness is verified by confirming every
+`translations/<lang>.json` carries a fully translated `issues.unconfigured_lights`
+block (title + description, `{count}` preserved) and updated option-string
+values. (Stale keys remain a hard error; this change removes no keys and keeps
+`notifications_enabled`, so no stale keys are introduced.)
 
 ### Tests (`test_notifications.py`)
 
