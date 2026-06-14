@@ -10,7 +10,12 @@ yet) are only WARNINGS — partial translations are normal and expected.
 Auto-detects the integration under custom_components/<component>/. Pass an
 explicit component dir as the first argument to override.
 
-Exit code: 1 if any stale keys are found, else 0.
+Pass --strict to also treat missing (untranslated) keys as errors, so an
+incomplete translation set fails the check (used by the pre-push hook to stop
+a new string reaching a release untranslated).
+
+Exit code: 1 if any stale keys are found (or, with --strict, any missing
+keys), else 0.
 """
 
 from __future__ import annotations
@@ -51,7 +56,9 @@ def find_component(root: Path) -> Path:
 
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
-    component = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else find_component(root)
+    strict = "--strict" in sys.argv[1:]
+    positional = [a for a in sys.argv[1:] if a != "--strict"]
+    component = Path(positional[0]).resolve() if positional else find_component(root)
 
     strings_file = component / "strings.json"
     if not strings_file.exists():
@@ -74,12 +81,25 @@ def main() -> int:
             for k in stale:
                 print(f"      {k}")
         if missing:
-            print(f"  ⚠ {path.name}: {len(missing)} untranslated key(s)")
+            marker = "✗" if strict else "⚠"
+            print(f"  {marker} {path.name}: {len(missing)} untranslated key(s)")
+            if strict:
+                had_error = True
 
     if had_error:
-        print("\ncheck_translations: stale keys found — remove them or fix strings.json")
+        if strict:
+            print(
+                "\ncheck_translations: stale or untranslated keys found (strict) — "
+                "translate the missing keys or fix strings.json"
+            )
+        else:
+            print("\ncheck_translations: stale keys found — remove them or fix strings.json")
         return 1
-    print("check_translations: no stale keys ✓")
+    print(
+        "check_translations: translations complete ✓"
+        if strict
+        else "check_translations: no stale keys ✓"
+    )
     return 0
 
 
