@@ -919,9 +919,10 @@ class FadeCoordinator:
             )
             return
         # Software fade: clear any anchor left over from a prior native fade on
-        # the (persisted) ExpectedState. Don't create one just to clear it.
-        entity = self.get_or_create_entity(entity_id)
-        if entity.expected_state is not None:
+        # the (persisted) ExpectedState. Use get_entity (not get_or_create) — if
+        # there's no entity or ExpectedState yet, there's nothing to clear.
+        entity = self.get_entity(entity_id)
+        if entity is not None and entity.expected_state is not None:
             entity.expected_state.clear_moving_anchor()
 
     def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:

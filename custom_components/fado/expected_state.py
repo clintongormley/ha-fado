@@ -317,9 +317,9 @@ class ExpectedState:
             self.anchor_brightness if self.moving_anchor_active else expected.from_brightness
         )
 
-        # For native transitions, old state must be consistent with the
-        # transition range. This prevents stale expected values from matching
-        # unrelated events (e.g. off→on, or manual brightness change).
+        # When a range applies (native moving-anchor or legacy from_brightness), the
+        # old state must be consistent with that range. This prevents stale expected
+        # values from matching unrelated events (e.g. off→on, or manual brightness change).
         if range_from is not None:
             min_val = min(range_from, expected.brightness)
             max_val = max(range_from, expected.brightness)
