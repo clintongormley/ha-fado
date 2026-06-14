@@ -23,6 +23,7 @@ from custom_components.fado.coordinator import FadeCoordinator
 from custom_components.fado.notifications import (
     _get_notification_link_url,
     _get_unconfigured_lights,
+    _issue_learn_more_url,
     _notify_unconfigured_lights,
 )
 
@@ -763,3 +764,47 @@ class TestUpgradeCleanup:
         await async_remove_entry(hass, entry)
 
         assert ir.async_get(hass).async_get_issue(DOMAIN, UNCONFIGURED_ISSUE_ID) is None
+
+
+class TestIssueLearnMoreUrl:
+    """_issue_learn_more_url schemes relative paths and passes absolute URLs through."""
+
+    def test_relative_path_gets_homeassistant_scheme(self, hass: HomeAssistant) -> None:
+        """A relative sidebar path becomes an in-app homeassistant:// URL."""
+        entry = MockConfigEntry(domain=DOMAIN, options={OPTION_SHOW_SIDEBAR: True})
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) == "homeassistant://fado"
+
+    def test_relative_dashboard_url_gets_scheme(self, hass: HomeAssistant) -> None:
+        """A relative dashboard path becomes an in-app homeassistant:// URL."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_SHOW_SIDEBAR: False, OPTION_DASHBOARD_URL: "/lovelace-fado/0"},
+        )
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) == "homeassistant://lovelace-fado/0"
+
+    def test_absolute_url_passed_through(self, hass: HomeAssistant) -> None:
+        """A user-configured absolute dashboard URL is used as-is, not re-schemed."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_DASHBOARD_URL: "https://example.com/lovelace/0",
+            },
+        )
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) == "https://example.com/lovelace/0"
+
+    def test_blank_url_returns_none(self, hass: HomeAssistant) -> None:
+        """No configured link yields None (no learn-more button)."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_SHOW_SIDEBAR: False, OPTION_DASHBOARD_URL: ""},
+        )
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) is None

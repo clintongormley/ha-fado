@@ -97,6 +97,23 @@ def _get_notification_link_url(hass: HomeAssistant) -> str:
     return entry.options.get(OPTION_DASHBOARD_URL, DEFAULT_DASHBOARD_URL)
 
 
+def _issue_learn_more_url(hass: HomeAssistant) -> str | None:
+    """Build the Repairs issue's learn-more URL from the configured link.
+
+    A relative path is given the ``homeassistant://`` scheme so the Repairs
+    dialog navigates in-app and closes (the frontend rewrites
+    ``homeassistant://<path>`` -> ``/<path>``) instead of opening a new tab. An
+    already-absolute URL (a user-configured full dashboard URL) is used as-is.
+    No configured link yields ``None`` (the dialog shows no learn-more button).
+    """
+    link = _get_notification_link_url(hass)
+    if not link:
+        return None
+    if "://" in link:
+        return link
+    return f"homeassistant://{link.lstrip('/')}"
+
+
 async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
     """Check for unconfigured lights and create/clear the Repairs issue.
 
@@ -123,11 +140,6 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
     unconfigured = _get_unconfigured_lights(hass)
 
     if unconfigured:
-        link_url = _get_notification_link_url(hass)
-        # Use the homeassistant:// scheme so the Repairs dialog navigates in-app
-        # (and closes) instead of opening the panel in a new tab. The frontend
-        # rewrites homeassistant://<path> -> /<path>. Empty link -> no button.
-        learn_more_url = f"homeassistant://{link_url.lstrip('/')}" if link_url else None
         ir.async_create_issue(
             hass,
             DOMAIN,
@@ -136,7 +148,7 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
             severity=ir.IssueSeverity.WARNING,
             translation_key=UNCONFIGURED_ISSUE_ID,
             translation_placeholders={"count": str(len(unconfigured))},
-            learn_more_url=learn_more_url,
+            learn_more_url=_issue_learn_more_url(hass),
         )
     else:
         ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
