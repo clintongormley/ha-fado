@@ -380,13 +380,16 @@ class ExpectedState:
         if actual.hs_color is None or expected.hs_color is None:
             return None
 
-        # For native transitions, old state must be consistent with the range.
-        if expected.from_hs_color is not None:
+        # Native transitions: range 'from' corner is the live anchor (last reported
+        # value). Otherwise fall back to the entry's own from_hs_color.
+        range_from = self.anchor_hs if self.moving_anchor_active else expected.from_hs_color
+
+        if range_from is not None:
             if not (
                 old is not None
                 and old.hs_color is not None
                 and self._hs_range_match(
-                    expected.from_hs_color,
+                    range_from,
                     expected.hs_color,
                     old.hs_color,
                     hue_tolerance=HUE_TOLERANCE,
@@ -399,8 +402,14 @@ class ExpectedState:
             if self._hs_exact_match(expected.hs_color, actual.hs_color):
                 return "exact"
 
-            # Range match (intermediate value)
-            if self._hs_range_match(expected.from_hs_color, expected.hs_color, actual.hs_color):
+            # Range match (intermediate value; tolerance absorbs device jitter)
+            if self._hs_range_match(
+                range_from,
+                expected.hs_color,
+                actual.hs_color,
+                hue_tolerance=HUE_TOLERANCE,
+                sat_tolerance=SATURATION_TOLERANCE,
+            ):
                 return "range"
 
             return None
@@ -477,6 +486,8 @@ class ExpectedState:
         if actual.color_temp_kelvin is None or expected.color_temp_kelvin is None:
             return None
 
+        # Native transitions: range 'from' bound is the live anchor (last reported
+        # value). Otherwise fall back to the entry's own from_color_temp_kelvin.
         range_from = (
             self.anchor_color_temp_kelvin
             if self.moving_anchor_active

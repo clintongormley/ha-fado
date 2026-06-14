@@ -891,3 +891,48 @@ class TestMovingAnchorKelvin:
             )
             is None
         )
+
+
+class TestMovingAnchorHs:
+    """Moving-anchor matching for native-transition HS color fades."""
+
+    def test_lagging_hs_reports_match(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(hs_color=(100.0, 50.0))  # fade start
+        es.add(ExpectedValues(hs_color=(125.0, 65.0)))  # step 1 target
+        es.add(ExpectedValues(hs_color=(150.0, 80.0)))  # step 2 (final) target
+
+        m1 = es.match_and_remove(
+            ExpectedValues(hs_color=(110.0, 55.0)), old=ExpectedValues(hs_color=(100.0, 50.0))
+        )
+        assert m1 is not None
+        assert es.anchor_hs == (110.0, 55.0)
+
+        m2 = es.match_and_remove(
+            ExpectedValues(hs_color=(150.0, 80.0)), old=ExpectedValues(hs_color=(110.0, 55.0))
+        )
+        assert m2 is not None
+        assert es.is_empty
+
+    def test_hs_off_trajectory_report_detected(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(hs_color=(100.0, 50.0))
+        es.add(ExpectedValues(hs_color=(150.0, 80.0)))
+
+        # A wildly different colour (unrelated) is not on the trajectory -> manual.
+        m = es.match_and_remove(
+            ExpectedValues(hs_color=(300.0, 90.0)), old=ExpectedValues(hs_color=(100.0, 50.0))
+        )
+        assert m is None
+
+    def test_hs_wraparound_lagging_report_matches(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(hs_color=(350.0, 50.0))  # fade start near 360
+        es.add(ExpectedValues(hs_color=(10.0, 50.0)))  # target wraps past 0
+
+        # Intermediate 355 is on the short wraparound arc.
+        m = es.match_and_remove(
+            ExpectedValues(hs_color=(355.0, 50.0)), old=ExpectedValues(hs_color=(350.0, 50.0))
+        )
+        assert m is not None
+        assert es.anchor_hs == (355.0, 50.0)
