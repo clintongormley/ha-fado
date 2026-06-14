@@ -84,3 +84,81 @@ class TestFadeParamsOnlyIf:
         assert params.only_if == "on"
         assert params.has_target() is False
         assert params.has_from_target() is False
+
+
+class TestResolveTargetsOnlyIf:
+    """_resolve_fade_targets honours only_if. Uses an end-to-end service call so
+    the real targeting/expansion path runs."""
+
+    async def _faded_entities(
+        self, hass: HomeAssistant, target_ids: list[str], only_if: object
+    ) -> set[str]:
+        """Call fade_lights with the given target + only_if, return faded entity ids."""
+        data: dict = {"brightness_pct": 50}
+        if only_if is not None:
+            data[ATTR_ONLY_IF] = only_if
+        with patch(
+            "custom_components.fado.coordinator.FadeCoordinator._fade_light",
+            new_callable=AsyncMock,
+        ) as mock_fade:
+            await hass.services.async_call(
+                DOMAIN,
+                SERVICE_FADE_LIGHTS,
+                data,
+                target={"entity_id": target_ids},
+                blocking=True,
+            )
+            await hass.async_block_till_done()
+        return {c.args[0] for c in mock_fade.call_args_list}
+
+    async def test_only_if_on_keeps_only_on_lights(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,  # on
+        mock_light_off: str,  # off
+    ) -> None:
+        faded = await self._faded_entities(
+            hass, [mock_light_entity, mock_light_off], "on"
+        )
+        assert faded == {mock_light_entity}
+
+    async def test_only_if_off_keeps_only_off_lights(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+        mock_light_off: str,
+    ) -> None:
+        faded = await self._faded_entities(
+            hass, [mock_light_entity, mock_light_off], "off"
+        )
+        assert faded == {mock_light_off}
+
+    async def test_unset_only_if_keeps_all_lights(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+        mock_light_off: str,
+    ) -> None:
+        faded = await self._faded_entities(
+            hass, [mock_light_entity, mock_light_off], None
+        )
+        assert faded == {mock_light_entity, mock_light_off}
+
+    async def test_only_if_on_excludes_unknown_state(
+        self,
+        hass: HomeAssistant,
+        init_integration: MockConfigEntry,
+        mock_light_entity: str,
+    ) -> None:
+        hass.states.async_set(
+            "light.unknown_state",
+            "unknown",
+            {ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
+        )
+        faded = await self._faded_entities(
+            hass, [mock_light_entity, "light.unknown_state"], "on"
+        )
+        assert faded == {mock_light_entity}

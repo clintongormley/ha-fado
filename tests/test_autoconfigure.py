@@ -1452,7 +1452,7 @@ class TestAutoconfigueCancellation:
         # Without autoconfiguring, light should be included
         targets = coordinator._resolve_fade_targets(
             MagicMock(data={ATTR_ENTITY_ID: entity_id}),
-            MagicMock(),
+            MagicMock(only_if=None),
         )
         assert entity_id in targets
 
@@ -1460,7 +1460,7 @@ class TestAutoconfigueCancellation:
         coordinator.add_autoconfiguring_light(entity_id)
         targets = coordinator._resolve_fade_targets(
             MagicMock(data={ATTR_ENTITY_ID: entity_id}),
-            MagicMock(),
+            MagicMock(only_if=None),
         )
         assert entity_id not in targets
 
@@ -1468,6 +1468,6 @@ class TestAutoconfigueCancellation:
         coordinator.remove_autoconfiguring_light(entity_id)
         targets = coordinator._resolve_fade_targets(
             MagicMock(data={ATTR_ENTITY_ID: entity_id}),
-            MagicMock(),
+            MagicMock(only_if=None),
         )
         assert entity_id in targets
