@@ -94,6 +94,10 @@ class ExpectedState:
     entity_id: str
     values: list[tuple[ExpectedValues, float]] = field(default_factory=list)
     _condition: asyncio.Condition | None = field(default=None, repr=False)
+    moving_anchor_active: bool = False
+    anchor_brightness: int | None = None
+    anchor_hs: tuple[float, float] | None = None
+    anchor_color_temp_kelvin: int | None = None
 
     def add(self, expected: ExpectedValues) -> None:
         """Add an expected value with current timestamp."""
@@ -104,6 +108,37 @@ class ExpectedState:
             expected,
             len(self.values),
         )
+
+    def set_moving_anchor(
+        self,
+        *,
+        brightness: int | None = None,
+        hs_color: tuple[float, float] | None = None,
+        color_temp_kelvin: int | None = None,
+    ) -> None:
+        """Enable native-transition moving-anchor matching, seeded at the fade start.
+
+        While active, each entry's match window uses the live anchor (the last
+        reported value) as its 'from' bound instead of the entry's own from_*.
+        """
+        self.moving_anchor_active = True
+        self.anchor_brightness = brightness
+        self.anchor_hs = hs_color
+        self.anchor_color_temp_kelvin = color_temp_kelvin
+        _LOGGER.debug(
+            "%s: moving anchor enabled (brightness=%s, hs=%s, kelvin=%s)",
+            self.entity_id,
+            brightness,
+            hs_color,
+            color_temp_kelvin,
+        )
+
+    def clear_moving_anchor(self) -> None:
+        """Disable moving-anchor matching and forget the anchors."""
+        self.moving_anchor_active = False
+        self.anchor_brightness = None
+        self.anchor_hs = None
+        self.anchor_color_temp_kelvin = None
 
     def get_condition(self) -> asyncio.Condition:
         """Get or create the condition for waiting, pruning stale values first."""
@@ -468,6 +503,7 @@ class ExpectedState:
 
         # Clear any remaining entries
         self.values.clear()
+        self.clear_moving_anchor()
         _LOGGER.debug(
             "%s: wait_and_clear() completed",
             self.entity_id,

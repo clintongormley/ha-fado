@@ -721,3 +721,37 @@ class TestEdgeCases:
 
         matched = expected_state.match_and_remove(actual, old=old)
         assert matched is None
+
+
+class TestMovingAnchorConfig:
+    """Enabling/clearing native-transition moving-anchor mode."""
+
+    def test_set_moving_anchor_seeds_state(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76, hs_color=(100.0, 50.0), color_temp_kelvin=4000)
+        assert state.moving_anchor_active is True
+        assert state.anchor_brightness == 76
+        assert state.anchor_hs == (100.0, 50.0)
+        assert state.anchor_color_temp_kelvin == 4000
+
+    def test_set_moving_anchor_defaults_to_none(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76)
+        assert state.moving_anchor_active is True
+        assert state.anchor_brightness == 76
+        assert state.anchor_hs is None
+        assert state.anchor_color_temp_kelvin is None
+
+    def test_clear_moving_anchor_resets_state(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76)
+        state.clear_moving_anchor()
+        assert state.moving_anchor_active is False
+        assert state.anchor_brightness is None
+
+    async def test_wait_and_clear_clears_moving_anchor(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76)
+        await state.wait_and_clear()
+        assert state.moving_anchor_active is False
+        assert state.anchor_brightness is None
