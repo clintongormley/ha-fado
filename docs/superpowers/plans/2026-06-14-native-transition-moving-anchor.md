@@ -390,8 +390,12 @@ In `custom_components/fado/expected_state.py`, replace the body of `_brightness_
             elif abs(expected.brightness - actual.brightness) <= BRIGHTNESS_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value)
-            if min_val <= actual.brightness <= max_val:
+            # Range match (intermediate value; tolerance absorbs device jitter)
+            if (
+                min_val - BRIGHTNESS_TOLERANCE
+                <= actual.brightness
+                <= max_val + BRIGHTNESS_TOLERANCE
+            ):
                 return "range"
 
             return None
@@ -550,8 +554,12 @@ In `custom_components/fado/expected_state.py`, replace the body of `_kelvin_matc
             if abs(expected.color_temp_kelvin - actual.color_temp_kelvin) <= KELVIN_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value)
-            if min_val <= actual.color_temp_kelvin <= max_val:
+            # Range match (intermediate value; tolerance absorbs device jitter)
+            if (
+                min_val - KELVIN_TOLERANCE
+                <= actual.color_temp_kelvin
+                <= max_val + KELVIN_TOLERANCE
+            ):
                 return "range"
 
             return None
@@ -673,8 +681,14 @@ In `custom_components/fado/expected_state.py`, replace the body of `_hs_match` (
             if self._hs_exact_match(expected.hs_color, actual.hs_color):
                 return "exact"
 
-            # Range match (intermediate value)
-            if self._hs_range_match(range_from, expected.hs_color, actual.hs_color):
+            # Range match (intermediate value; tolerance absorbs device jitter)
+            if self._hs_range_match(
+                range_from,
+                expected.hs_color,
+                actual.hs_color,
+                hue_tolerance=HUE_TOLERANCE,
+                sat_tolerance=SATURATION_TOLERANCE,
+            ):
                 return "range"
 
             return None
