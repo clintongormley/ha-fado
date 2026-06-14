@@ -7,6 +7,11 @@
 - Do NOT merge PRs automatically - wait for user approval before merging
 - When merging a PR (after approval), delete the feature branch
 
+## Changelog
+
+- Record **all user-facing changes** in `CHANGES.md` under the `## [Unreleased]` section, using the [Keep a Changelog](https://keepachangelog.com/) categories (`Added`, `Changed`, `Fixed`, `Removed`, etc.)
+- Prefix any breaking change with **BREAKING** and describe the action users must take to upgrade
+
 ## Code Quality
 
 - Before creating a PR, always run `ruff check .` and `ruff format .` to fix any linting issues
