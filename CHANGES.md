@@ -27,3 +27,12 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
   **Action required:** grant admin rights to any user who needs to manage Fado
   settings.
+
+- **Unconfigured-light alerts now use Repairs instead of a persistent
+  notification.** When Fado detects lights that haven't been autoconfigured, it
+  raises an issue under **Settings → System → Repairs** (with a learn-more link
+  to the Fado panel/dashboard) rather than showing a persistent notification.
+  The issue clears automatically once every light is configured. The
+  enable/disable option is unchanged in effect; its label is now "Notify about
+  unconfigured lights". The repair text is fully translated across all supported
+  languages.
