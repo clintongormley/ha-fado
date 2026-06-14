@@ -1,4 +1,9 @@
-"""Notification helpers for unconfigured lights."""
+"""Helpers for surfacing unconfigured lights as a Repairs issue.
+
+("Notification" terminology is retained in some names/options for backward
+compatibility; the surface itself is now the issue registry, not a persistent
+notification.)
+"""
 
 from __future__ import annotations
 
@@ -75,7 +80,7 @@ def _get_unconfigured_lights(hass: HomeAssistant) -> set[str]:
 
 
 def _get_notification_link_url(hass: HomeAssistant) -> str:
-    """Get the URL to use in the notification link.
+    """Get the URL to use in the repair issue's learn-more link.
 
     Returns the URL string, or empty string for no link.
     If sidebar is enabled, links to /fado. Otherwise uses the dashboard URL option.
