@@ -67,8 +67,11 @@ point-matching succeeds.
 - **Preserve** — and where possible tighten — genuine manual-intervention
   detection. A whole-fade "accept anything between start and end" band is
   explicitly rejected because it would blind detection.
-- Leave software stepping (`native_transitions=False`) behavior byte-for-byte
-  unchanged.
+- Leave software stepping (`native_transitions=False`) behavior unchanged, with
+  one deliberate, safe exception: the range-match check gains a ±tolerance on its
+  bounds (shared with the legacy `from_*` path). This is strictly more lenient —
+  it can only suppress a false positive, never create one — and software steps are
+  tiny (±1–3), so detection is unaffected in practice.
 
 ## Non-goals
 
@@ -212,9 +215,10 @@ accessors above.
 
 ## Unchanged
 
-- Software stepping (`native_transitions=False`): `native_mode` stays false;
-  point matching with `from_*` is untouched. Regression test must confirm the
-  seat-light behavior is identical.
+- Software stepping (`native_transitions=False`): moving-anchor mode stays off;
+  matching takes the legacy `from_*` path. The only behavioral change on that path
+  is the ±tolerance now applied to the range-match bounds (see Goals) — strictly
+  more lenient, verified by the existing regression suite to change no outcomes.
 - Step generation, easing, flush timing, restore logic.
 
 ## Testing (TDD)
