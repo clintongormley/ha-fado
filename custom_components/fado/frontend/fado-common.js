@@ -27,6 +27,7 @@ export const FadoCoreMixin = (superClass) =>
         panel: { type: Object },
         _data: { type: Object },
         _loading: { type: Boolean },
+        _authError: { type: Boolean },
         _collapsed: { type: Object },
         _configureChecked: { type: Object },
         _testing: { type: Object },
@@ -45,6 +46,7 @@ export const FadoCoreMixin = (superClass) =>
       super();
       this._data = null;
       this._loading = true;
+      this._authError = false;
       this._collapsed = this._loadCollapsedState();
       this._configureChecked = new Set();
       this._testing = new Set();
@@ -178,6 +180,9 @@ export const FadoCoreMixin = (superClass) =>
         this._logLevel = result.log_level || "warning";
         this._entryId = result.entry_id || null;
       } catch (err) {
+        // Non-admins are not allowed to read Fado config; _fetchLights renders
+        // the "administrator access required" notice, so stay quiet here.
+        if (err?.code === "unauthorized") return;
         console.error("Failed to fetch settings:", err);
       }
     }
@@ -187,10 +192,19 @@ export const FadoCoreMixin = (superClass) =>
       try {
         const result = await this.hass.callWS({ type: "fado/get_lights" });
         this._data = result;
+        this._authError = false;
         this._initCollapsedState();
         this._initConfigureChecked();
         this._fetchRetries = 0;
       } catch (err) {
+        // Fado config is admin-only: a non-admin user (e.g. the card on a
+        // shared dashboard) gets "unauthorized". Show a clear notice instead
+        // of retrying — retries would never succeed.
+        if (err?.code === "unauthorized") {
+          this._authError = true;
+          this._loading = false;
+          return;
+        }
         console.error("Failed to fetch lights:", err);
         this._fetchRetries = (this._fetchRetries || 0) + 1;
         if (this._fetchRetries <= 5) {
@@ -209,6 +223,7 @@ export const FadoCoreMixin = (superClass) =>
         if (!result || !result.areas) return;
         this._mergeData(result);
       } catch (err) {
+        if (err?.code === "unauthorized") return;
         console.error("Failed to fetch lights:", err);
       }
     }
@@ -700,6 +715,18 @@ export const FadoCoreMixin = (superClass) =>
         `;
       }
 
+      if (this._authError) {
+        return html`
+          <div class="header-row">
+            <h1>Fado Light Fader</h1>
+          </div>
+          <div class="auth-error">
+            <ha-icon icon="mdi:shield-lock-outline"></ha-icon>
+            <p>Administrator access is required to configure Fado.</p>
+          </div>
+        `;
+      }
+
       if (!this._data || !this._data.areas) {
         return html`${this._renderHeader()}<p>No lights found.</p>`;
       }
@@ -1135,6 +1162,19 @@ export const fadoStyles = css`
     padding: 24px 16px;
     color: var(--secondary-text-color);
     font-size: var(--paper-font-body1_-_font-size, 14px);
+  }
+
+  .auth-error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 16px;
+    color: var(--secondary-text-color);
+    font-size: var(--paper-font-body1_-_font-size, 14px);
+  }
+
+  .auth-error ha-icon {
+    color: var(--secondary-text-color);
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }

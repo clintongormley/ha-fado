@@ -28,6 +28,7 @@ from homeassistant.helpers.event import (
     async_track_state_change_filtered,
     async_track_time_interval,
 )
+from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
@@ -193,12 +194,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=FADE_LIGHTS_SCHEMA,
     )
 
+    # exclude/include mutate persistent per-light config (the same `exclude`
+    # flag as the admin-only fado/save_light_config WebSocket command), so they
+    # are admin-only too. Automations call services with no user context and are
+    # unaffected; only direct non-admin user calls are rejected.
     target_only_schema = cv.make_entity_service_schema({})
-    hass.services.async_register(
-        DOMAIN, SERVICE_EXCLUDE_LIGHTS, handle_exclude_lights, schema=target_only_schema
+    async_register_admin_service(
+        hass, DOMAIN, SERVICE_EXCLUDE_LIGHTS, handle_exclude_lights, schema=target_only_schema
     )
-    hass.services.async_register(
-        DOMAIN, SERVICE_INCLUDE_LIGHTS, handle_include_lights, schema=target_only_schema
+    async_register_admin_service(
+        hass, DOMAIN, SERVICE_INCLUDE_LIGHTS, handle_include_lights, schema=target_only_schema
     )
 
     # Track only light domain state changes (more efficient than listening to all events)
@@ -291,7 +296,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 sidebar_title="Fado Light Fader",
                 sidebar_icon="mdi:lightbulb-variant",
                 module_url="/fado_panel/panel.js",
-                require_admin=False,
+                require_admin=True,
             )
 
     # Apply stored log level on startup

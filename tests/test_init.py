@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -54,6 +54,39 @@ async def test_setup_entry_loads_storage(
     assert DOMAIN in hass.data
     assert hass.data[DOMAIN].data == mock_storage_data
     assert hass.data[DOMAIN].store is mock_store
+
+
+async def test_setup_registers_sidebar_panel_as_admin_only(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """The sidebar panel is registered admin-only (require_admin=True).
+
+    The panel mutates integration-wide config, so non-admin users must not be
+    able to open it. The setup-time frontend block only runs when hass.http is
+    available, so it is mocked here.
+    """
+    mock_config_entry.add_to_hass(hass)
+
+    hass.http = MagicMock()
+    hass.http.async_register_static_paths = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.fado.Store",
+            return_value=AsyncMock(async_load=AsyncMock(return_value={}), async_save=AsyncMock()),
+        ),
+        patch("custom_components.fado.async_register_card_resource", new=AsyncMock()),
+        patch(
+            "custom_components.fado.panel_custom.async_register_panel",
+            new=AsyncMock(),
+        ) as mock_register_panel,
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    mock_register_panel.assert_called_once()
+    assert mock_register_panel.call_args.kwargs["require_admin"] is True
 
 
 async def test_unload_entry_removes_service(
