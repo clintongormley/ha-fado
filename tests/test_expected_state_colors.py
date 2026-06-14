@@ -838,3 +838,15 @@ class TestMovingAnchorBrightness:
             es.match_and_remove(ExpectedValues(brightness=52), old=ExpectedValues(brightness=50))
             is not None
         )
+
+    def test_overshoot_just_past_target_within_tolerance_matches(self) -> None:
+        """A small overshoot just past the target (within tolerance) still matches."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=40))  # down-fade target
+
+        # Device reports 38 — 2 below target 40, within BRIGHTNESS_TOLERANCE (3).
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=38), old=ExpectedValues(brightness=100))
+            is not None
+        )

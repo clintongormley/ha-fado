@@ -339,8 +339,10 @@ class ExpectedState:
             elif abs(expected.brightness - actual.brightness) <= BRIGHTNESS_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value). Tolerance on the bounds allows a
-            # small in-direction bounce/jitter at the anchor to still match.
+            # Range match (intermediate value). Tolerance is applied to BOTH bounds
+            # deliberately: it absorbs device jitter just past the anchor and small
+            # overshoot just past the target (the exact-match branch already covers
+            # the target within tolerance).
             if (
                 min_val - BRIGHTNESS_TOLERANCE
                 <= actual.brightness
