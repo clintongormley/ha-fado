@@ -86,6 +86,7 @@ FADO_STRATEGY_URL = "/fado_panel/fado-strategy.js"
 # Service Schema
 # =============================================================================
 
+
 def _normalize_only_if(value: object) -> str | None:
     """Normalise the only_if target filter.
 

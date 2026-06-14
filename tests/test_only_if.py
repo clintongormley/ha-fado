@@ -118,9 +118,7 @@ class TestResolveTargetsOnlyIf:
         mock_light_entity: str,  # on
         mock_light_off: str,  # off
     ) -> None:
-        faded = await self._faded_entities(
-            hass, [mock_light_entity, mock_light_off], "on"
-        )
+        faded = await self._faded_entities(hass, [mock_light_entity, mock_light_off], "on")
         assert faded == {mock_light_entity}
 
     async def test_only_if_off_keeps_only_off_lights(
@@ -130,9 +128,7 @@ class TestResolveTargetsOnlyIf:
         mock_light_entity: str,
         mock_light_off: str,
     ) -> None:
-        faded = await self._faded_entities(
-            hass, [mock_light_entity, mock_light_off], "off"
-        )
+        faded = await self._faded_entities(hass, [mock_light_entity, mock_light_off], "off")
         assert faded == {mock_light_off}
 
     async def test_unset_only_if_keeps_all_lights(
@@ -142,9 +138,7 @@ class TestResolveTargetsOnlyIf:
         mock_light_entity: str,
         mock_light_off: str,
     ) -> None:
-        faded = await self._faded_entities(
-            hass, [mock_light_entity, mock_light_off], None
-        )
+        faded = await self._faded_entities(hass, [mock_light_entity, mock_light_off], None)
         assert faded == {mock_light_entity, mock_light_off}
 
     async def test_only_if_on_excludes_unknown_state(
@@ -158,7 +152,5 @@ class TestResolveTargetsOnlyIf:
             "unknown",
             {ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
         )
-        faded = await self._faded_entities(
-            hass, [mock_light_entity, "light.unknown_state"], "on"
-        )
+        faded = await self._faded_entities(hass, [mock_light_entity, "light.unknown_state"], "on")
         assert faded == {mock_light_entity}
