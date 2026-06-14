@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Avanserte innstillinger",
           "description": "Tilleggsinnstillinger for avanserte brukstilfeller."
+        },
+        "only_if": {
+          "name": "Bare hvis tilstand",
+          "description": "Toner bare lys som for øyeblikket er i denne tilstanden. 'on' påvirker bare lys som allerede er på; 'off' bare lys som er av. La stå tomt for å tone alle valgte lys."
         }
       }
     },

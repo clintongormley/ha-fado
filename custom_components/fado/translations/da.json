@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Avancerede indstillinger",
           "description": "Yderligere indstillinger til avancerede brugsscenarier."
+        },
+        "only_if": {
+          "name": "Kun hvis tilstand",
+          "description": "Toner kun lys, der i øjeblikket er i denne tilstand. 'on' påvirker kun lys, der allerede er tændt; 'off' kun lys, der er slukket. Lad stå tomt for at tone alle valgte lys."
         }
       }
     },

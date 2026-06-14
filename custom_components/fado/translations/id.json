@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Opsi lanjutan",
           "description": "Opsi tambahan untuk kasus penggunaan lanjutan."
+        },
+        "only_if": {
+          "name": "Hanya jika status",
+          "description": "Hanya melakukan transisi lampu yang saat ini berada dalam status ini. 'on' hanya memengaruhi lampu yang sudah menyala; 'off' hanya lampu yang mati. Biarkan kosong untuk melakukan transisi semua lampu yang dipilih."
         }
       }
     },

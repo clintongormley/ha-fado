@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Erweiterte Optionen",
           "description": "Zusätzliche Optionen für erweiterte Anwendungsfälle."
+        },
+        "only_if": {
+          "name": "Nur bei Zustand",
+          "description": "Blendet nur Lichter über, die sich aktuell in diesem Zustand befinden. „on“ betrifft nur bereits eingeschaltete Lichter; „off“ nur ausgeschaltete. Leer lassen, um alle ausgewählten Lichter zu überblenden."
         }
       }
     },

@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Gelişmiş seçenekler",
           "description": "Gelişmiş kullanım senaryoları için ek seçenekler."
+        },
+        "only_if": {
+          "name": "Yalnızca durum",
+          "description": "Yalnızca şu anda bu durumda olan ışıkları geçirir. 'on' yalnızca zaten açık olan ışıkları etkiler; 'off' yalnızca kapalı olanları. Hedeflenen tüm ışıkları geçirmek için boş bırakın."
         }
       }
     },

@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Rozšírené možnosti",
           "description": "Ďalšie možnosti pre pokročilé použitie."
+        },
+        "only_if": {
+          "name": "Iba ak je stav",
+          "description": "Vykoná prechod iba svetiel, ktoré sú aktuálne v tomto stave. „on“ ovplyvní len už zapnuté svetlá; „off“ len vypnuté. Ponechajte prázdne pre prechod všetkých vybraných svetiel."
         }
       }
     },

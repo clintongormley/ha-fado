@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Opzioni avanzate",
           "description": "Opzioni aggiuntive per casi d'uso avanzati."
+        },
+        "only_if": {
+          "name": "Solo se lo stato",
+          "description": "Effettua la transizione solo delle luci attualmente in questo stato. 'on' interessa solo le luci già accese; 'off' solo quelle spente. Lascia vuoto per effettuare la transizione di tutte le luci selezionate."
         }
       }
     },
