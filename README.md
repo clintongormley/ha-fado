@@ -440,6 +440,20 @@ curves:
 - **`ease_out_cubic`**: Ends slower
 - **`ease_in_out_sine`**: Smooth S curve
 
+#### **State filter** (optional `only_if:`, default: none):
+
+Restrict the fade to lights that are currently in a given state:
+
+- **`on`**: only fade lights that are already on (skip lights that are off)
+- **`off`**: only fade lights that are currently off (skip lights that are on)
+
+Leave unset (the default) to fade every targeted light. Lights in any
+other state (e.g. `unavailable`, `unknown`) are skipped whenever `only_if`
+is set.
+
+> **Note:** In YAML, bare `on`/`off` parse as booleans, but Fado accepts
+> them anyway — `only_if: on` and `only_if: "on"` are equivalent.
+
 ### Examples:
 
 #### **Basic fade:**
@@ -451,6 +465,18 @@ target:
 data:
   brightness_pct: 50
   transition: 5
+```
+
+#### **Dim only the lights that are already on:**
+
+```yaml
+action: fado.fade_lights
+target:
+  area_id: living_room
+data:
+  brightness_pct: 20
+  transition: 5
+  only_if: on
 ```
 
 #### **Fade multiple lights using different targets:**

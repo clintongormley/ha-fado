@@ -15,6 +15,7 @@ ATTR_BRIGHTNESS = "brightness"
 ATTR_BRIGHTNESS_PCT = "brightness_pct"
 ATTR_TRANSITION = "transition"
 ATTR_EASING = "easing"
+ATTR_ONLY_IF = "only_if"
 
 # Color attributes (input parameters)
 ATTR_COLOR_TEMP_KELVIN = "color_temp_kelvin"

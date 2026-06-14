@@ -158,6 +158,14 @@ class FadeCoordinator:
             if not state or state.state == "unavailable":
                 _LOGGER.debug("%s: Skipping - entity unavailable", entity_id)
                 continue
+            if fade_params.only_if is not None and state.state != fade_params.only_if:
+                _LOGGER.debug(
+                    "%s: Skipping - state %s does not match only_if=%s",
+                    entity_id,
+                    state.state,
+                    fade_params.only_if,
+                )
+                continue
             if not _can_apply_fade_params(state, fade_params):
                 _LOGGER.info(
                     "%s: Skipping - light cannot apply any requested fade parameters",

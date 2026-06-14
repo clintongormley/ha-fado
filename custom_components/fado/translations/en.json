@@ -84,6 +84,10 @@
         "brightness": {
           "name": "Brightness value",
           "description": "Target brightness as raw value (1-255)."
+        },
+        "only_if": {
+          "name": "Only if state",
+          "description": "Only fade lights currently in this state. 'on' affects only lights that are already on; 'off' affects only lights that are off. Leave unset to fade all targeted lights."
         }
       }
     },
