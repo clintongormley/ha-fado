@@ -23,6 +23,7 @@ from homeassistant.core import (
 )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import (
     TrackStates,
     async_track_state_change_filtered,
@@ -55,10 +56,10 @@ from .const import (
     DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
     EVENT_CONFIG_UPDATED,
+    LEGACY_NOTIFICATION_ID,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
-    NOTIFICATION_ID,
     OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
     OPTION_SHOW_SIDEBAR,
@@ -67,6 +68,7 @@ from .const import (
     SERVICE_INCLUDE_LIGHTS,
     STORAGE_KEY,
     UNCONFIGURED_CHECK_INTERVAL_HOURS,
+    UNCONFIGURED_ISSUE_ID,
     VALID_EASING,
 )
 from .coordinator import FadeCoordinator
@@ -377,10 +379,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_remove_entry(hass: HomeAssistant, _entry: ConfigEntry) -> None:
-    """Remove a config entry — delete stored data and dismiss notifications."""
+    """Remove a config entry — delete stored data and clear the Repairs issue."""
     store: Store[dict[str, int]] = Store(hass, 1, STORAGE_KEY)
     await store.async_remove()
 
+    ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
+
+    # Clean up the pre-Repairs persistent notification for upgraders that remove
+    # the entry without restarting HA.
     from homeassistant.components import persistent_notification  # noqa: PLC0415
 
-    persistent_notification.async_dismiss(hass, NOTIFICATION_ID)
+    persistent_notification.async_dismiss(hass, LEGACY_NOTIFICATION_ID)

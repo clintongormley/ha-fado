@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from homeassistant.components import persistent_notification
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 
 from .const import (
     DEFAULT_DASHBOARD_URL,
     DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
-    NOTIFICATION_ID,
     OPTION_DASHBOARD_URL,
     OPTION_NOTIFICATIONS_ENABLED,
     OPTION_SHOW_SIDEBAR,
     REQUIRED_CONFIG_FIELDS,
+    UNCONFIGURED_ISSUE_ID,
 )
 from .coordinator import FadeCoordinator
 
@@ -92,11 +92,12 @@ def _get_notification_link_url(hass: HomeAssistant) -> str:
 
 
 async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
-    """Check for unconfigured lights and show/dismiss notification.
+    """Check for unconfigured lights and create/clear the Repairs issue.
 
-    If there are unconfigured lights, creates or updates a persistent notification
-    with a link to the Fado panel/dashboard. If all lights are configured, dismisses
-    any existing notification.
+    If there are unconfigured lights, creates (or refreshes) a single aggregate
+    issue in the issue registry with a count and a learn-more link to the Fado
+    panel/dashboard. If all lights are configured — or notifications are
+    disabled — deletes any existing issue.
 
     Skipped before HA has fully started because entity states (needed to detect
     light groups) are not yet available.
@@ -104,30 +105,28 @@ async def _notify_unconfigured_lights(hass: HomeAssistant) -> None:
     if hass.state is not CoreState.running:
         return
 
-    # Check if notifications are enabled
     entry = _get_config_entry(hass)
     if entry:
         notifications_enabled = entry.options.get(
             OPTION_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED
         )
         if not notifications_enabled:
-            persistent_notification.async_dismiss(hass, NOTIFICATION_ID)
+            ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
             return
 
     unconfigured = _get_unconfigured_lights(hass)
 
     if unconfigured:
-        count = len(unconfigured)
-        base_message = f"{count} light{'s' if count != 1 else ''} detected without configuration."
-
         link_url = _get_notification_link_url(hass)
-        message = f"{base_message} [Configure now]({link_url})" if link_url else base_message
-
-        persistent_notification.async_create(
+        ir.async_create_issue(
             hass,
-            message,
-            title="Fado: Autoconfiguration required",
-            notification_id=NOTIFICATION_ID,
+            DOMAIN,
+            UNCONFIGURED_ISSUE_ID,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=UNCONFIGURED_ISSUE_ID,
+            translation_placeholders={"count": str(len(unconfigured))},
+            learn_more_url=link_url or None,
         )
     else:
-        persistent_notification.async_dismiss(hass, NOTIFICATION_ID)
+        ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)

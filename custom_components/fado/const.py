@@ -127,7 +127,9 @@ VALID_EASING = [
     "ease_in_out_sine",
 ]
 
-# Notification for unconfigured lights
-NOTIFICATION_ID = "fado_unconfigured"
+# Repairs issue for unconfigured lights
+UNCONFIGURED_ISSUE_ID = "unconfigured_lights"  # also the translation_key
+# Pre-Repairs persistent-notification id, dismissed on upgrade for cleanup
+LEGACY_NOTIFICATION_ID = "fado_unconfigured"
 REQUIRED_CONFIG_FIELDS = frozenset({"min_delay_ms", "min_brightness", "native_transitions"})
 UNCONFIGURED_CHECK_INTERVAL_HOURS = 24
