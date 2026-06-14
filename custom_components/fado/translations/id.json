@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Tampilkan panel bilah sisi",
-          "notifications_enabled": "Aktifkan notifikasi",
+          "notifications_enabled": "Beri tahu tentang lampu yang belum dikonfigurasi",
           "dashboard_url": "URL dasbor"
         },
         "data_description": {
           "show_sidebar_panel": "Menampilkan antarmuka Fado sebagai panel bilah sisi yang terlihat oleh semua pengguna. Nonaktifkan jika Anda lebih suka menggunakan dasbor Lovelace dengan custom:fado-card.",
-          "notifications_enabled": "Tampilkan notifikasi persisten saat lampu yang belum dikonfigurasi terdeteksi.",
-          "dashboard_url": "Jalur URL untuk dasbor Fado kustom Anda (misalnya /lovelace-fado/0). Digunakan dalam tautan notifikasi saat panel bilah sisi dinonaktifkan. Biarkan kosong untuk menghilangkan tautan."
+          "notifications_enabled": "Buat perbaikan di Pengaturan → Sistem → Perbaikan saat lampu terdeteksi tanpa konfigurasi Fado.",
+          "dashboard_url": "Jalur URL untuk dasbor Fado kustom Anda (misalnya /lovelace-fado/0). Digunakan sebagai tautan perbaikan saat panel bilah sisi dinonaktifkan. Biarkan kosong untuk menghilangkan tautan."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Lampu perlu dikonfigurasi",
+      "description": "{count} lampu terdeteksi tanpa konfigurasi Fado. Buka Fado untuk mengonfigurasinya agar transisi berjalan mulus."
     }
   },
   "config": {

@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "サイドバーパネルを表示",
-          "notifications_enabled": "通知を有効にする",
+          "notifications_enabled": "未設定のライトを通知する",
           "dashboard_url": "ダッシュボードURL"
         },
         "data_description": {
           "show_sidebar_panel": "Fado UIをすべてのユーザーに表示されるサイドバーパネルとして表示します。custom:fado-cardを使用したLovelaceダッシュボードを使用する場合は無効にしてください。",
-          "notifications_enabled": "未設定のライトが検出されたときに永続的な通知を表示します。",
-          "dashboard_url": "カスタムFadoダッシュボードのURLパス（例：/lovelace-fado/0）。サイドバーパネルが無効な場合に通知リンクで使用されます。リンクを省略するには空白のままにしてください。"
+          "notifications_enabled": "Fado設定のないライトが検出されたときに、設定 → システム → 修復に修復項目を作成します。",
+          "dashboard_url": "カスタムFadoダッシュボードのURLパス（例：/lovelace-fado/0）。サイドバーパネルが無効な場合に修復のリンクとして使用されます。リンクを省略するには空白のままにしてください。"
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "ライトの設定が必要です",
+      "description": "Fado設定のないライトが{count}個検出されました。Fadoを開いて設定すると、フェードがスムーズに動作します。"
     }
   },
   "config": {

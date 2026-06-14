@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Näytä sivupalkki",
-          "notifications_enabled": "Ota ilmoitukset käyttöön",
+          "notifications_enabled": "Ilmoita määrittämättömistä valoista",
           "dashboard_url": "Koontinäytön URL"
         },
         "data_description": {
           "show_sidebar_panel": "Näyttää Fado-käyttöliittymän sivupalkkipaneelina, joka on näkyvissä kaikille käyttäjille. Poista käytöstä, jos haluat käyttää Lovelace-koontinäyttöä custom:fado-card-kortilla.",
-          "notifications_enabled": "Näytä pysyvät ilmoitukset, kun määrittämättömiä valoja havaitaan.",
-          "dashboard_url": "URL-polku mukautettuun Fado-koontinäyttöön (esim. /lovelace-fado/0). Käytetään ilmoituslinkeissä, kun sivupalkki on poistettu käytöstä. Jätä tyhjäksi jättääksesi linkin pois."
+          "notifications_enabled": "Luo korjaus kohtaan Asetukset → Järjestelmä → Korjaukset, kun havaitaan valoja ilman Fado-määritystä.",
+          "dashboard_url": "URL-polku mukautettuun Fado-koontinäyttöön (esim. /lovelace-fado/0). Käytetään korjauksen linkkinä, kun sivupalkki on poistettu käytöstä. Jätä tyhjäksi jättääksesi linkin pois."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Valot vaativat määrityksen",
+      "description": "Havaittu {count} valo(a) ilman Fado-määritystä. Avaa Fado määrittääksesi ne, jotta häivytys toimii sujuvasti."
     }
   },
   "config": {

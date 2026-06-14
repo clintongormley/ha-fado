@@ -7,20 +7,23 @@ import pytest
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado import async_setup_entry
 from custom_components.fado.const import (
     DOMAIN,
-    NOTIFICATION_ID,
+    LEGACY_NOTIFICATION_ID,
     OPTION_DASHBOARD_URL,
     OPTION_NOTIFICATIONS_ENABLED,
     OPTION_SHOW_SIDEBAR,
+    UNCONFIGURED_ISSUE_ID,
 )
 from custom_components.fado.coordinator import FadeCoordinator
 from custom_components.fado.notifications import (
     _get_notification_link_url,
     _get_unconfigured_lights,
+    _issue_learn_more_url,
     _notify_unconfigured_lights,
 )
 
@@ -143,12 +146,10 @@ class TestGetUnconfiguredLights:
 
 
 class TestNotifyUnconfiguredLights:
-    """Test _notify_unconfigured_lights function."""
+    """_notify_unconfigured_lights drives the issue registry."""
 
-    async def test_creates_notification_when_unconfigured(self, hass: HomeAssistant) -> None:
-        """Test creates notification when lights are unconfigured."""
+    async def test_creates_issue_when_unconfigured(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
-
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
         mock_entry.domain = LIGHT_DOMAIN
@@ -156,22 +157,24 @@ class TestNotifyUnconfiguredLights:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_create"
-            ) as mock_create,
+            patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create,
         ):
             mock_er.return_value.entities.values.return_value = [mock_entry]
             await _notify_unconfigured_lights(hass)
 
         mock_create.assert_called_once()
-        call_args = mock_create.call_args
-        assert "1 light" in call_args[0][1]
-        assert "/fado" in call_args[0][1]
+        args, kwargs = mock_create.call_args
+        assert args[0] is hass
+        assert args[1] == DOMAIN
+        assert args[2] == UNCONFIGURED_ISSUE_ID
+        assert kwargs["is_fixable"] is False
+        assert kwargs["severity"] == ir.IssueSeverity.WARNING
+        assert kwargs["translation_key"] == UNCONFIGURED_ISSUE_ID
+        assert kwargs["translation_placeholders"] == {"count": "1"}
+        assert kwargs["learn_more_url"] == "homeassistant://fado"
 
-    async def test_creates_notification_plural(self, hass: HomeAssistant) -> None:
-        """Test notification message is plural for multiple lights."""
+    async def test_issue_count_placeholder_plural(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
-
         mock_entries = []
         for name in ["bedroom", "kitchen"]:
             entry = MagicMock()
@@ -182,18 +185,15 @@ class TestNotifyUnconfiguredLights:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_create"
-            ) as mock_create,
+            patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create,
         ):
             mock_er.return_value.entities.values.return_value = mock_entries
             await _notify_unconfigured_lights(hass)
 
-        call_args = mock_create.call_args
-        assert "2 lights" in call_args[0][1]
+        _, kwargs = mock_create.call_args
+        assert kwargs["translation_placeholders"] == {"count": "2"}
 
-    async def test_dismisses_notification_when_all_configured(self, hass: HomeAssistant) -> None:
-        """Test dismisses notification when no unconfigured lights."""
+    async def test_deletes_issue_when_all_configured(self, hass: HomeAssistant) -> None:
         _make_coordinator(
             hass,
             {
@@ -204,7 +204,6 @@ class TestNotifyUnconfiguredLights:
                 }
             },
         )
-
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
         mock_entry.domain = LIGHT_DOMAIN
@@ -212,38 +211,30 @@ class TestNotifyUnconfiguredLights:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_dismiss"
-            ) as mock_dismiss,
+            patch("custom_components.fado.notifications.ir.async_delete_issue") as mock_delete,
         ):
             mock_er.return_value.entities.values.return_value = [mock_entry]
             await _notify_unconfigured_lights(hass)
 
-        mock_dismiss.assert_called_once_with(hass, NOTIFICATION_ID)
+        mock_delete.assert_called_once_with(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
 
-    async def test_dismisses_notification_when_no_lights(self, hass: HomeAssistant) -> None:
-        """Test dismisses notification when no lights exist."""
+    async def test_deletes_issue_when_no_lights(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
-
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_dismiss"
-            ) as mock_dismiss,
+            patch("custom_components.fado.notifications.ir.async_delete_issue") as mock_delete,
         ):
             mock_er.return_value.entities.values.return_value = []
             await _notify_unconfigured_lights(hass)
 
-        mock_dismiss.assert_called_once_with(hass, NOTIFICATION_ID)
+        mock_delete.assert_called_once_with(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
 
 
 class TestNotifySkippedBeforeStart:
-    """Test that notifications are skipped before HA has fully started."""
+    """Issue is not touched before HA has fully started."""
 
     async def test_skips_when_ha_not_running(self, hass: HomeAssistant) -> None:
-        """Test notification is skipped when hass.state is not running."""
         _make_coordinator(hass)
-
         mock_entry = MagicMock()
         mock_entry.entity_id = "light.bedroom"
         mock_entry.domain = LIGHT_DOMAIN
@@ -253,24 +244,18 @@ class TestNotifySkippedBeforeStart:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_create"
-            ) as mock_create,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_dismiss"
-            ) as mock_dismiss,
+            patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create,
+            patch("custom_components.fado.notifications.ir.async_delete_issue") as mock_delete,
         ):
             mock_er.return_value.entities.values.return_value = [mock_entry]
             await _notify_unconfigured_lights(hass)
 
-        # Neither create nor dismiss should be called before HA is running
         mock_create.assert_not_called()
-        mock_dismiss.assert_not_called()
+        mock_delete.assert_not_called()
 
-    async def test_entity_registry_create_during_startup_no_notification(
+    async def test_entity_registry_create_during_startup_no_issue(
         self, hass: HomeAssistant
     ) -> None:
-        """Test that entity registry create events during startup don't trigger notifications."""
         from homeassistant.helpers import entity_registry as er
 
         mock_entry = MagicMock(spec=ConfigEntry)
@@ -285,20 +270,15 @@ class TestNotifySkippedBeforeStart:
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
 
-        # HA is still starting at this point
         hass.state = CoreState.starting
 
-        with patch(
-            "custom_components.fado.notifications.persistent_notification.async_create"
-        ) as mock_create:
-            # Simulate entity registry create event (happens during startup)
+        with patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create:
             hass.bus.async_fire(
                 er.EVENT_ENTITY_REGISTRY_UPDATED,
                 {"action": "create", "entity_id": "light.new_group"},
             )
             await hass.async_block_till_done()
 
-        # Should not create notification while HA is still starting
         mock_create.assert_not_called()
 
 
@@ -668,10 +648,8 @@ class TestNotificationLinkUrl:
 class TestNotificationsDisabled:
     """Test notifications can be disabled via options."""
 
-    async def test_disabled_notifications_dismisses(self, hass: HomeAssistant) -> None:
-        """Test disabled notifications dismisses any existing notification."""
+    async def test_disabled_deletes_issue(self, hass: HomeAssistant) -> None:
         _make_coordinator(hass)
-
         entry = MockConfigEntry(
             domain=DOMAIN,
             options={OPTION_NOTIFICATIONS_ENABLED: False},
@@ -685,24 +663,17 @@ class TestNotificationsDisabled:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_create"
-            ) as mock_create,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_dismiss"
-            ) as mock_dismiss,
+            patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create,
+            patch("custom_components.fado.notifications.ir.async_delete_issue") as mock_delete,
         ):
             mock_er.return_value.entities.values.return_value = [mock_entry]
             await _notify_unconfigured_lights(hass)
 
-        # Should dismiss, not create
         mock_create.assert_not_called()
-        mock_dismiss.assert_called_once_with(hass, NOTIFICATION_ID)
+        mock_delete.assert_called_once_with(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
 
     async def test_sidebar_disabled_uses_dashboard_url(self, hass: HomeAssistant) -> None:
-        """Test notification uses dashboard URL when sidebar is disabled."""
         _make_coordinator(hass)
-
         entry = MockConfigEntry(
             domain=DOMAIN,
             options={
@@ -720,22 +691,16 @@ class TestNotificationsDisabled:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_create"
-            ) as mock_create,
+            patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create,
         ):
             mock_er.return_value.entities.values.return_value = [mock_entry]
             await _notify_unconfigured_lights(hass)
 
-        mock_create.assert_called_once()
-        call_args = mock_create.call_args
-        assert "/lovelace-fado/0" in call_args[0][1]
-        assert "/fado" not in call_args[0][1]
+        _, kwargs = mock_create.call_args
+        assert kwargs["learn_more_url"] == "homeassistant://lovelace-fado/0"
 
     async def test_sidebar_disabled_no_url_no_link(self, hass: HomeAssistant) -> None:
-        """Test notification has no link when sidebar disabled and no dashboard URL."""
         _make_coordinator(hass)
-
         entry = MockConfigEntry(
             domain=DOMAIN,
             options={
@@ -752,15 +717,94 @@ class TestNotificationsDisabled:
 
         with (
             patch("custom_components.fado.notifications.er.async_get") as mock_er,
-            patch(
-                "custom_components.fado.notifications.persistent_notification.async_create"
-            ) as mock_create,
+            patch("custom_components.fado.notifications.ir.async_create_issue") as mock_create,
         ):
             mock_er.return_value.entities.values.return_value = [mock_entry]
             await _notify_unconfigured_lights(hass)
 
-        mock_create.assert_called_once()
-        call_args = mock_create.call_args
-        # Should have base message without any link
-        assert "Configure now" not in call_args[0][1]
-        assert "1 light" in call_args[0][1]
+        _, kwargs = mock_create.call_args
+        assert kwargs["learn_more_url"] is None
+
+
+class TestUpgradeCleanup:
+    """Legacy persistent notification is cleaned up; issue cleared on removal."""
+
+    async def test_setup_dismisses_legacy_notification(self, hass: HomeAssistant) -> None:
+        mock_entry = MagicMock(spec=ConfigEntry)
+        mock_entry.entry_id = "test_entry"
+        mock_entry.options = {}
+        mock_entry.async_on_unload = MagicMock()
+
+        with (
+            patch("custom_components.fado.async_register_websocket_api"),
+            patch("custom_components.fado._notify_unconfigured_lights"),
+            patch("custom_components.fado._apply_stored_log_level"),
+            patch("homeassistant.components.persistent_notification.async_dismiss") as mock_dismiss,
+        ):
+            hass.http = None  # type: ignore[assignment]
+            await async_setup_entry(hass, mock_entry)
+
+        mock_dismiss.assert_any_call(hass, LEGACY_NOTIFICATION_ID)
+
+    async def test_remove_entry_deletes_issue(self, hass: HomeAssistant) -> None:
+        from custom_components.fado import async_remove_entry
+
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            UNCONFIGURED_ISSUE_ID,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=UNCONFIGURED_ISSUE_ID,
+        )
+        assert ir.async_get(hass).async_get_issue(DOMAIN, UNCONFIGURED_ISSUE_ID) is not None
+
+        entry = MockConfigEntry(domain=DOMAIN)
+        entry.add_to_hass(hass)
+        await async_remove_entry(hass, entry)
+
+        assert ir.async_get(hass).async_get_issue(DOMAIN, UNCONFIGURED_ISSUE_ID) is None
+
+
+class TestIssueLearnMoreUrl:
+    """_issue_learn_more_url schemes relative paths and passes absolute URLs through."""
+
+    def test_relative_path_gets_homeassistant_scheme(self, hass: HomeAssistant) -> None:
+        """A relative sidebar path becomes an in-app homeassistant:// URL."""
+        entry = MockConfigEntry(domain=DOMAIN, options={OPTION_SHOW_SIDEBAR: True})
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) == "homeassistant://fado"
+
+    def test_relative_dashboard_url_gets_scheme(self, hass: HomeAssistant) -> None:
+        """A relative dashboard path becomes an in-app homeassistant:// URL."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_SHOW_SIDEBAR: False, OPTION_DASHBOARD_URL: "/lovelace-fado/0"},
+        )
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) == "homeassistant://lovelace-fado/0"
+
+    def test_absolute_url_passed_through(self, hass: HomeAssistant) -> None:
+        """A user-configured absolute dashboard URL is used as-is, not re-schemed."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={
+                OPTION_SHOW_SIDEBAR: False,
+                OPTION_DASHBOARD_URL: "https://example.com/lovelace/0",
+            },
+        )
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) == "https://example.com/lovelace/0"
+
+    def test_blank_url_returns_none(self, hass: HomeAssistant) -> None:
+        """No configured link yields None (no learn-more button)."""
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            options={OPTION_SHOW_SIDEBAR: False, OPTION_DASHBOARD_URL: ""},
+        )
+        entry.add_to_hass(hass)
+
+        assert _issue_learn_more_url(hass) is None

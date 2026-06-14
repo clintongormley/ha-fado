@@ -23,6 +23,7 @@ from homeassistant.core import (
 )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import (
     TrackStates,
     async_track_state_change_filtered,
@@ -58,7 +59,6 @@ from .const import (
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
-    NOTIFICATION_ID,
     OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
     OPTION_SHOW_SIDEBAR,
@@ -67,10 +67,11 @@ from .const import (
     SERVICE_INCLUDE_LIGHTS,
     STORAGE_KEY,
     UNCONFIGURED_CHECK_INTERVAL_HOURS,
+    UNCONFIGURED_ISSUE_ID,
     VALID_EASING,
 )
 from .coordinator import FadeCoordinator
-from .notifications import _notify_unconfigured_lights
+from .notifications import _dismiss_legacy_notification, _notify_unconfigured_lights
 from .websocket_api import async_register_websocket_api
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -165,6 +166,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_load()
 
     hass.data[DOMAIN] = coordinator
+
+    # Drop the pre-Repairs persistent notification so an in-place reload after
+    # upgrade doesn't show it alongside the new issue.
+    _dismiss_legacy_notification(hass)
 
     async def handle_fade_lights(call: ServiceCall) -> None:
         """Service handler wrapper."""
@@ -377,10 +382,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_remove_entry(hass: HomeAssistant, _entry: ConfigEntry) -> None:
-    """Remove a config entry — delete stored data and dismiss notifications."""
+    """Remove a config entry — delete stored data and clear the Repairs issue."""
     store: Store[dict[str, int]] = Store(hass, 1, STORAGE_KEY)
     await store.async_remove()
 
-    from homeassistant.components import persistent_notification  # noqa: PLC0415
+    ir.async_delete_issue(hass, DOMAIN, UNCONFIGURED_ISSUE_ID)
 
-    persistent_notification.async_dismiss(hass, NOTIFICATION_ID)
+    # Clean up the pre-Repairs persistent notification for upgraders that remove
+    # the entry without restarting HA.
+    _dismiss_legacy_notification(hass)

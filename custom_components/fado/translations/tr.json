@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Kenar çubuğu panelini göster",
-          "notifications_enabled": "Bildirimleri etkinleştir",
+          "notifications_enabled": "Yapılandırılmamış ışıklar hakkında bildir",
           "dashboard_url": "Pano URL'si"
         },
         "data_description": {
           "show_sidebar_panel": "Fado arayüzünü tüm kullanıcılara görünen bir kenar çubuğu paneli olarak gösterir. Bunun yerine custom:fado-card ile bir Lovelace panosu kullanmayı tercih ediyorsanız devre dışı bırakın.",
-          "notifications_enabled": "Yapılandırılmamış ışıklar algılandığında kalıcı bildirimler göster.",
-          "dashboard_url": "Özel Fado panonuzun URL yolu (ör. /lovelace-fado/0). Kenar çubuğu paneli devre dışı olduğunda bildirim bağlantılarında kullanılır. Bağlantıyı atlamak için boş bırakın."
+          "notifications_enabled": "Fado yapılandırması olmadan ışıklar algılandığında Ayarlar → Sistem → Onarımlar altında bir onarım oluştur.",
+          "dashboard_url": "Özel Fado panonuzun URL yolu (ör. /lovelace-fado/0). Kenar çubuğu paneli devre dışı olduğunda onarımın bağlantısı olarak kullanılır. Bağlantıyı atlamak için boş bırakın."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Işıkların yapılandırılması gerekiyor",
+      "description": "Fado yapılandırması olmadan {count} ışık algılandı. Geçişlerin sorunsuz çalışması için bunları yapılandırmak üzere Fado'yu açın."
     }
   },
   "config": {

@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Afișare panou lateral",
-          "notifications_enabled": "Activare notificări",
+          "notifications_enabled": "Notificare despre lumini neconfigurate",
           "dashboard_url": "URL panou de control"
         },
         "data_description": {
           "show_sidebar_panel": "Afișează interfața Fado ca panou lateral vizibil pentru toți utilizatorii. Dezactivați dacă preferați să folosiți un panou de control Lovelace cu custom:fado-card.",
-          "notifications_enabled": "Afișează notificări persistente când sunt detectate lumini neconfigurare.",
-          "dashboard_url": "Calea URL pentru panoul de control Fado personalizat (de ex. /lovelace-fado/0). Folosit în linkurile notificărilor când panoul lateral este dezactivat. Lăsați gol pentru a omite linkul."
+          "notifications_enabled": "Creează o reparație în Setări → Sistem → Reparații când sunt detectate lumini fără configurație Fado.",
+          "dashboard_url": "Calea URL pentru panoul de control Fado personalizat (de ex. /lovelace-fado/0). Folosit ca link al reparației când panoul lateral este dezactivat. Lăsați gol pentru a omite linkul."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Luminile necesită configurare",
+      "description": "{count} lumini detectate fără configurație Fado. Deschideți Fado pentru a le configura astfel încât tranzițiile să funcționeze fără probleme."
     }
   },
   "config": {

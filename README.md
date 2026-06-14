@@ -716,21 +716,21 @@ This creates a full-page dashboard with the Fado card. You can
 then control which users see it via the dashboard visibility
 settings.
 
-### Notifications
+### Repairs
 
 When Fado detects lights that haven't been autoconfigured yet,
-it shows a persistent notification to prompt you to configure
-them.
+it raises an issue under **Settings → System → Repairs** to
+prompt you to configure them. The issue clears automatically
+once every light is configured.
 
 You can control this behaviour in **Settings → Devices &
 Services → Fado → Configure**:
 
-- **Enable notifications** — Uncheck to disable unconfigured
-  light notifications entirely.
-- **Dashboard URL** — When the sidebar panel is disabled,
-  notification links point to this URL (e.g.
-  `/lovelace-fado/0`). Leave blank to omit the link from
-  notifications.
+- **Notify about unconfigured lights** — Uncheck to stop
+  raising the repair entirely.
+- **Dashboard URL** — When the sidebar panel is disabled, the
+  repair's learn-more link points to this URL (e.g.
+  `/lovelace-fado/0`). Leave blank to omit the link.
 
 ## Troubleshooting
 

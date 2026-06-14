@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Pokaż panel boczny",
-          "notifications_enabled": "Włącz powiadomienia",
+          "notifications_enabled": "Powiadamiaj o nieskonfigurowanych światłach",
           "dashboard_url": "URL pulpitu"
         },
         "data_description": {
           "show_sidebar_panel": "Wyświetla interfejs Fado jako panel boczny widoczny dla wszystkich użytkowników. Wyłącz, jeśli wolisz używać pulpitu Lovelace z kartą custom:fado-card.",
-          "notifications_enabled": "Wyświetlaj trwałe powiadomienia po wykryciu nieskonfigurowanych świateł.",
-          "dashboard_url": "Ścieżka URL do niestandardowego pulpitu Fado (np. /lovelace-fado/0). Używana w linkach powiadomień, gdy panel boczny jest wyłączony. Pozostaw puste, aby pominąć link."
+          "notifications_enabled": "Utwórz naprawę w Ustawienia → System → Naprawy, gdy zostaną wykryte światła bez konfiguracji Fado.",
+          "dashboard_url": "Ścieżka URL do niestandardowego pulpitu Fado (np. /lovelace-fado/0). Używana jako link naprawy, gdy panel boczny jest wyłączony. Pozostaw puste, aby pominąć link."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Światła wymagają konfiguracji",
+      "description": "Wykryto {count} świateł bez konfiguracji Fado. Otwórz Fado, aby je skonfigurować, dzięki czemu przejścia będą działać płynnie."
     }
   },
   "config": {

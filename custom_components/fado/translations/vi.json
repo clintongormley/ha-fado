@@ -4,15 +4,21 @@
       "init": {
         "data": {
           "show_sidebar_panel": "Hiển thị bảng thanh bên",
-          "notifications_enabled": "Bật thông báo",
+          "notifications_enabled": "Thông báo về đèn chưa được cấu hình",
           "dashboard_url": "URL bảng điều khiển"
         },
         "data_description": {
           "show_sidebar_panel": "Hiển thị giao diện Fado dưới dạng bảng thanh bên hiển thị cho tất cả người dùng. Tắt nếu bạn muốn sử dụng bảng điều khiển Lovelace với custom:fado-card thay thế.",
-          "notifications_enabled": "Hiển thị thông báo liên tục khi phát hiện đèn chưa được cấu hình.",
-          "dashboard_url": "Đường dẫn URL đến bảng điều khiển Fado tùy chỉnh của bạn (ví dụ: /lovelace-fado/0). Được sử dụng trong liên kết thông báo khi bảng thanh bên bị tắt. Để trống để bỏ qua liên kết."
+          "notifications_enabled": "Tạo một mục sửa chữa trong Cài đặt → Hệ thống → Sửa chữa khi phát hiện đèn không có cấu hình Fado.",
+          "dashboard_url": "Đường dẫn URL đến bảng điều khiển Fado tùy chỉnh của bạn (ví dụ: /lovelace-fado/0). Được sử dụng làm liên kết của mục sửa chữa khi bảng thanh bên bị tắt. Để trống để bỏ qua liên kết."
         }
       }
+    }
+  },
+  "issues": {
+    "unconfigured_lights": {
+      "title": "Đèn cần được cấu hình",
+      "description": "Đã phát hiện {count} đèn không có cấu hình Fado. Mở Fado để cấu hình chúng nhằm giúp chuyển đổi diễn ra mượt mà."
     }
   },
   "config": {
