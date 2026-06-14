@@ -354,11 +354,19 @@ class FadeCoordinator:
         await self._finalize_fade(entity_id, fade, cancel_event)
 
     async def _apply_from_step(self, entity_id: str, fade: FadeChange) -> None:
-        """Apply the from step if present (sets starting state immediately)."""
+        """Apply the from step if present (sets starting state immediately).
+
+        Waits for the resulting state event to flush so the discrete jump to the
+        fade-start value is fully point-matched before the fade loop enables
+        moving-anchor matching. Otherwise the late from-step event (old state far
+        outside the anchor window) would be misread as manual intervention.
+        """
         if fade.from_step is None:
             return
         _LOGGER.debug("%s: Applying from step: %s", entity_id, fade.from_step)
         await self._track_and_apply_step(entity_id, fade.from_step)
+        entity = self.get_or_create_entity(entity_id)
+        await entity.wait_for_expected_state_flush()
 
     async def _run_fade_loop(
         self,
@@ -368,6 +376,7 @@ class FadeCoordinator:
         native_transitions: bool,
     ) -> None:
         """Iterate through fade steps, applying each with expected state tracking."""
+        self._configure_moving_anchor(entity_id, fade, native_transitions)
         delay_ms = fade.delay_ms()
         prev_step: FadeStep | None = None
 
@@ -873,6 +882,26 @@ class FadeCoordinator:
             hs_color=hs_color,
             color_temp_kelvin=color_temp_kelvin,
         )
+
+    def _configure_moving_anchor(
+        self, entity_id: str, fade: FadeChange, native_transitions: bool
+    ) -> None:
+        """Enable moving-anchor matching for native fades; clear it otherwise.
+
+        Seeds per-dimension anchors from the fade's start values so the first
+        step has a window (not a point) and lagging/coalesced device reports match.
+        """
+        ent = self.get_or_create_entity(entity_id)
+        if native_transitions:
+            if ent.expected_state is None:
+                ent.expected_state = ExpectedState(entity_id=entity_id)
+            ent.expected_state.set_moving_anchor(
+                brightness=fade.anchor_brightness,
+                hs_color=fade.anchor_hs,
+                color_temp_kelvin=fade.anchor_color_temp_kelvin,
+            )
+        elif ent.expected_state is not None:
+            ent.expected_state.clear_moving_anchor()
 
     def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:
         """Register expected values before making a service call."""

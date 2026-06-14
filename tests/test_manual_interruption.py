@@ -1490,3 +1490,70 @@ async def test_native_transition_detects_real_intervention(
     fade_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await fade_task
+
+
+async def test_native_transition_first_step_intermediates_no_false_intervention(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    service_calls: list[ServiceCall],
+) -> None:
+    """Intermediate reports during the FIRST native step must not be flagged.
+
+    The old design point-matched the first step (no prev_step), so an intermediate
+    value reported while the device ramps from its real start to the first target
+    was treated as manual intervention. The moving anchor fixes this.
+    """
+    entity_id = "light.test_first_step"
+    hass.states.async_set(
+        entity_id,
+        STATE_ON,
+        {ATTR_BRIGHTNESS: 200, ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
+    )
+    hass.data[DOMAIN].data[entity_id] = {"native_transitions": True, "min_delay_ms": 150}
+
+    async def mock_turn_on_with_intermediates(call: ServiceCall) -> None:
+        service_calls.append(call)
+        eid = call.data.get(ATTR_ENTITY_ID)
+        if eid == entity_id and ATTR_BRIGHTNESS in call.data:
+            target = call.data[ATTR_BRIGHTNESS]
+            current_state = hass.states.get(entity_id)
+            current = current_state.attributes.get(ATTR_BRIGHTNESS, 200) if current_state else 200
+            # Inject a lagging intermediate on EVERY step, including the first.
+            step = (target - current) / 3
+            for i in range(1, 3):
+                intermediate = int(current + step * i)
+                hass.states.async_set(
+                    entity_id,
+                    STATE_ON,
+                    {
+                        ATTR_BRIGHTNESS: intermediate,
+                        ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS],
+                    },
+                    context=call.context,
+                )
+                await asyncio.sleep(0.02)
+            hass.states.async_set(
+                entity_id,
+                STATE_ON,
+                {ATTR_BRIGHTNESS: target, ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
+                context=call.context,
+            )
+
+    hass.services.async_remove("light", "turn_on")
+    hass.services.async_register("light", "turn_on", mock_turn_on_with_intermediates)
+
+    fade_task = asyncio.create_task(
+        hass.services.async_call(
+            DOMAIN,
+            SERVICE_FADE_LIGHTS,
+            {"entity_id": entity_id, "brightness_pct": 5, "transition": 1.0},
+            blocking=True,
+        )
+    )
+    await fade_task
+
+    coordinator: FadeCoordinator = hass.data[DOMAIN]
+    entity = coordinator.get_entity(entity_id)
+    assert entity is None or not entity.intended_queue, (
+        "First-step intermediates should not trigger manual intervention"
+    )
