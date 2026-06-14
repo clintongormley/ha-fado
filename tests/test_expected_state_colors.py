@@ -936,3 +936,54 @@ class TestMovingAnchorHs:
         )
         assert m is not None
         assert es.anchor_hs == (355.0, 50.0)
+
+
+class TestMovingAnchorHybrid:
+    """Moving-anchor matching for native-transition HYBRID (hs->mireds) fades."""
+
+    def test_hybrid_phase_transition_uses_crossover_seeded_anchor(self) -> None:
+        """Hybrid (hs->mireds) fade: phase-1 HS reports match, then phase-2 color_temp
+        reports match against the crossover-seeded color_temp anchor."""
+        es = ExpectedState(entity_id="light.test")
+        # Brightness spans both phases; HS is phase 1 (start); color_temp is phase 2
+        # seeded at the crossover (3500 K), not at any fade-start color_temp.
+        es.set_moving_anchor(brightness=100, hs_color=(30.0, 60.0), color_temp_kelvin=3500)
+
+        # --- Phase 1: brightness + HS ---
+        es.add(ExpectedValues(brightness=80, hs_color=(40.0, 40.0)))  # phase-1 target
+
+        # Lagging intermediate (brightness + hs both mid-trajectory).
+        m1 = es.match_and_remove(
+            ExpectedValues(brightness=90, hs_color=(35.0, 50.0)),
+            old=ExpectedValues(brightness=100, hs_color=(30.0, 60.0)),
+        )
+        assert m1 is not None
+        assert es.anchor_brightness == 90
+        assert es.anchor_hs == (35.0, 50.0)
+
+        # Reaches phase-1 target -> exact -> drains.
+        m1b = es.match_and_remove(
+            ExpectedValues(brightness=80, hs_color=(40.0, 40.0)),
+            old=ExpectedValues(brightness=90, hs_color=(35.0, 50.0)),
+        )
+        assert m1b is not None
+        assert es.is_empty
+
+        # --- Phase 2: brightness + color_temp (anchor seeded to crossover 3500) ---
+        es.add(ExpectedValues(brightness=60, color_temp_kelvin=4500))  # phase-2 target
+
+        # Lagging intermediate: color_temp between crossover 3500 and target 4500.
+        m2 = es.match_and_remove(
+            ExpectedValues(brightness=70, color_temp_kelvin=4000),
+            old=ExpectedValues(brightness=80, color_temp_kelvin=3500),
+        )
+        assert m2 is not None
+        assert es.anchor_color_temp_kelvin == 4000  # advanced from the 3500 crossover seed
+        assert es.anchor_brightness == 70
+
+        # A real intervention in phase 2 (color_temp jumps far below the crossover) is flagged.
+        m3 = es.match_and_remove(
+            ExpectedValues(brightness=65, color_temp_kelvin=2700),
+            old=ExpectedValues(brightness=70, color_temp_kelvin=4000),
+        )
+        assert m3 is None
