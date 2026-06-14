@@ -20,6 +20,7 @@ from custom_components.fado.autoconfigure import (
 )
 from custom_components.fado.const import DOMAIN
 from custom_components.fado.coordinator import FadeCoordinator
+from custom_components.fado.fade_params import FadeParams
 
 
 @pytest.fixture
@@ -1452,7 +1453,7 @@ class TestAutoconfigueCancellation:
         # Without autoconfiguring, light should be included
         targets = coordinator._resolve_fade_targets(
             MagicMock(data={ATTR_ENTITY_ID: entity_id}),
-            MagicMock(only_if=None),
+            FadeParams(brightness_pct=50),
         )
         assert entity_id in targets
 
@@ -1460,7 +1461,7 @@ class TestAutoconfigueCancellation:
         coordinator.add_autoconfiguring_light(entity_id)
         targets = coordinator._resolve_fade_targets(
             MagicMock(data={ATTR_ENTITY_ID: entity_id}),
-            MagicMock(only_if=None),
+            FadeParams(brightness_pct=50),
         )
         assert entity_id not in targets
 
@@ -1468,6 +1469,6 @@ class TestAutoconfigueCancellation:
         coordinator.remove_autoconfiguring_light(entity_id)
         targets = coordinator._resolve_fade_targets(
             MagicMock(data={ATTR_ENTITY_ID: entity_id}),
-            MagicMock(only_if=None),
+            FadeParams(brightness_pct=50),
         )
         assert entity_id in targets

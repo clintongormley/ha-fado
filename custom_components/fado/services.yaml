@@ -209,7 +209,7 @@ fade_lights:
         only_if:
           name: Only if state
           description: >-
-            Only fade lights currently in this state. 'On' affects only lights
+            Only fade lights currently in this state. 'on' affects only lights
             that are already on; 'off' affects only lights that are off. Leave
             unset to fade all targeted lights.
           example: "on"
