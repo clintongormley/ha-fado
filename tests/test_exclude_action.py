@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light.const import ColorMode
 from homeassistant.const import STATE_ON
-from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import Unauthorized
+from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 
 from custom_components.fado.const import (
     ATTR_BRIGHTNESS_PCT,
@@ -287,3 +290,54 @@ async def test_services_unloaded(
     # Services should be gone
     assert not hass.services.has_service(DOMAIN, SERVICE_EXCLUDE_LIGHTS)
     assert not hass.services.has_service(DOMAIN, SERVICE_INCLUDE_LIGHTS)
+
+
+@pytest.mark.parametrize("service", [SERVICE_EXCLUDE_LIGHTS, SERVICE_INCLUDE_LIGHTS])
+async def test_exclude_include_services_reject_non_admin(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    two_lights: tuple[str, str],
+    service: str,
+) -> None:
+    """exclude_lights/include_lights mutate per-light config, so they are admin-only.
+
+    A non-admin user calling them (e.g. from Developer Tools) is rejected, matching
+    the admin gating on the fado/save_light_config WebSocket command. Automations run
+    with no user context and are unaffected.
+    """
+    non_admin = MockUser()  # no admin group → is_admin is False
+    non_admin.add_to_hass(hass)
+
+    with pytest.raises(Unauthorized):
+        await hass.services.async_call(
+            DOMAIN,
+            service,
+            {},
+            target={"entity_id": "light.living_room"},
+            blocking=True,
+            context=Context(user_id=non_admin.id),
+        )
+
+
+async def test_fade_lights_service_allows_non_admin(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    two_lights: tuple[str, str],
+) -> None:
+    """fade_lights is a runtime operation (like light.turn_on), not config, so it
+    stays available to non-admin users."""
+    non_admin = MockUser()  # no admin group → is_admin is False
+    non_admin.add_to_hass(hass)
+
+    coordinator = hass.data[DOMAIN]
+    with patch.object(coordinator, "handle_fade_lights", new=AsyncMock()) as mock_fade:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_FADE_LIGHTS,
+            {ATTR_BRIGHTNESS_PCT: 50},
+            target={"entity_id": "light.living_room"},
+            blocking=True,
+            context=Context(user_id=non_admin.id),
+        )
+
+    mock_fade.assert_called_once()

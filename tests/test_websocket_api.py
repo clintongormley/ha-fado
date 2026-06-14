@@ -4,8 +4,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import Unauthorized
 
 from custom_components.fado.const import DOMAIN
+
+# All WebSocket command handlers registered by async_register_websocket_api.
+WS_COMMAND_HANDLERS = [
+    "ws_get_lights",
+    "ws_save_light_config",
+    "ws_autoconfigure",
+    "ws_test_native_transitions",
+    "ws_get_settings",
+    "ws_save_settings",
+]
 
 
 @pytest.fixture
@@ -255,10 +266,10 @@ async def test_register_websocket_api(
     with patch("homeassistant.components.websocket_api.async_register_command") as mock_register:
         async_register_websocket_api(hass)
 
-        # Verify all six commands were registered
-        # (get_lights, save_light_config, autoconfigure,
-        #  test_native_transitions, get_settings, save_settings)
-        assert mock_register.call_count == 6
+        # Every registered command must also appear in WS_COMMAND_HANDLERS so
+        # the admin-gating test below covers it; tie the counts together so a
+        # newly-registered command that isn't admin-tested fails this guard.
+        assert mock_register.call_count == len(WS_COMMAND_HANDLERS)
 
 
 async def test_get_lights_skips_non_light_entities(
@@ -705,3 +716,24 @@ async def test_autoconfigure_result_includes_min_brightness(
 
     assert result_event is not None
     assert result_event["event"]["min_brightness"] == 3
+
+
+@pytest.mark.parametrize("handler_name", WS_COMMAND_HANDLERS)
+async def test_websocket_command_rejects_non_admin(
+    hass: HomeAssistant,
+    handler_name: str,
+) -> None:
+    """Every Fado WebSocket command rejects a non-admin user.
+
+    HA calls the registered handler synchronously; the @require_admin wrapper
+    raises Unauthorized before @async_response ever schedules the coroutine.
+    """
+    import custom_components.fado.websocket_api as ws_api
+
+    handler = getattr(ws_api, handler_name)
+
+    connection = MagicMock()
+    connection.user.is_admin = False
+
+    with pytest.raises(Unauthorized):
+        handler(hass, connection, {"id": 1})

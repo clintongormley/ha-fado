@@ -144,6 +144,7 @@ async def async_get_lights(hass: HomeAssistant) -> dict[str, Any]:
 
 
 @websocket_api.websocket_command({"type": "fado/get_lights"})
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_get_lights(
     hass: HomeAssistant,
@@ -229,6 +230,7 @@ async def async_save_light_config(
         vol.Optional("min_brightness"): vol.Any(None, vol.All(int, vol.Range(min=1, max=255))),
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_save_light_config(
     hass: HomeAssistant,
@@ -317,6 +319,7 @@ def _get_light_config(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
         vol.Required("entity_ids"): [str],
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_autoconfigure(
     hass: HomeAssistant,
@@ -468,6 +471,7 @@ async def ws_autoconfigure(
         vol.Optional("transition_s", default=2.0): vol.Coerce(float),
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_test_native_transitions(
     hass: HomeAssistant,
@@ -499,6 +503,7 @@ def _get_config_entry(hass: HomeAssistant):
 
 
 @websocket_api.websocket_command({"type": "fado/get_settings"})
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_get_settings(
     hass: HomeAssistant,
@@ -536,6 +541,7 @@ async def ws_get_settings(
         vol.Optional("log_level"): vol.In([LOG_LEVEL_WARNING, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG]),
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_save_settings(
     hass: HomeAssistant,
