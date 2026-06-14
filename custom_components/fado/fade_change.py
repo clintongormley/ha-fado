@@ -751,6 +751,28 @@ class FadeChange:  # pylint: disable=too-many-instance-attributes
             or self.start_mireds is not None
         )
 
+    @property
+    def anchor_brightness(self) -> int | None:
+        """Brightness the device fades from (spans the whole fade, incl. hybrid)."""
+        return self.start_brightness
+
+    @property
+    def anchor_hs(self) -> tuple[float, float] | None:
+        """HS the device fades from. Phase 2 of a mireds->HS hybrid starts at the crossover."""
+        if self.hybrid_direction == "mireds_to_hs":
+            return self._crossover_hs
+        return self.start_hs
+
+    @property
+    def anchor_color_temp_kelvin(self) -> int | None:
+        """Color temp (kelvin) the device fades from. Phase 2 of an HS->mireds hybrid
+        starts at the crossover."""
+        if self.hybrid_direction == "hs_to_mireds":
+            mireds = self._crossover_mireds
+        else:
+            mireds = self.start_mireds
+        return _mireds_to_kelvin(mireds) if mireds is not None else None
+
     @classmethod
     def resolve(
         cls,

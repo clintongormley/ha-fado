@@ -1027,3 +1027,51 @@ class TestFadeChangeResolveMinBrightness:
         assert fade is not None
         # Start should be 0 (light is off)
         assert fade.start_brightness == 0
+
+
+class TestFadeChangeAnchors:
+    """Per-dimension 'fade from' anchors used to seed native-transition matching."""
+
+    def test_anchor_brightness_is_start_brightness(self) -> None:
+        fade = FadeChange(start_brightness=76, end_brightness=0)
+        assert fade.anchor_brightness == 76
+
+    def test_anchor_brightness_none_when_not_fading_brightness(self) -> None:
+        fade = FadeChange(start_hs=(100.0, 50.0), end_hs=(150.0, 80.0))
+        assert fade.anchor_brightness is None
+
+    def test_anchor_hs_non_hybrid_is_start_hs(self) -> None:
+        fade = FadeChange(start_hs=(100.0, 50.0), end_hs=(150.0, 80.0))
+        assert fade.anchor_hs == (100.0, 50.0)
+
+    def test_anchor_color_temp_non_hybrid_is_kelvin_of_start_mireds(self) -> None:
+        # 250 mireds -> 4000 K
+        fade = FadeChange(start_mireds=250, end_mireds=400)
+        assert fade.anchor_color_temp_kelvin == 4000
+
+    def test_anchor_color_temp_none_when_not_fading_color_temp(self) -> None:
+        fade = FadeChange(start_brightness=10, end_brightness=200)
+        assert fade.anchor_color_temp_kelvin is None
+
+    def test_anchor_hs_hybrid_mireds_to_hs_uses_crossover(self) -> None:
+        # HS is phase 2: anchor is the crossover HS, not start_hs (which is None).
+        fade = FadeChange(
+            start_mireds=250,
+            end_hs=(150.0, 80.0),
+            hybrid_direction="mireds_to_hs",
+            _crossover_hs=(40.0, 12.0),
+            _crossover_mireds=286,
+        )
+        assert fade.anchor_hs == (40.0, 12.0)
+
+    def test_anchor_color_temp_hybrid_hs_to_mireds_uses_crossover(self) -> None:
+        # color_temp is phase 2: anchor is kelvin(crossover_mireds); start_mireds is None.
+        # 286 mireds -> 3496 K (int(1_000_000/286)).
+        fade = FadeChange(
+            start_hs=(100.0, 50.0),
+            end_mireds=400,
+            hybrid_direction="hs_to_mireds",
+            _crossover_hs=(40.0, 12.0),
+            _crossover_mireds=286,
+        )
+        assert fade.anchor_color_temp_kelvin == 3496
