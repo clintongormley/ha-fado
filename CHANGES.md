@@ -47,6 +47,16 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ### Fixed
 
+- **Native-transition fades no longer mis-detect manual intervention.** When a
+  fade used a light's native transition, the bulb's own state reports could lag
+  or coalesce across Fado's commanded steps (e.g. reporting `76→71` then
+  `71→46`, skipping the commanded `60`). Fado mistook these legitimate
+  intermediate reports for manual intervention and triggered a spurious restore,
+  interrupting the fade — often more than once a day. Fado now uses
+  moving-anchor matching for native fades, anchoring each step's match window to
+  the last reported value so lagging/coalesced reports are absorbed while
+  genuine manual changes are still detected.
+
 - **Unavailable light groups are no longer flagged as needing configuration.**
   When every member of a light group is unavailable, the group's own state
   becomes `unavailable` and Home Assistant strips its attributes — including the
