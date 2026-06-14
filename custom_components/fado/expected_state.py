@@ -477,10 +477,15 @@ class ExpectedState:
         if actual.color_temp_kelvin is None or expected.color_temp_kelvin is None:
             return None
 
-        # For native transitions, old state must be consistent with the range.
-        if expected.from_color_temp_kelvin is not None:
-            min_val = min(expected.from_color_temp_kelvin, expected.color_temp_kelvin)
-            max_val = max(expected.from_color_temp_kelvin, expected.color_temp_kelvin)
+        range_from = (
+            self.anchor_color_temp_kelvin
+            if self.moving_anchor_active
+            else expected.from_color_temp_kelvin
+        )
+
+        if range_from is not None:
+            min_val = min(range_from, expected.color_temp_kelvin)
+            max_val = max(range_from, expected.color_temp_kelvin)
             if not (
                 old is not None
                 and old.color_temp_kelvin is not None
@@ -494,8 +499,11 @@ class ExpectedState:
             if abs(expected.color_temp_kelvin - actual.color_temp_kelvin) <= KELVIN_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value)
-            if min_val <= actual.color_temp_kelvin <= max_val:
+            # Range match (intermediate value). Tolerance is applied to BOTH bounds
+            # deliberately: it absorbs device jitter just past the anchor and small
+            # overshoot just past the target (the exact-match branch already covers
+            # the target within tolerance).
+            if min_val - KELVIN_TOLERANCE <= actual.color_temp_kelvin <= max_val + KELVIN_TOLERANCE:
                 return "range"
 
             return None

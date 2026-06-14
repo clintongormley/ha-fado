@@ -850,3 +850,44 @@ class TestMovingAnchorBrightness:
             es.match_and_remove(ExpectedValues(brightness=38), old=ExpectedValues(brightness=100))
             is not None
         )
+
+
+class TestMovingAnchorKelvin:
+    """Moving-anchor matching for native-transition color-temp fades."""
+
+    def test_lagging_kelvin_reports_match(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(color_temp_kelvin=2700)  # fade start
+        es.add(ExpectedValues(color_temp_kelvin=4000))  # step 1 target
+        es.add(ExpectedValues(color_temp_kelvin=6500))  # step 2 (final) target
+
+        m1 = es.match_and_remove(
+            ExpectedValues(color_temp_kelvin=3500), old=ExpectedValues(color_temp_kelvin=2700)
+        )
+        assert m1 is not None
+        assert es.anchor_color_temp_kelvin == 3500
+
+        m2 = es.match_and_remove(
+            ExpectedValues(color_temp_kelvin=6500), old=ExpectedValues(color_temp_kelvin=3500)
+        )
+        assert m2 is not None
+        assert es.is_empty
+
+    def test_kelvin_against_direction_bump_detected(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(color_temp_kelvin=2700)
+        es.add(ExpectedValues(color_temp_kelvin=6500))
+
+        assert (
+            es.match_and_remove(
+                ExpectedValues(color_temp_kelvin=4000), old=ExpectedValues(color_temp_kelvin=2700)
+            )
+            is not None
+        )
+        # Jump back below the tightened window [4000, 6500] -> manual.
+        assert (
+            es.match_and_remove(
+                ExpectedValues(color_temp_kelvin=3000), old=ExpectedValues(color_temp_kelvin=4000)
+            )
+            is None
+        )
