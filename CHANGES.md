@@ -8,6 +8,8 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-14
+
 ### Added
 
 - **`fado.fade_lights` now accepts an `only_if` filter** to restrict a fade to
