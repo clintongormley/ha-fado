@@ -18,6 +18,7 @@ from .const import (
     ATTR_EASING,
     ATTR_FROM,
     ATTR_HS_COLOR,
+    ATTR_ONLY_IF,
     ATTR_RGB_COLOR,
     ATTR_RGBW_COLOR,
     ATTR_RGBWW_COLOR,
@@ -50,6 +51,7 @@ class FadeParams:
     color_temp_kelvin: int | None = None
     transition_ms: int = DEFAULT_TRANSITION * 1000
     easing: str = "auto"  # "auto", "linear", or explicit curve name
+    only_if: str | None = None  # Target filter by current power state: "on"/"off"/None
 
     # Starting values (from: parameter)
     from_brightness_pct: int | None = None
@@ -102,6 +104,7 @@ class FadeParams:
 
         transition_ms = int(1000 * float(data.get(ATTR_TRANSITION, DEFAULT_TRANSITION)))
         easing = str(data.get(ATTR_EASING, "auto"))
+        only_if = data.get(ATTR_ONLY_IF)
 
         return cls(
             brightness_pct=brightness_pct,
@@ -110,6 +113,7 @@ class FadeParams:
             color_temp_kelvin=color_temp_kelvin,
             transition_ms=transition_ms,
             easing=easing,
+            only_if=only_if,
             from_brightness_pct=from_brightness_pct,
             from_brightness=from_brightness,
             from_hs_color=from_hs_color,

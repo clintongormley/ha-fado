@@ -61,3 +61,26 @@ class TestSchemaWiring:
             FADE_LIGHTS_SCHEMA(
                 {ATTR_ENTITY_ID: "light.test", "brightness_pct": 50, ATTR_ONLY_IF: "maybe"}
             )
+
+
+class TestFadeParamsOnlyIf:
+    """only_if parsing on FadeParams."""
+
+    def test_parses_only_if(self) -> None:
+        params = FadeParams.from_service_data({"brightness_pct": 50, ATTR_ONLY_IF: "on"})
+        assert params.only_if == "on"
+
+    def test_absent_only_if_is_none(self) -> None:
+        params = FadeParams.from_service_data({"brightness_pct": 50})
+        assert params.only_if is None
+
+    def test_explicit_null_only_if_is_none(self) -> None:
+        params = FadeParams.from_service_data({"brightness_pct": 50, ATTR_ONLY_IF: None})
+        assert params.only_if is None
+
+    def test_only_if_does_not_count_as_target(self) -> None:
+        # only_if alone is a filter, not a fade target — has_target must stay False.
+        params = FadeParams.from_service_data({ATTR_ONLY_IF: "on"})
+        assert params.only_if == "on"
+        assert params.has_target() is False
+        assert params.has_from_target() is False
