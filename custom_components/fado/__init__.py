@@ -12,7 +12,7 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, STATE_OFF, STATE_ON
 from homeassistant.core import (
     CoreState,
     Event,
@@ -45,6 +45,7 @@ from .const import (
     ATTR_EASING,
     ATTR_FROM,
     ATTR_HS_COLOR,
+    ATTR_ONLY_IF,
     ATTR_RGB_COLOR,
     ATTR_RGBW_COLOR,
     ATTR_RGBWW_COLOR,
@@ -84,6 +85,22 @@ FADO_STRATEGY_URL = "/fado_panel/fado-strategy.js"
 # =============================================================================
 # Service Schema
 # =============================================================================
+
+def _normalize_only_if(value: object) -> str | None:
+    """Normalise the only_if target filter.
+
+    Accepts the YAML-boolean forms (bare `on`/`off` parse as True/False) as well
+    as the string forms, so `only_if: on` works unquoted in automations. None/null
+    passes through as "no filter".
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return STATE_ON if value else STATE_OFF
+    if isinstance(value, str) and value.lower() in (STATE_ON, STATE_OFF):
+        return value.lower()
+    raise vol.Invalid(f"only_if must be one of: on, off (got {value!r})")
+
 
 # Shared validators for reuse in main and from: schemas
 _BRIGHTNESS_PCT = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
@@ -127,6 +144,7 @@ FADE_LIGHTS_SCHEMA = cv.make_entity_service_schema(
         vol.Exclusive(ATTR_BRIGHTNESS, "brightness"): _BRIGHTNESS_RAW,
         vol.Optional(ATTR_TRANSITION): vol.All(vol.Coerce(float), vol.Range(min=0, max=3600)),
         vol.Optional(ATTR_EASING, default="auto"): vol.In(VALID_EASING),
+        vol.Optional(ATTR_ONLY_IF): _normalize_only_if,
         vol.Exclusive(ATTR_HS_COLOR, "color"): _HS_COLOR,
         vol.Exclusive(ATTR_RGB_COLOR, "color"): _RGB_COLOR,
         vol.Exclusive(ATTR_RGBW_COLOR, "color"): _RGBW_COLOR,
