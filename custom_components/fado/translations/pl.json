@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Opcje zaawansowane",
           "description": "Dodatkowe opcje dla zaawansowanych przypadków użycia."
+        },
+        "only_if": {
+          "name": "Tylko jeśli stan",
+          "description": "Wykonuje przejście tylko świateł, które są obecnie w tym stanie. „on” dotyczy tylko świateł już włączonych; „off” tylko wyłączonych. Pozostaw puste, aby wykonać przejście wszystkich wybranych świateł."
         }
       }
     },

@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Tùy chọn nâng cao",
           "description": "Tùy chọn bổ sung cho các trường hợp sử dụng nâng cao."
+        },
+        "only_if": {
+          "name": "Chỉ khi trạng thái",
+          "description": "Chỉ chuyển đổi các đèn hiện đang ở trạng thái này. 'on' chỉ ảnh hưởng đến các đèn đã bật; 'off' chỉ các đèn đã tắt. Để trống để chuyển đổi tất cả các đèn được chọn."
         }
       }
     },

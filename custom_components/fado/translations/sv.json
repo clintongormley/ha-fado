@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Avancerade alternativ",
           "description": "Ytterligare alternativ för avancerade användningsfall."
+        },
+        "only_if": {
+          "name": "Endast om tillstånd",
+          "description": "Tonar endast lampor som för närvarande är i detta tillstånd. 'on' påverkar bara lampor som redan är på; 'off' bara lampor som är av. Lämna tomt för att tona alla valda lampor."
         }
       }
     },

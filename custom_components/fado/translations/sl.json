@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Napredne možnosti",
           "description": "Dodatne možnosti za napredne primere uporabe."
+        },
+        "only_if": {
+          "name": "Samo če je stanje",
+          "description": "Izvede prehod samo za luči, ki so trenutno v tem stanju. „on“ vpliva samo na luči, ki so že prižgane; „off“ samo na ugasnjene. Pustite prazno za prehod vseh izbranih luči."
         }
       }
     },

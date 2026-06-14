@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Pokročilé možnosti",
           "description": "Další možnosti pro pokročilé použití."
+        },
+        "only_if": {
+          "name": "Pouze ve stavu",
+          "description": "Provede přechod pouze u světel, která jsou aktuálně v tomto stavu. „on“ ovlivní jen světla, která už svítí; „off“ jen zhasnutá světla. Ponechte prázdné pro přechod všech vybraných světel."
         }
       }
     },

@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Lisäasetukset",
           "description": "Lisäasetukset edistyneille käyttötapauksille."
+        },
+        "only_if": {
+          "name": "Vain jos tila",
+          "description": "Häivyttää vain valot, jotka ovat parhaillaan tässä tilassa. 'on' vaikuttaa vain jo päällä oleviin valoihin; 'off' vain pois päältä oleviin. Jätä tyhjäksi häivyttääksesi kaikki valitut valot."
         }
       }
     },

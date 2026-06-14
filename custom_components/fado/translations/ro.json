@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Opțiuni avansate",
           "description": "Opțiuni suplimentare pentru cazuri de utilizare avansate."
+        },
+        "only_if": {
+          "name": "Doar dacă starea",
+          "description": "Efectuează tranziția doar a luminilor aflate în prezent în această stare. „on” afectează doar luminile deja aprinse; „off” doar pe cele stinse. Lăsați necompletat pentru a face tranziția tuturor luminilor selectate."
         }
       }
     },

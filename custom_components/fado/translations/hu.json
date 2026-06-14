@@ -84,6 +84,10 @@
         "advanced_fields": {
           "name": "Speciális beállítások",
           "description": "További lehetőségek haladó felhasználáshoz."
+        },
+        "only_if": {
+          "name": "Csak ha az állapot",
+          "description": "Csak azokat a lámpákat állítja át, amelyek jelenleg ebben az állapotban vannak. Az „on” csak a már bekapcsolt lámpákat érinti; az „off” csak a kikapcsoltakat. Hagyja üresen az összes kijelölt lámpa átállításához."
         }
       }
     },
