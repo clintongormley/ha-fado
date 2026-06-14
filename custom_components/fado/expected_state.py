@@ -223,6 +223,10 @@ class ExpectedState:
             _LOGGER.debug("%s: -> no match found", self.entity_id)
             return None
 
+        # Advance the moving anchor to the reported value (matched reports only).
+        if self.moving_anchor_active:
+            self._advance_anchor(matched_value, actual)
+
         # Only remove on exact match (final value reached)
         if match_type == "exact":
             # Remove matched value and all older entries (handles event coalescing)
@@ -306,12 +310,19 @@ class ExpectedState:
         if actual.brightness is None or expected.brightness is None:
             return None
 
+        # Native transitions: window 'from' bound is the live anchor (last reported
+        # value), shared across steps. Otherwise fall back to the entry's own
+        # from_brightness (legacy per-step range path / software stepping).
+        range_from = (
+            self.anchor_brightness if self.moving_anchor_active else expected.from_brightness
+        )
+
         # For native transitions, old state must be consistent with the
         # transition range. This prevents stale expected values from matching
         # unrelated events (e.g. off→on, or manual brightness change).
-        if expected.from_brightness is not None:
-            min_val = min(expected.from_brightness, expected.brightness)
-            max_val = max(expected.from_brightness, expected.brightness)
+        if range_from is not None:
+            min_val = min(range_from, expected.brightness)
+            max_val = max(range_from, expected.brightness)
             if not (
                 old is not None
                 and old.brightness is not None
@@ -328,8 +339,13 @@ class ExpectedState:
             elif abs(expected.brightness - actual.brightness) <= BRIGHTNESS_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value)
-            if min_val <= actual.brightness <= max_val:
+            # Range match (intermediate value). Tolerance on the bounds allows a
+            # small in-direction bounce/jitter at the anchor to still match.
+            if (
+                min_val - BRIGHTNESS_TOLERANCE
+                <= actual.brightness
+                <= max_val + BRIGHTNESS_TOLERANCE
+            ):
                 return "range"
 
             return None
@@ -342,6 +358,15 @@ class ExpectedState:
             return "exact"
 
         return None
+
+    def _advance_anchor(self, matched: ExpectedValues, actual: ExpectedValues) -> None:
+        """Advance each tracked dimension's anchor to the latest reported value."""
+        if matched.brightness is not None and actual.brightness is not None:
+            self.anchor_brightness = actual.brightness
+        if matched.hs_color is not None and actual.hs_color is not None:
+            self.anchor_hs = actual.hs_color
+        if matched.color_temp_kelvin is not None and actual.color_temp_kelvin is not None:
+            self.anchor_color_temp_kelvin = actual.color_temp_kelvin
 
     def _hs_match(
         self,

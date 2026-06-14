@@ -755,3 +755,86 @@ class TestMovingAnchorConfig:
         await state.wait_and_clear()
         assert state.moving_anchor_active is False
         assert state.anchor_brightness is None
+
+
+class TestMovingAnchorBrightness:
+    """Moving-anchor matching for native-transition brightness fades."""
+
+    def test_replays_logged_false_positive_without_flagging(self) -> None:
+        """The reported bug: lagging/coalesced reports must NOT be 'no match'."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=76)  # fade start
+        es.add(ExpectedValues(brightness=60))  # step 1 target
+        es.add(ExpectedValues(brightness=46))  # step 2 target
+
+        # Device lags: reports 71 (between real start 76 and first target 60).
+        m1 = es.match_and_remove(ExpectedValues(brightness=71), old=ExpectedValues(brightness=76))
+        assert m1 is not None
+        assert es.anchor_brightness == 71  # anchor advanced to last report
+
+        # Next report coalesces past the 60 step straight to 46.
+        m2 = es.match_and_remove(ExpectedValues(brightness=46), old=ExpectedValues(brightness=71))
+        assert m2 is not None
+        assert es.anchor_brightness == 46
+        assert es.is_empty  # exact at 46 drained both entries
+
+    def test_first_step_intermediate_matches_via_anchor(self) -> None:
+        """First step (no from_brightness) still accepts an intermediate via the anchor."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=76)
+        es.add(ExpectedValues(brightness=60))  # only one step commanded so far
+
+        m = es.match_and_remove(ExpectedValues(brightness=71), old=ExpectedValues(brightness=76))
+        assert m is not None  # would be None under old point-match-only first step
+
+    def test_moving_anchor_tightens_window_and_detects_bump(self) -> None:
+        """The headline: a bump back up that the fade-start band would accept is flagged."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=40))  # down-fade target
+
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=50), old=ExpectedValues(brightness=100))
+            is not None
+        )
+        assert es.anchor_brightness == 50
+
+        # 80 is inside the original [40,100] band but outside the tightened [40,50] window.
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=80), old=ExpectedValues(brightness=50))
+            is None
+        )
+        assert es.anchor_brightness == 50  # anchor NOT advanced on no-match
+
+    def test_dim_ahead_below_lowest_target_detected(self) -> None:
+        """A jump below the furthest commanded target is flagged."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=60))
+        es.add(ExpectedValues(brightness=46))
+
+        # Device at 71, then user jumps down to 30 (below lowest target 46).
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=71), old=ExpectedValues(brightness=100))
+            is not None
+        )
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=30), old=ExpectedValues(brightness=71))
+            is None
+        )
+
+    def test_jitter_within_tolerance_not_flagged(self) -> None:
+        """A small in-direction bounce within tolerance still matches."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=40))
+
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=50), old=ExpectedValues(brightness=100))
+            is not None
+        )
+        # 52 is 2 above the anchor 50 — within BRIGHTNESS_TOLERANCE (3).
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=52), old=ExpectedValues(brightness=50))
+            is not None
+        )
