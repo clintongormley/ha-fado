@@ -8,6 +8,14 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+### Added
+
+- **`fado.fade_lights` now accepts an `only_if` filter** to restrict a fade to
+  lights that are currently in a given power state. Set `only_if: on` to fade
+  only lights that are already on, or `only_if: off` to fade only lights that
+  are off; leave it unset (the default) to fade every targeted light, exactly as
+  before. Available under the action's advanced options in the UI.
+
 ### Changed
 
 - **BREAKING: Configuring Fado is now admin-only.** Every `fado/*` WebSocket
