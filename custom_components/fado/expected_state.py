@@ -94,6 +94,10 @@ class ExpectedState:
     entity_id: str
     values: list[tuple[ExpectedValues, float]] = field(default_factory=list)
     _condition: asyncio.Condition | None = field(default=None, repr=False)
+    moving_anchor_active: bool = False
+    anchor_brightness: int | None = None
+    anchor_hs: tuple[float, float] | None = None
+    anchor_color_temp_kelvin: int | None = None
 
     def add(self, expected: ExpectedValues) -> None:
         """Add an expected value with current timestamp."""
@@ -104,6 +108,37 @@ class ExpectedState:
             expected,
             len(self.values),
         )
+
+    def set_moving_anchor(
+        self,
+        *,
+        brightness: int | None = None,
+        hs_color: tuple[float, float] | None = None,
+        color_temp_kelvin: int | None = None,
+    ) -> None:
+        """Enable native-transition moving-anchor matching, seeded at the fade start.
+
+        While active, each entry's match window uses the live anchor (the last
+        reported value) as its 'from' bound instead of the entry's own from_*.
+        """
+        self.moving_anchor_active = True
+        self.anchor_brightness = brightness
+        self.anchor_hs = hs_color
+        self.anchor_color_temp_kelvin = color_temp_kelvin
+        _LOGGER.debug(
+            "%s: moving anchor enabled (brightness=%s, hs=%s, kelvin=%s)",
+            self.entity_id,
+            brightness,
+            hs_color,
+            color_temp_kelvin,
+        )
+
+    def clear_moving_anchor(self) -> None:
+        """Disable moving-anchor matching and forget the anchors."""
+        self.moving_anchor_active = False
+        self.anchor_brightness = None
+        self.anchor_hs = None
+        self.anchor_color_temp_kelvin = None
 
     def get_condition(self) -> asyncio.Condition:
         """Get or create the condition for waiting, pruning stale values first."""
@@ -188,6 +223,10 @@ class ExpectedState:
             _LOGGER.debug("%s: -> no match found", self.entity_id)
             return None
 
+        # Advance the moving anchor to the reported value (matched reports only).
+        if self.moving_anchor_active:
+            self._advance_anchor(matched_value, actual)
+
         # Only remove on exact match (final value reached)
         if match_type == "exact":
             # Remove matched value and all older entries (handles event coalescing)
@@ -271,12 +310,19 @@ class ExpectedState:
         if actual.brightness is None or expected.brightness is None:
             return None
 
-        # For native transitions, old state must be consistent with the
-        # transition range. This prevents stale expected values from matching
-        # unrelated events (e.g. off→on, or manual brightness change).
-        if expected.from_brightness is not None:
-            min_val = min(expected.from_brightness, expected.brightness)
-            max_val = max(expected.from_brightness, expected.brightness)
+        # Native transitions: window 'from' bound is the live anchor (last reported
+        # value), shared across steps. Otherwise fall back to the entry's own
+        # from_brightness (legacy per-step range path / software stepping).
+        range_from = (
+            self.anchor_brightness if self.moving_anchor_active else expected.from_brightness
+        )
+
+        # When a range applies (native moving-anchor or legacy from_brightness), the
+        # old state must be consistent with that range. This prevents stale expected
+        # values from matching unrelated events (e.g. off→on, or manual brightness change).
+        if range_from is not None:
+            min_val = min(range_from, expected.brightness)
+            max_val = max(range_from, expected.brightness)
             if not (
                 old is not None
                 and old.brightness is not None
@@ -293,8 +339,15 @@ class ExpectedState:
             elif abs(expected.brightness - actual.brightness) <= BRIGHTNESS_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value)
-            if min_val <= actual.brightness <= max_val:
+            # Range match (intermediate value). Tolerance is applied to BOTH bounds
+            # deliberately: it absorbs device jitter just past the anchor and small
+            # overshoot just past the target (the exact-match branch already covers
+            # the target within tolerance).
+            if (
+                min_val - BRIGHTNESS_TOLERANCE
+                <= actual.brightness
+                <= max_val + BRIGHTNESS_TOLERANCE
+            ):
                 return "range"
 
             return None
@@ -308,6 +361,15 @@ class ExpectedState:
 
         return None
 
+    def _advance_anchor(self, matched: ExpectedValues, actual: ExpectedValues) -> None:
+        """Advance each tracked dimension's anchor to the latest reported value."""
+        if matched.brightness is not None and actual.brightness is not None:
+            self.anchor_brightness = actual.brightness
+        if matched.hs_color is not None and actual.hs_color is not None:
+            self.anchor_hs = actual.hs_color
+        if matched.color_temp_kelvin is not None and actual.color_temp_kelvin is not None:
+            self.anchor_color_temp_kelvin = actual.color_temp_kelvin
+
     def _hs_match(
         self,
         expected: ExpectedValues,
@@ -318,13 +380,16 @@ class ExpectedState:
         if actual.hs_color is None or expected.hs_color is None:
             return None
 
-        # For native transitions, old state must be consistent with the range.
-        if expected.from_hs_color is not None:
+        # Native transitions: range 'from' corner is the live anchor (last reported
+        # value). Otherwise fall back to the entry's own from_hs_color.
+        range_from = self.anchor_hs if self.moving_anchor_active else expected.from_hs_color
+
+        if range_from is not None:
             if not (
                 old is not None
                 and old.hs_color is not None
                 and self._hs_range_match(
-                    expected.from_hs_color,
+                    range_from,
                     expected.hs_color,
                     old.hs_color,
                     hue_tolerance=HUE_TOLERANCE,
@@ -337,8 +402,14 @@ class ExpectedState:
             if self._hs_exact_match(expected.hs_color, actual.hs_color):
                 return "exact"
 
-            # Range match (intermediate value)
-            if self._hs_range_match(expected.from_hs_color, expected.hs_color, actual.hs_color):
+            # Range match (intermediate value; tolerance absorbs device jitter)
+            if self._hs_range_match(
+                range_from,
+                expected.hs_color,
+                actual.hs_color,
+                hue_tolerance=HUE_TOLERANCE,
+                sat_tolerance=SATURATION_TOLERANCE,
+            ):
                 return "range"
 
             return None
@@ -415,10 +486,17 @@ class ExpectedState:
         if actual.color_temp_kelvin is None or expected.color_temp_kelvin is None:
             return None
 
-        # For native transitions, old state must be consistent with the range.
-        if expected.from_color_temp_kelvin is not None:
-            min_val = min(expected.from_color_temp_kelvin, expected.color_temp_kelvin)
-            max_val = max(expected.from_color_temp_kelvin, expected.color_temp_kelvin)
+        # Native transitions: range 'from' bound is the live anchor (last reported
+        # value). Otherwise fall back to the entry's own from_color_temp_kelvin.
+        range_from = (
+            self.anchor_color_temp_kelvin
+            if self.moving_anchor_active
+            else expected.from_color_temp_kelvin
+        )
+
+        if range_from is not None:
+            min_val = min(range_from, expected.color_temp_kelvin)
+            max_val = max(range_from, expected.color_temp_kelvin)
             if not (
                 old is not None
                 and old.color_temp_kelvin is not None
@@ -432,8 +510,11 @@ class ExpectedState:
             if abs(expected.color_temp_kelvin - actual.color_temp_kelvin) <= KELVIN_TOLERANCE:
                 return "exact"
 
-            # Range match (intermediate value)
-            if min_val <= actual.color_temp_kelvin <= max_val:
+            # Range match (intermediate value). Tolerance is applied to BOTH bounds
+            # deliberately: it absorbs device jitter just past the anchor and small
+            # overshoot just past the target (the exact-match branch already covers
+            # the target within tolerance).
+            if min_val - KELVIN_TOLERANCE <= actual.color_temp_kelvin <= max_val + KELVIN_TOLERANCE:
                 return "range"
 
             return None
@@ -468,6 +549,7 @@ class ExpectedState:
 
         # Clear any remaining entries
         self.values.clear()
+        self.clear_moving_anchor()
         _LOGGER.debug(
             "%s: wait_and_clear() completed",
             self.entity_id,

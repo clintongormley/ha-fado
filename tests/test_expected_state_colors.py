@@ -721,3 +721,269 @@ class TestEdgeCases:
 
         matched = expected_state.match_and_remove(actual, old=old)
         assert matched is None
+
+
+class TestMovingAnchorConfig:
+    """Enabling/clearing native-transition moving-anchor mode."""
+
+    def test_set_moving_anchor_seeds_state(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76, hs_color=(100.0, 50.0), color_temp_kelvin=4000)
+        assert state.moving_anchor_active is True
+        assert state.anchor_brightness == 76
+        assert state.anchor_hs == (100.0, 50.0)
+        assert state.anchor_color_temp_kelvin == 4000
+
+    def test_set_moving_anchor_defaults_to_none(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76)
+        assert state.moving_anchor_active is True
+        assert state.anchor_brightness == 76
+        assert state.anchor_hs is None
+        assert state.anchor_color_temp_kelvin is None
+
+    def test_clear_moving_anchor_resets_state(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76)
+        state.clear_moving_anchor()
+        assert state.moving_anchor_active is False
+        assert state.anchor_brightness is None
+
+    async def test_wait_and_clear_clears_moving_anchor(self) -> None:
+        state = ExpectedState(entity_id="light.test")
+        state.set_moving_anchor(brightness=76)
+        await state.wait_and_clear()
+        assert state.moving_anchor_active is False
+        assert state.anchor_brightness is None
+
+
+class TestMovingAnchorBrightness:
+    """Moving-anchor matching for native-transition brightness fades."""
+
+    def test_replays_logged_false_positive_without_flagging(self) -> None:
+        """The reported bug: lagging/coalesced reports must NOT be 'no match'."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=76)  # fade start
+        es.add(ExpectedValues(brightness=60))  # step 1 target
+        es.add(ExpectedValues(brightness=46))  # step 2 target
+
+        # Device lags: reports 71 (between real start 76 and first target 60).
+        m1 = es.match_and_remove(ExpectedValues(brightness=71), old=ExpectedValues(brightness=76))
+        assert m1 is not None
+        assert es.anchor_brightness == 71  # anchor advanced to last report
+
+        # Next report coalesces past the 60 step straight to 46.
+        m2 = es.match_and_remove(ExpectedValues(brightness=46), old=ExpectedValues(brightness=71))
+        assert m2 is not None
+        assert es.anchor_brightness == 46
+        assert es.is_empty  # exact at 46 drained both entries
+
+    def test_first_step_intermediate_matches_via_anchor(self) -> None:
+        """First step (no from_brightness) still accepts an intermediate via the anchor."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=76)
+        es.add(ExpectedValues(brightness=60))  # only one step commanded so far
+
+        m = es.match_and_remove(ExpectedValues(brightness=71), old=ExpectedValues(brightness=76))
+        assert m is not None  # would be None under old point-match-only first step
+
+    def test_moving_anchor_tightens_window_and_detects_bump(self) -> None:
+        """The headline: a bump back up that the fade-start band would accept is flagged."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=40))  # down-fade target
+
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=50), old=ExpectedValues(brightness=100))
+            is not None
+        )
+        assert es.anchor_brightness == 50
+
+        # 80 is inside the original [40,100] band but outside the tightened [40,50] window.
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=80), old=ExpectedValues(brightness=50))
+            is None
+        )
+        assert es.anchor_brightness == 50  # anchor NOT advanced on no-match
+
+    def test_dim_ahead_below_lowest_target_detected(self) -> None:
+        """A jump below the furthest commanded target is flagged."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=60))
+        es.add(ExpectedValues(brightness=46))
+
+        # Device at 71, then user jumps down to 30 (below lowest target 46).
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=71), old=ExpectedValues(brightness=100))
+            is not None
+        )
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=30), old=ExpectedValues(brightness=71))
+            is None
+        )
+
+    def test_jitter_within_tolerance_not_flagged(self) -> None:
+        """A small in-direction bounce within tolerance still matches."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=40))
+
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=50), old=ExpectedValues(brightness=100))
+            is not None
+        )
+        # 52 is 2 above the anchor 50 — within BRIGHTNESS_TOLERANCE (3).
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=52), old=ExpectedValues(brightness=50))
+            is not None
+        )
+
+    def test_overshoot_just_past_target_within_tolerance_matches(self) -> None:
+        """A small overshoot just past the target (within tolerance) still matches."""
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(brightness=100)
+        es.add(ExpectedValues(brightness=40))  # down-fade target
+
+        # Device reports 38 — 2 below target 40, within BRIGHTNESS_TOLERANCE (3).
+        assert (
+            es.match_and_remove(ExpectedValues(brightness=38), old=ExpectedValues(brightness=100))
+            is not None
+        )
+
+
+class TestMovingAnchorKelvin:
+    """Moving-anchor matching for native-transition color-temp fades."""
+
+    def test_lagging_kelvin_reports_match(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(color_temp_kelvin=2700)  # fade start
+        es.add(ExpectedValues(color_temp_kelvin=4000))  # step 1 target
+        es.add(ExpectedValues(color_temp_kelvin=6500))  # step 2 (final) target
+
+        m1 = es.match_and_remove(
+            ExpectedValues(color_temp_kelvin=3500), old=ExpectedValues(color_temp_kelvin=2700)
+        )
+        assert m1 is not None
+        assert es.anchor_color_temp_kelvin == 3500
+
+        m2 = es.match_and_remove(
+            ExpectedValues(color_temp_kelvin=6500), old=ExpectedValues(color_temp_kelvin=3500)
+        )
+        assert m2 is not None
+        assert es.is_empty
+
+    def test_kelvin_against_direction_bump_detected(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(color_temp_kelvin=2700)
+        es.add(ExpectedValues(color_temp_kelvin=6500))
+
+        assert (
+            es.match_and_remove(
+                ExpectedValues(color_temp_kelvin=4000), old=ExpectedValues(color_temp_kelvin=2700)
+            )
+            is not None
+        )
+        # Jump back below the tightened window [4000, 6500] -> manual.
+        assert (
+            es.match_and_remove(
+                ExpectedValues(color_temp_kelvin=3000), old=ExpectedValues(color_temp_kelvin=4000)
+            )
+            is None
+        )
+
+
+class TestMovingAnchorHs:
+    """Moving-anchor matching for native-transition HS color fades."""
+
+    def test_lagging_hs_reports_match(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(hs_color=(100.0, 50.0))  # fade start
+        es.add(ExpectedValues(hs_color=(125.0, 65.0)))  # step 1 target
+        es.add(ExpectedValues(hs_color=(150.0, 80.0)))  # step 2 (final) target
+
+        m1 = es.match_and_remove(
+            ExpectedValues(hs_color=(110.0, 55.0)), old=ExpectedValues(hs_color=(100.0, 50.0))
+        )
+        assert m1 is not None
+        assert es.anchor_hs == (110.0, 55.0)
+
+        m2 = es.match_and_remove(
+            ExpectedValues(hs_color=(150.0, 80.0)), old=ExpectedValues(hs_color=(110.0, 55.0))
+        )
+        assert m2 is not None
+        assert es.is_empty
+
+    def test_hs_off_trajectory_report_detected(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(hs_color=(100.0, 50.0))
+        es.add(ExpectedValues(hs_color=(150.0, 80.0)))
+
+        # A wildly different colour (unrelated) is not on the trajectory -> manual.
+        m = es.match_and_remove(
+            ExpectedValues(hs_color=(300.0, 90.0)), old=ExpectedValues(hs_color=(100.0, 50.0))
+        )
+        assert m is None
+
+    def test_hs_wraparound_lagging_report_matches(self) -> None:
+        es = ExpectedState(entity_id="light.test")
+        es.set_moving_anchor(hs_color=(350.0, 50.0))  # fade start near 360
+        es.add(ExpectedValues(hs_color=(10.0, 50.0)))  # target wraps past 0
+
+        # Intermediate 355 is on the short wraparound arc.
+        m = es.match_and_remove(
+            ExpectedValues(hs_color=(355.0, 50.0)), old=ExpectedValues(hs_color=(350.0, 50.0))
+        )
+        assert m is not None
+        assert es.anchor_hs == (355.0, 50.0)
+
+
+class TestMovingAnchorHybrid:
+    """Moving-anchor matching for native-transition HYBRID (hs->mireds) fades."""
+
+    def test_hybrid_phase_transition_uses_crossover_seeded_anchor(self) -> None:
+        """Hybrid (hs->mireds) fade: phase-1 HS reports match, then phase-2 color_temp
+        reports match against the crossover-seeded color_temp anchor."""
+        es = ExpectedState(entity_id="light.test")
+        # Brightness spans both phases; HS is phase 1 (start); color_temp is phase 2
+        # seeded at the crossover (3500 K), not at any fade-start color_temp.
+        es.set_moving_anchor(brightness=100, hs_color=(30.0, 60.0), color_temp_kelvin=3500)
+
+        # --- Phase 1: brightness + HS ---
+        es.add(ExpectedValues(brightness=80, hs_color=(40.0, 40.0)))  # phase-1 target
+
+        # Lagging intermediate (brightness + hs both mid-trajectory).
+        m1 = es.match_and_remove(
+            ExpectedValues(brightness=90, hs_color=(35.0, 50.0)),
+            old=ExpectedValues(brightness=100, hs_color=(30.0, 60.0)),
+        )
+        assert m1 is not None
+        assert es.anchor_brightness == 90
+        assert es.anchor_hs == (35.0, 50.0)
+
+        # Reaches phase-1 target -> exact -> drains.
+        m1b = es.match_and_remove(
+            ExpectedValues(brightness=80, hs_color=(40.0, 40.0)),
+            old=ExpectedValues(brightness=90, hs_color=(35.0, 50.0)),
+        )
+        assert m1b is not None
+        assert es.is_empty
+
+        # --- Phase 2: brightness + color_temp (anchor seeded to crossover 3500) ---
+        es.add(ExpectedValues(brightness=60, color_temp_kelvin=4500))  # phase-2 target
+
+        # Lagging intermediate: color_temp between crossover 3500 and target 4500.
+        m2 = es.match_and_remove(
+            ExpectedValues(brightness=70, color_temp_kelvin=4000),
+            old=ExpectedValues(brightness=80, color_temp_kelvin=3500),
+        )
+        assert m2 is not None
+        assert es.anchor_color_temp_kelvin == 4000  # advanced from the 3500 crossover seed
+        assert es.anchor_brightness == 70
+
+        # A real intervention in phase 2 (color_temp jumps far below the crossover) is flagged.
+        m3 = es.match_and_remove(
+            ExpectedValues(brightness=65, color_temp_kelvin=2700),
+            old=ExpectedValues(brightness=70, color_temp_kelvin=4000),
+        )
+        assert m3 is None
