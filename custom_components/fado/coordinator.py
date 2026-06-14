@@ -460,9 +460,10 @@ class FadeCoordinator:
         """Register expected values for a step and apply it to the light.
 
         When prev_step is provided, from_* fields are populated so that
-        match_and_remove can validate old state consistency. With native
-        transitions (larger steps) this also enables range matching for
-        intermediate values.
+        match_and_remove can validate old state consistency. These from_* bounds
+        drive matching only for software stepping; under native moving-anchor mode
+        they are ignored (the live anchor overrides them) and kept only for log
+        readability.
         """
         expected = ExpectedValues(
             brightness=step.brightness,
@@ -887,6 +888,13 @@ class FadeCoordinator:
             color_temp_kelvin=color_temp_kelvin,
         )
 
+    def _ensure_expected_state(self, entity_id: str) -> ExpectedState:
+        """Return the entity's ExpectedState, creating it if absent."""
+        entity = self.get_or_create_entity(entity_id)
+        if entity.expected_state is None:
+            entity.expected_state = ExpectedState(entity_id=entity_id)
+        return entity.expected_state
+
     def _configure_moving_anchor(
         self, entity_id: str, fade: FadeChange, native_transitions: bool
     ) -> None:
@@ -895,24 +903,22 @@ class FadeCoordinator:
         Seeds per-dimension anchors from the fade's start values so the first
         step has a window (not a point) and lagging/coalesced device reports match.
         """
-        entity = self.get_or_create_entity(entity_id)
         if native_transitions:
-            if entity.expected_state is None:
-                entity.expected_state = ExpectedState(entity_id=entity_id)
-            entity.expected_state.set_moving_anchor(
+            self._ensure_expected_state(entity_id).set_moving_anchor(
                 brightness=fade.anchor_brightness,
                 hs_color=fade.anchor_hs,
                 color_temp_kelvin=fade.anchor_color_temp_kelvin,
             )
-        elif entity.expected_state is not None:
+            return
+        # Software fade: clear any anchor left over from a prior native fade on
+        # the (persisted) ExpectedState. Don't create one just to clear it.
+        entity = self.get_or_create_entity(entity_id)
+        if entity.expected_state is not None:
             entity.expected_state.clear_moving_anchor()
 
     def _add_expected_values(self, entity_id: str, values: ExpectedValues) -> None:
         """Register expected values before making a service call."""
-        entity = self.get_or_create_entity(entity_id)
-        if entity.expected_state is None:
-            entity.expected_state = ExpectedState(entity_id=entity_id)
-        entity.expected_state.add(values)
+        self._ensure_expected_state(entity_id).add(values)
 
     def _add_expected_brightness(self, entity_id: str, brightness: int) -> None:
         """Register an expected brightness value (convenience wrapper)."""
