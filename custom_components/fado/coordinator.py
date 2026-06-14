@@ -342,6 +342,14 @@ class FadeCoordinator:
             _LOGGER.debug("%s: Nothing to fade", entity_id)
             return
 
+        # A prior native fade that was cancelled (rather than completing normally)
+        # leaves moving-anchor state on the persisted ExpectedState. Reset it before
+        # the from-step so the discrete jump is point-matched; _run_fade_loop
+        # re-enables the anchor for native fades.
+        entity = self.get_entity(entity_id)
+        if entity is not None and entity.expected_state is not None:
+            entity.expected_state.clear_moving_anchor()
+
         # Phase 1: Apply from step if present (sets starting state immediately)
         await self._apply_from_step(entity_id, fade)
 

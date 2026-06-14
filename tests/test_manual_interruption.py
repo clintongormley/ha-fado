@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import time
 
 import pytest
@@ -1490,6 +1491,55 @@ async def test_native_transition_detects_real_intervention(
     fade_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await fade_task
+
+
+async def test_stale_native_anchor_does_not_corrupt_next_from_step(
+    hass: HomeAssistant,
+    init_integration: MockConfigEntry,
+    service_calls: list[ServiceCall],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A moving anchor left over from a cancelled native fade must not corrupt the
+    next fade's from-step matching.
+
+    A native fade enables moving-anchor mode on the (persisted) ExpectedState. If it
+    is hard-cancelled, _finalize_fade never runs, so the anchor is never cleared.
+    The next fade's from-step runs before _run_fade_loop re-configures the anchor, so
+    the discrete from-step jump would be matched against the stale anchor window and
+    misread as manual intervention. The fade must reset stale anchor state first.
+    """
+    entity_id = "light.test_stale_anchor"
+    hass.states.async_set(
+        entity_id,
+        STATE_ON,
+        {ATTR_BRIGHTNESS: 200, ATTR_SUPPORTED_COLOR_MODES: [ColorMode.BRIGHTNESS]},
+    )
+    await hass.async_block_till_done()
+
+    coordinator: FadeCoordinator = hass.data[DOMAIN]
+    # Simulate leftover state from a cancelled native fade: a stale moving anchor
+    # seeded far from the current brightness, with no queued values.
+    entity = coordinator.get_or_create_entity(entity_id)
+    entity.expected_state = ExpectedState(entity_id=entity_id)
+    entity.expected_state.set_moving_anchor(brightness=10)
+
+    # A software fade with an explicit `from` (50% -> ~127) that differs from the
+    # current 200. The from-step jumps 200 -> 127; under the stale [10, 127] anchor
+    # window the old=200 report fails the consistency guard and would be misread as
+    # manual intervention.
+    with caplog.at_level(logging.INFO, logger="custom_components.fado.coordinator"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_FADE_LIGHTS,
+            {"from": {"brightness_pct": 50}, "brightness_pct": 20, "transition": 1},
+            target={"entity_id": entity_id},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert "Manual intervention detected" not in caplog.text, (
+        "Stale native anchor must not cause the from-step to be misread as manual intervention"
+    )
 
 
 async def test_native_transition_first_step_intermediates_no_false_intervention(
