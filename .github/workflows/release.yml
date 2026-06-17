@@ -86,6 +86,13 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: main
+          # create-pull-request authenticates with RELEASE_PAT and injects its
+          # own git auth header. checkout v6 also persists GITHUB_TOKEN
+          # credentials; the two combined send a duplicate "Authorization"
+          # header on push, which GitHub rejects with HTTP 400. Nothing between
+          # this checkout and create-pull-request uses the persisted creds
+          # (bump-version.sh only edits files), so drop them.
+          persist-credentials: false
 
       # The bump PR must be opened by a PAT/App token, NOT the default
       # GITHUB_TOKEN: GitHub deliberately does not trigger `on: pull_request`
