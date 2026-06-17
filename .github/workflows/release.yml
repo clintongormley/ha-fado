@@ -33,7 +33,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract and validate version from tag
         id: version
@@ -83,9 +83,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
+          # create-pull-request authenticates with RELEASE_PAT and injects its
+          # own git auth header. checkout v6 also persists GITHUB_TOKEN
+          # credentials; the two combined send a duplicate "Authorization"
+          # header on push, which GitHub rejects with HTTP 400. Nothing between
+          # this checkout and create-pull-request uses the persisted creds
+          # (bump-version.sh only edits files), so drop them.
+          persist-credentials: false
 
       # The bump PR must be opened by a PAT/App token, NOT the default
       # GITHUB_TOKEN: GitHub deliberately does not trigger `on: pull_request`
@@ -140,7 +147,7 @@ jobs:
       - name: Open next-minor bump PR
         id: cpr
         if: steps.bump.outputs.do_bump == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           # PAT (not GITHUB_TOKEN) so the PR triggers the required status checks
           # — see the "Ensure release token is configured" step above.
