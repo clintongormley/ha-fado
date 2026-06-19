@@ -256,7 +256,7 @@ export const FadoCoreMixin = (superClass) =>
     // ── State management ───────────────────────────────────────
 
     _loadCollapsedState() {
-      const STORAGE_VERSION = 2;
+      const STORAGE_VERSION = 3;
       try {
         const stored = JSON.parse(localStorage.getItem("fado_collapsed") || "{}");
         if (stored._version !== STORAGE_VERSION) {
@@ -270,7 +270,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _saveCollapsedState() {
-      const toSave = { ...this._collapsed, _version: 2 };
+      const toSave = { ...this._collapsed, _version: 3 };
       localStorage.setItem("fado_collapsed", JSON.stringify(toSave));
     }
 
@@ -281,6 +281,12 @@ export const FadoCoreMixin = (superClass) =>
           const areaKey = collapseKeyForArea(area);
           if (!(areaKey in newCollapsed)) {
             newCollapsed[areaKey] = true;
+          }
+          for (const light of area.lights) {
+            const lightKey = collapseKeyForLight(light.entity_id);
+            if (!(lightKey in newCollapsed)) {
+              newCollapsed[lightKey] = true;
+            }
           }
         }
       }
