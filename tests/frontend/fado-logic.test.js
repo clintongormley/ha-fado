@@ -9,6 +9,7 @@ import {
   collapseKeyForLight,
   nativeTransitionsToValue,
   valueToNativeTransitions,
+  pruneCollapsedState,
 } from "../../custom_components/fado/frontend/fado-logic.js";
 
 describe("needsSetup", () => {
@@ -93,5 +94,59 @@ describe("native transitions mapping round-trip", () => {
     expect(valueToNativeTransitions("false")).toBe(false);
     expect(valueToNativeTransitions("disable")).toBe("disable");
     expect(valueToNativeTransitions("")).toBe(null);
+  });
+});
+
+describe("pruneCollapsedState", () => {
+  const data = {
+    areas: [
+      { area_id: "kitchen", lights: [{ entity_id: "light.a" }, { entity_id: "light.b" }] },
+      { area_id: null, lights: [{ entity_id: "light.c" }] },
+    ],
+  };
+
+  it("keeps keys for current areas/lights and preserves their values", () => {
+    const collapsed = {
+      area_kitchen: false,
+      area_none: true,
+      "light_light.a": false,
+      "light_light.b": true,
+      "light_light.c": true,
+    };
+    expect(pruneCollapsedState(collapsed, data)).toEqual(collapsed);
+  });
+
+  it("drops stale area/light keys not present in the data", () => {
+    const collapsed = {
+      area_kitchen: true,
+      area_bedroom: false, // removed area
+      "light_light.a": false,
+      "light_light.gone": true, // removed light
+    };
+    expect(pruneCollapsedState(collapsed, data)).toEqual({
+      area_kitchen: true,
+      "light_light.a": false,
+    });
+  });
+
+  it("drops non-area/light cruft such as _version", () => {
+    const collapsed = { _version: 3, area_kitchen: true, "light_light.a": true };
+    expect(pruneCollapsedState(collapsed, data)).toEqual({
+      area_kitchen: true,
+      "light_light.a": true,
+    });
+  });
+
+  it("returns an empty object when there is no data", () => {
+    const collapsed = { area_kitchen: true, "light_light.a": false };
+    expect(pruneCollapsedState(collapsed, null)).toEqual({});
+    expect(pruneCollapsedState(collapsed, { areas: null })).toEqual({});
+  });
+
+  it("does not mutate the input object", () => {
+    const collapsed = { area_kitchen: true, area_bedroom: false };
+    const snapshot = { ...collapsed };
+    pruneCollapsedState(collapsed, data);
+    expect(collapsed).toEqual(snapshot);
   });
 });

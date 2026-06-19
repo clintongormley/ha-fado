@@ -19,6 +19,7 @@ import {
   collapseKeyForLight,
   nativeTransitionsToValue,
   valueToNativeTransitions,
+  pruneCollapsedState,
 } from "./fado-logic.js";
 
 // Re-export for consumers
@@ -287,7 +288,9 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _initCollapsedState() {
-      const newCollapsed = { ...this._collapsed };
+      // Prune keys for areas/lights that no longer exist, then seed defaults
+      // for current ones — keeps the persisted fado_collapsed blob bounded.
+      const newCollapsed = pruneCollapsedState(this._collapsed, this._data);
       if (this._data && this._data.areas) {
         for (const area of this._data.areas) {
           const areaKey = collapseKeyForArea(area);

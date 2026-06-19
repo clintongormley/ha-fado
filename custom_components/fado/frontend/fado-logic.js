@@ -66,3 +66,27 @@ export function valueToNativeTransitions(value) {
   if (value === "disable") return "disable";
   return null;
 }
+
+/**
+ * Drop persisted collapse keys for areas/lights that no longer exist (and any
+ * non-area/light cruft such as `_version`), preserving the stored value of the
+ * keys that remain. Returns a new object; the caller seeds defaults for any
+ * still-missing current keys. Prevents the `fado_collapsed` blob from growing
+ * unboundedly as lights/areas churn.
+ */
+export function pruneCollapsedState(collapsed, data) {
+  const valid = new Set();
+  if (data && data.areas) {
+    for (const area of data.areas) {
+      valid.add(collapseKeyForArea(area));
+      for (const light of area.lights) {
+        valid.add(collapseKeyForLight(light.entity_id));
+      }
+    }
+  }
+  const pruned = {};
+  for (const key of Object.keys(collapsed)) {
+    if (valid.has(key)) pruned[key] = collapsed[key];
+  }
+  return pruned;
+}
