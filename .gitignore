@@ -18,3 +18,6 @@ HA_CHANGES_REPORT.md
 
 # Brainstorm visual-companion scratch files
 .superpowers/
+
+# Node test toolchain
+node_modules/
