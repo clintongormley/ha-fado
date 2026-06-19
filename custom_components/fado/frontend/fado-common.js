@@ -24,6 +24,18 @@ import {
 // Re-export for consumers
 export { LitElement, html, css };
 
+const NATIVE_TRANSITIONS_OPTIONS = [
+  { value: "", label: "" },
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+  { value: "disable", label: "Disable" },
+];
+const LOG_LEVEL_OPTIONS = [
+  { value: "warning", label: "Warning" },
+  { value: "info", label: "Info" },
+  { value: "debug", label: "Debug" },
+];
+
 /**
  * Mixin that adds all Fado core behaviour to a LitElement subclass.
  *
@@ -655,11 +667,7 @@ export const FadoCoreMixin = (superClass) =>
       const nativeTransitions = valueToNativeTransitions(value);
       const light = this._findLight(entityId);
       if (light) light.native_transitions = nativeTransitions;
-      await this.hass.callWS({
-        type: "fado/save_light_config",
-        entity_id: entityId,
-        native_transitions: nativeTransitions,
-      });
+      await this._saveConfig(entityId, "native_transitions", nativeTransitions);
     }
 
     async _downloadDiagnostics() {
@@ -695,11 +703,7 @@ export const FadoCoreMixin = (superClass) =>
             <label>Log level:</label>
             ${this._renderSelect({
               value: this._logLevel,
-              options: [
-                { value: "warning", label: "Warning" },
-                { value: "info", label: "Info" },
-                { value: "debug", label: "Debug" },
-              ],
+              options: LOG_LEVEL_OPTIONS,
               onChange: (value) => this._saveLogLevel(value),
             })}
           </div>
@@ -789,6 +793,8 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _renderTableView() {
+      const allIds = this._getAllLightIds();
+      const allState = this._getCheckboxState(allIds);
       return html`
         <ha-card>
           <table class="lights-table">
@@ -801,8 +807,8 @@ export const FadoCoreMixin = (superClass) =>
                 <th class="col-exclude">Exclude</th>
                 <th class="col-configure">
                   <ha-checkbox
-                    .checked=${this._getCheckboxState(this._getAllLightIds()) === "all"}
-                    .indeterminate=${this._getCheckboxState(this._getAllLightIds()) === "some"}
+                    .checked=${allState === "all"}
+                    .indeterminate=${allState === "some"}
                     @change=${() => this._handleAllLightsCheckboxChange()}
                   ></ha-checkbox>
                 </th>
@@ -925,12 +931,7 @@ export const FadoCoreMixin = (superClass) =>
                 ${this._renderSelect({
                   value: nativeTransitionsToValue(light.native_transitions),
                   disabled: isExcluded,
-                  options: [
-                    { value: "", label: "" },
-                    { value: "true", label: "Yes" },
-                    { value: "false", label: "No" },
-                    { value: "disable", label: "Disable" },
-                  ],
+                  options: NATIVE_TRANSITIONS_OPTIONS,
                   onChange: (value) => this._handleNativeTransitionsValue(light.entity_id, value),
                 })}
               </div>
@@ -1099,12 +1100,7 @@ export const FadoCoreMixin = (superClass) =>
             ${this._renderSelect({
               value: nativeTransitionsToValue(light.native_transitions),
               disabled: isExcluded,
-              options: [
-                { value: "", label: "" },
-                { value: "true", label: "Yes" },
-                { value: "false", label: "No" },
-                { value: "disable", label: "Disable" },
-              ],
+              options: NATIVE_TRANSITIONS_OPTIONS,
               onChange: (value) =>
                 this._handleNativeTransitionsValue(light.entity_id, value),
             })}
@@ -1142,6 +1138,7 @@ export const fadoTokens = css`
     --fado-border: var(--divider-color);
     --fado-surface: var(--card-background-color);
     --fado-surface-2: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+    --fado-disabled: var(--disabled-text-color);
 
     /* Structural — fixed but overridable */
     --fado-space-1: 4px;
@@ -1194,8 +1191,8 @@ export const fadoStyles = css`
     overflow-x: auto;
   }
 
-  ha-button { --mdc-theme-primary: var(--primary-color); }
-  ha-button[disabled] { --mdc-theme-primary: var(--disabled-text-color); }
+  ha-button { --mdc-theme-primary: var(--fado-accent); }
+  ha-button[disabled] { --mdc-theme-primary: var(--fado-disabled); }
 
   .settings-row {
     display: flex;
@@ -1218,7 +1215,6 @@ export const fadoStyles = css`
   }
 
   ha-select { --mdc-menu-min-width: 120px; min-width: 120px; }
-  .native-transitions ha-select,
   td.col-native-transitions ha-select { min-width: 110px; }
 
   .header-row {
@@ -1335,7 +1331,7 @@ export const fadoStyles = css`
     width: 80px;
     padding: 4px 8px;
     border: 1px solid var(--fado-border);
-    border-radius: 4px;
+    border-radius: var(--fado-radius-sm);
     background: var(--fado-surface);
     color: var(--fado-text);
   }
@@ -1355,7 +1351,7 @@ export const fadoStyles = css`
   }
 
   .empty-state ha-icon { --mdc-icon-size: 64px; margin-bottom: 16px; opacity: 0.5; }
-  .empty-state .empty-message { font-size: 20px; font-weight: 400; }
+  .empty-state .empty-message { font-size: var(--fado-font-lg); font-weight: 400; }
 
   .testing-spinner { display: flex; justify-content: center; align-items: center; }
 
