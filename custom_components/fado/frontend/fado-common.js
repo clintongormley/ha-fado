@@ -9,8 +9,33 @@ import {
   css,
 } from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
+import {
+  needsSetup,
+  areaNeedsSetupCount,
+  needsSetupLabel,
+  getCheckboxState,
+  getExcludeState,
+  collapseKeyForArea,
+  collapseKeyForLight,
+  nativeTransitionsToValue,
+  valueToNativeTransitions,
+  pruneCollapsedState,
+} from "./fado-logic.js";
+
 // Re-export for consumers
 export { LitElement, html, css };
+
+const NATIVE_TRANSITIONS_OPTIONS = [
+  { value: "", label: "" },
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+  { value: "disable", label: "Disable" },
+];
+const LOG_LEVEL_OPTIONS = [
+  { value: "warning", label: "Warning" },
+  { value: "info", label: "Info" },
+  { value: "debug", label: "Debug" },
+];
 
 /**
  * Mixin that adds all Fado core behaviour to a LitElement subclass.
@@ -35,11 +60,12 @@ export const FadoCoreMixin = (superClass) =>
         _globalMinDelayMs: { type: Number },
         _logLevel: { type: String },
         _entryId: { type: String },
+        _compact: { type: Boolean, reflect: true, attribute: "compact" },
       };
     }
 
     static get styles() {
-      return fadoStyles;
+      return [fadoTokens, fadoStyles];
     }
 
     constructor() {
@@ -55,6 +81,8 @@ export const FadoCoreMixin = (superClass) =>
       this._logLevel = "warning";
       this._entryId = null;
       this._lastConnection = null;
+      this._compact = false;
+      this._resizeObserver = null;
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -71,6 +99,12 @@ export const FadoCoreMixin = (superClass) =>
         }
       };
       window.addEventListener("location-changed", this._locationChangedHandler);
+      this._resizeObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect?.width ?? 0;
+        const compact = width > 0 && width < 720;
+        if (compact !== this._compact) this._compact = compact;
+      });
+      this._resizeObserver.observe(this);
     }
 
     disconnectedCallback() {
@@ -94,6 +128,10 @@ export const FadoCoreMixin = (superClass) =>
       if (this._deviceRegUnsub) {
         this._deviceRegUnsub();
         this._deviceRegUnsub = null;
+      }
+      if (this._resizeObserver) {
+        this._resizeObserver.disconnect();
+        this._resizeObserver = null;
       }
     }
 
@@ -231,7 +269,7 @@ export const FadoCoreMixin = (superClass) =>
     // ── State management ───────────────────────────────────────
 
     _loadCollapsedState() {
-      const STORAGE_VERSION = 2;
+      const STORAGE_VERSION = 3;
       try {
         const stored = JSON.parse(localStorage.getItem("fado_collapsed") || "{}");
         if (stored._version !== STORAGE_VERSION) {
@@ -245,17 +283,25 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _saveCollapsedState() {
-      const toSave = { ...this._collapsed, _version: 2 };
+      const toSave = { ...this._collapsed, _version: 3 };
       localStorage.setItem("fado_collapsed", JSON.stringify(toSave));
     }
 
     _initCollapsedState() {
-      const newCollapsed = { ...this._collapsed };
+      // Prune keys for areas/lights that no longer exist, then seed defaults
+      // for current ones — keeps the persisted fado_collapsed blob bounded.
+      const newCollapsed = pruneCollapsedState(this._collapsed, this._data);
       if (this._data && this._data.areas) {
         for (const area of this._data.areas) {
-          const areaKey = `area_${area.area_id || "none"}`;
+          const areaKey = collapseKeyForArea(area);
           if (!(areaKey in newCollapsed)) {
             newCollapsed[areaKey] = true;
+          }
+          for (const light of area.lights) {
+            const lightKey = collapseKeyForLight(light.entity_id);
+            if (!(lightKey in newCollapsed)) {
+              newCollapsed[lightKey] = true;
+            }
           }
         }
       }
@@ -267,7 +313,7 @@ export const FadoCoreMixin = (superClass) =>
       if (this._data && this._data.areas) {
         for (const area of this._data.areas) {
           for (const light of area.lights) {
-            if (!light.min_delay_ms && !light.exclude) {
+            if (needsSetup(light)) {
               toCheck.add(light.entity_id);
             }
           }
@@ -308,7 +354,7 @@ export const FadoCoreMixin = (superClass) =>
       }
       for (const area of newData.areas) {
         for (const light of area.lights) {
-          if (!existingLightIds.has(light.entity_id) && !light.min_delay_ms && !light.exclude) {
+          if (!existingLightIds.has(light.entity_id) && needsSetup(light)) {
             updatedChecked.add(light.entity_id);
           }
         }
@@ -348,10 +394,6 @@ export const FadoCoreMixin = (superClass) =>
       } catch (err) {
         console.error("Failed to save log level:", err);
       }
-    }
-
-    _handleLogLevelChange(e) {
-      this._saveLogLevel(e.target.value);
     }
 
     async _saveGlobalMinDelay(value) {
@@ -475,13 +517,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _getCheckboxState(entityIds) {
-      if (entityIds.length === 0) {
-        return "none";
-      }
-      const checkedCount = entityIds.filter((id) => this._configureChecked.has(id)).length;
-      if (checkedCount === 0) return "none";
-      if (checkedCount === entityIds.length) return "all";
-      return "some";
+      return getCheckboxState(entityIds, this._configureChecked);
     }
 
     _handleAreaCheckboxChange(area, e) {
@@ -512,11 +548,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _getExcludeState(lights) {
-      if (lights.length === 0) return "none";
-      const excludedCount = lights.filter((light) => light.exclude).length;
-      if (excludedCount === 0) return "none";
-      if (excludedCount === lights.length) return "all";
-      return "some";
+      return getExcludeState(lights);
     }
 
     async _handleAreaExcludeChange(area, e) {
@@ -634,21 +666,11 @@ export const FadoCoreMixin = (superClass) =>
       }
     }
 
-    async _handleNativeTransitionsChange(entityId, e) {
-      const value = e.target.value;
-      let nativeTransitions = null;
-      if (value === "true") nativeTransitions = true;
-      else if (value === "false") nativeTransitions = false;
-      else if (value === "disable") nativeTransitions = "disable";
-
+    async _handleNativeTransitionsValue(entityId, value) {
+      const nativeTransitions = valueToNativeTransitions(value);
       const light = this._findLight(entityId);
       if (light) light.native_transitions = nativeTransitions;
-
-      await this.hass.callWS({
-        type: "fado/save_light_config",
-        entity_id: entityId,
-        native_transitions: nativeTransitions,
-      });
+      await this._saveConfig(entityId, "native_transitions", nativeTransitions);
     }
 
     async _downloadDiagnostics() {
@@ -682,11 +704,11 @@ export const FadoCoreMixin = (superClass) =>
         <div class="controls-row">
           <div class="log-level-selector">
             <label>Log level:</label>
-            <select .value=${this._logLevel} @change=${(e) => this._handleLogLevelChange(e)}>
-              <option value="warning" ?selected=${this._logLevel === "warning"}>Warning</option>
-              <option value="info" ?selected=${this._logLevel === "info"}>Info</option>
-              <option value="debug" ?selected=${this._logLevel === "debug"}>Debug</option>
-            </select>
+            ${this._renderSelect({
+              value: this._logLevel,
+              options: LOG_LEVEL_OPTIONS,
+              onChange: (value) => this._saveLogLevel(value),
+            })}
           </div>
           ${isTesting
             ? html`<ha-button unelevated disabled>
@@ -746,38 +768,18 @@ export const FadoCoreMixin = (superClass) =>
 
       return html`
         ${this._renderHeader()}
-        <ha-card>
-          <table class="lights-table">
-            <thead>
-              <tr>
-                <th class="col-light"></th>
-                <th class="col-delay">Min Delay (ms)</th>
-                <th class="col-min-brightness">Min Brightness</th>
-                <th class="col-native-transitions">Native Transitions</th>
-                <th class="col-exclude">Exclude</th>
-                <th class="col-configure">
-                  <ha-checkbox
-                    .checked=${this._getCheckboxState(this._getAllLightIds()) === "all"}
-                    .indeterminate=${this._getCheckboxState(this._getAllLightIds()) === "some"}
-                    @change=${() => this._handleAllLightsCheckboxChange()}
-                  ></ha-checkbox>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              ${this._data.areas.map((area) => this._renderAreaRows(area))}
-            </tbody>
-          </table>
-        </ha-card>
+        ${this._compact ? this._renderCardView() : this._renderTableView()}
+      `;
+    }
+
+    _renderSettingsCard() {
+      return html`
         <ha-card>
           <div class="settings-row">
             <label>Global min delay:</label>
             ${this._renderNumberInput({
               value: this._globalMinDelayMs || "",
-              min: 50,
-              max: 2000,
-              step: 10,
-              suffix: "ms",
+              min: 50, max: 2000, step: 10, suffix: "ms",
               onChange: (e) => this._handleGlobalDelayChange(e),
             })}
             <span class="hint">The absolute minimum delay for all lights</span>
@@ -793,13 +795,170 @@ export const FadoCoreMixin = (superClass) =>
       `;
     }
 
+    _renderTableView() {
+      const allIds = this._getAllLightIds();
+      const allState = this._getCheckboxState(allIds);
+      return html`
+        <ha-card>
+          <table class="lights-table">
+            <thead>
+              <tr>
+                <th class="col-light"></th>
+                <th class="col-delay">Min Delay (ms)</th>
+                <th class="col-min-brightness">Min Brightness</th>
+                <th class="col-native-transitions">Native Transitions</th>
+                <th class="col-exclude">Exclude</th>
+                <th class="col-configure">
+                  <ha-checkbox
+                    .checked=${allState === "all"}
+                    .indeterminate=${allState === "some"}
+                    @change=${() => this._handleAllLightsCheckboxChange()}
+                  ></ha-checkbox>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this._data.areas.map((area) => this._renderAreaRows(area))}
+            </tbody>
+          </table>
+        </ha-card>
+        ${this._renderSettingsCard()}
+      `;
+    }
+
+    _renderCardView() {
+      return html`
+        ${this._data.areas.map((area) => this._renderAreaCard(area))}
+        ${this._renderSettingsCard()}
+      `;
+    }
+
+    _renderAreaCard(area) {
+      const areaKey = collapseKeyForArea(area);
+      const isCollapsed = this._collapsed[areaKey];
+      const areaIcon = area.icon || "mdi:texture-box";
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area));
+      const areaLightIds = this._getAreaLightIds(area);
+      const configureState = this._getCheckboxState(areaLightIds);
+      const excludeState = this._getExcludeState(area.lights);
+      return html`
+        <ha-card class="area-card">
+          <div class="area-card-header" @click=${() => this._toggleCollapse(areaKey)}>
+            <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
+            <ha-icon class="header-icon" icon="${areaIcon}"></ha-icon>
+            <span class="area-name">${area.name}</span>
+            ${setupLabel ? html`<span class="needs-setup-rollup">· ${setupLabel}</span>` : ""}
+            <span class="spacer"></span>
+            <span class="area-card-check" @click=${(e) => e.stopPropagation()}>
+              <span class="mini-label">Exclude</span>
+              <ha-checkbox
+                .checked=${excludeState === "all"}
+                .indeterminate=${excludeState === "some"}
+                @change=${(e) => this._handleAreaExcludeChange(area, e)}
+              ></ha-checkbox>
+            </span>
+            <span class="area-card-check" @click=${(e) => e.stopPropagation()}>
+              <span class="mini-label">Configure</span>
+              <ha-checkbox
+                .checked=${configureState === "all"}
+                .indeterminate=${configureState === "some"}
+                @change=${(e) => this._handleAreaCheckboxChange(area, e)}
+              ></ha-checkbox>
+            </span>
+          </div>
+          ${isCollapsed
+            ? ""
+            : area.lights.length > 0
+              ? area.lights.map((light) => this._renderLightCard(light))
+              : html`<div class="no-lights card-no-lights">No lights in this area</div>`}
+        </ha-card>
+      `;
+    }
+
+    _renderLightCard(light) {
+      const lightKey = collapseKeyForLight(light.entity_id);
+      const isCollapsed = this._collapsed[lightKey];
+      const lightIcon = light.icon || "mdi:lightbulb";
+      const state = this.hass.states[light.entity_id];
+      const isOn = state && state.state === "on";
+      const isTesting = this._testing.has(light.entity_id);
+      const errorMessage = this._testErrors.get(light.entity_id);
+      const isExcluded = light.exclude;
+      const flagSetup = needsSetup(light);
+      return html`
+        <div class="light-card ${isExcluded ? "excluded" : ""}">
+          <div class="light-card-header" @click=${() => this._toggleCollapse(lightKey)}>
+            <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
+            <ha-icon class="light-icon ${isOn ? "on" : ""}" icon="${lightIcon}"></ha-icon>
+            <div class="light-info">
+              <div class="light-name">${light.name}</div>
+              <div class="light-substatus">
+                ${flagSetup
+                  ? html`<span class="needs-setup">● Needs setup</span>`
+                  : html`<span class="entity-id">${light.min_delay_ms ? `${light.min_delay_ms} ms` : light.entity_id}</span>`}
+              </div>
+            </div>
+            <span class="spacer"></span>
+            <span class="light-card-check" @click=${(e) => e.stopPropagation()}>
+              <ha-checkbox
+                ?disabled=${isTesting || isExcluded}
+                .checked=${this._configureChecked.has(light.entity_id)}
+                @change=${(e) => this._handleConfigureChange(light.entity_id, e)}
+              ></ha-checkbox>
+            </span>
+          </div>
+          ${isCollapsed ? "" : html`
+            <div class="light-card-body">
+              <div class="field-row" @click=${() => this._openLightDialog(light.entity_id)}>
+                <span class="field-label">Entity</span>
+                <span class="entity-id">${light.entity_id}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Min delay</span>
+                ${isTesting
+                  ? html`<div class="testing-spinner"><div class="spinner"></div></div>`
+                  : html`${this._renderNumberInput({
+                      value: light.min_delay_ms || "",
+                      min: this._globalMinDelayMs, max: 2000, step: 10,
+                      disabled: isExcluded, suffix: "ms",
+                      onChange: (e) => this._handleDelayChange(light.entity_id, e),
+                    })}`}
+              </div>
+              ${errorMessage ? html`<div class="test-error">${errorMessage}</div>` : ""}
+              <div class="field-row">
+                <span class="field-label">Min brightness</span>
+                <span>${light.min_brightness != null ? light.min_brightness : "—"}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Native transitions</span>
+                ${this._renderSelect({
+                  value: nativeTransitionsToValue(light.native_transitions),
+                  disabled: isExcluded,
+                  options: NATIVE_TRANSITIONS_OPTIONS,
+                  onChange: (value) => this._handleNativeTransitionsValue(light.entity_id, value),
+                })}
+              </div>
+              <div class="field-row">
+                <span class="field-label">Exclude</span>
+                <ha-checkbox
+                  .checked=${light.exclude}
+                  @change=${(e) => this._handleCheckboxChange(light.entity_id, "exclude", e)}
+                ></ha-checkbox>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
     _renderAreaRows(area) {
-      const areaKey = `area_${area.area_id || "none"}`;
+      const areaKey = collapseKeyForArea(area);
       const isCollapsed = this._collapsed[areaKey];
       const areaIcon = area.icon || "mdi:texture-box";
       const areaLightIds = this._getAreaLightIds(area);
       const configureState = this._getCheckboxState(areaLightIds);
       const excludeState = this._getExcludeState(area.lights);
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area));
 
       return html`
         <tr class="area-row" @click=${() => this._toggleCollapse(areaKey)}>
@@ -808,6 +967,7 @@ export const FadoCoreMixin = (superClass) =>
               <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
               <ha-icon class="header-icon" icon="${areaIcon}"></ha-icon>
               ${area.name}
+              ${setupLabel ? html`<span class="needs-setup-rollup">· ${setupLabel}</span>` : ""}
             </div>
           </td>
           <td class="col-min-brightness"></td>
@@ -834,6 +994,41 @@ export const FadoCoreMixin = (superClass) =>
           : area.lights.length > 0
             ? area.lights.map((light) => this._renderLightRow(light))
             : html`<tr><td colspan="6" class="no-lights">No lights in this area</td></tr>`}
+      `;
+    }
+
+    _renderSelect({ value, options, disabled, onChange }) {
+      // ha-select is the modern HA control; fall back to a native <select>
+      // on much-older HA that hasn't registered it yet.
+      if (customElements.get("ha-select")) {
+        return html`
+          <ha-select
+            naturalMenuWidth
+            ?disabled=${disabled}
+            .value=${value}
+            @selected=${(e) => {
+              e.stopPropagation();
+              const newValue = e.target.value;
+              if (newValue !== undefined && newValue !== value) onChange(newValue);
+            }}
+            @closed=${(e) => e.stopPropagation()}
+          >
+            ${options.map(
+              (o) => html`<ha-list-item .value=${o.value}>${o.label}</ha-list-item>`,
+            )}
+          </ha-select>
+        `;
+      }
+      return html`
+        <select
+          ?disabled=${disabled}
+          .value=${value}
+          @change=${(e) => onChange(e.target.value)}
+        >
+          ${options.map(
+            (o) => html`<option value=${o.value} ?selected=${o.value === value}>${o.label}</option>`,
+          )}
+        </select>
       `;
     }
 
@@ -909,16 +1104,13 @@ export const FadoCoreMixin = (superClass) =>
             ${light.min_brightness != null ? light.min_brightness : ""}
           </td>
           <td class="col-native-transitions">
-            <select
-              class="native-transitions-select"
-              ?disabled=${isExcluded}
-              @change=${(e) => this._handleNativeTransitionsChange(light.entity_id, e)}
-            >
-              <option value="" ?selected=${light.native_transitions === null || light.native_transitions === undefined}></option>
-              <option value="true" ?selected=${light.native_transitions === true}>Yes</option>
-              <option value="false" ?selected=${light.native_transitions === false}>No</option>
-              <option value="disable" ?selected=${light.native_transitions === "disable"}>Disable</option>
-            </select>
+            ${this._renderSelect({
+              value: nativeTransitionsToValue(light.native_transitions),
+              disabled: isExcluded,
+              options: NATIVE_TRANSITIONS_OPTIONS,
+              onChange: (value) =>
+                this._handleNativeTransitionsValue(light.entity_id, value),
+            })}
           </td>
           <td class="col-exclude">
             <ha-checkbox
@@ -940,22 +1132,55 @@ export const FadoCoreMixin = (superClass) =>
 
 // ── Shared styles ────────────────────────────────────────────
 
+export const fadoTokens = css`
+  :host {
+    /* Colour — mapped to HA theme vars with real fallbacks */
+    --fado-accent: var(--primary-color, #03a9f4);
+    --fado-warning: var(--warning-color, #e09112);
+    --fado-error: var(--error-color, #db4437);
+    --fado-on: var(--amber-color, #ffc107);
+    --fado-on-accent: var(--text-primary-color, #fff);
+    --fado-text: var(--primary-text-color);
+    --fado-text-muted: var(--secondary-text-color);
+    --fado-border: var(--divider-color);
+    --fado-surface: var(--card-background-color);
+    --fado-surface-2: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+    --fado-disabled: var(--disabled-text-color);
+
+    /* Structural — fixed but overridable */
+    --fado-space-1: 4px;
+    --fado-space-2: 8px;
+    --fado-space-3: 12px;
+    --fado-space-4: 16px;
+    --fado-space-5: 24px;
+    --fado-space-6: 32px;
+    --fado-radius: 8px;
+    --fado-radius-sm: 4px;
+    --fado-font-sm: var(--ha-font-size-s, var(--paper-font-caption_-_font-size, 12px));
+    --fado-font-md: var(--ha-font-size-m, var(--paper-font-body1_-_font-size, 14px));
+    --fado-font-lg: 20px;
+    --fado-font-h1: var(--ha-card-header-font-size, 24px);
+    --fado-font-family: var(--ha-font-family-body, var(--paper-font-body1_-_font-family, Roboto, sans-serif));
+    --fado-control-height: 40px;
+  }
+`;
+
 export const fadoStyles = css`
   :host {
     display: block;
     padding: 16px;
     max-width: 1200px;
     margin: 0 auto;
-    font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
-    color: var(--primary-text-color);
+    font-family: var(--fado-font-family);
+    font-size: var(--fado-font-md);
+    color: var(--fado-text);
   }
 
   h1 {
     margin: 0;
-    font-size: var(--ha-card-header-font-size, 24px);
+    font-size: var(--fado-font-h1);
     font-weight: 400;
-    color: var(--primary-text-color);
+    color: var(--fado-text);
   }
 
   .header {
@@ -973,8 +1198,8 @@ export const fadoStyles = css`
     overflow-x: auto;
   }
 
-  ha-button { --mdc-theme-primary: var(--primary-color); }
-  ha-button[disabled] { --mdc-theme-primary: var(--disabled-text-color); }
+  ha-button { --mdc-theme-primary: var(--fado-accent); }
+  ha-button[disabled] { --mdc-theme-primary: var(--fado-disabled); }
 
   .settings-row {
     display: flex;
@@ -983,7 +1208,7 @@ export const fadoStyles = css`
     padding: 12px 16px;
   }
 
-  .settings-row label { font-weight: 500; color: var(--primary-text-color); }
+  .settings-row label { font-weight: 500; color: var(--fado-text); }
 
   .settings-row ha-textfield,
   .settings-row ha-input {
@@ -992,21 +1217,12 @@ export const fadoStyles = css`
   }
 
   .settings-row .hint {
-    font-size: var(--paper-font-caption_-_font-size, 12px);
-    color: var(--secondary-text-color);
+    font-size: var(--fado-font-sm);
+    color: var(--fado-text-muted);
   }
 
-  .settings-row select {
-    padding: 8px 12px;
-    border: 1px solid var(--divider-color);
-    border-radius: 4px;
-    background: var(--card-background-color);
-    color: var(--primary-text-color);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
-    cursor: pointer;
-  }
-
-  .settings-row select:focus { outline: none; border-color: var(--primary-color); }
+  ha-select { --mdc-menu-min-width: 120px; min-width: 120px; }
+  td.col-native-transitions ha-select { min-width: 110px; }
 
   .header-row {
     display: flex;
@@ -1018,8 +1234,8 @@ export const fadoStyles = css`
   .log-level-selector { display: flex; align-items: center; gap: 8px; }
 
   .log-level-selector label {
-    font-size: var(--paper-font-body1_-_font-size, 14px);
-    color: var(--secondary-text-color);
+    font-size: var(--fado-font-md);
+    color: var(--fado-text-muted);
   }
 
   .controls-row {
@@ -1035,7 +1251,7 @@ export const fadoStyles = css`
     justify-content: center;
     transition: transform 0.15s ease-in-out;
     --mdc-icon-size: 24px;
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
     margin-right: 8px;
   }
 
@@ -1048,14 +1264,14 @@ export const fadoStyles = css`
   .lights-table th,
   .lights-table td {
     padding: 8px 16px;
-    border-bottom: 1px solid var(--divider-color);
+    border-bottom: 1px solid var(--fado-border);
   }
 
   .lights-table th {
     text-align: left;
-    font-size: var(--paper-font-caption_-_font-size, 12px);
+    font-size: var(--fado-font-sm);
     font-weight: 500;
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -1076,13 +1292,13 @@ export const fadoStyles = css`
   ha-textfield,
   ha-input { width: 120px; --mdc-text-field-fill-color: transparent; }
 
-  ha-checkbox { --mdc-checkbox-unchecked-color: var(--secondary-text-color); }
+  ha-checkbox { --mdc-checkbox-unchecked-color: var(--fado-text-muted); }
 
   .area-row td {
-    background: var(--secondary-background-color, rgba(0,0,0,0.05));
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    background: var(--fado-surface-2);
+    font-size: var(--fado-font-md);
     font-weight: 500;
-    color: var(--primary-text-color);
+    color: var(--fado-text);
     cursor: pointer;
     user-select: none;
     height: 48px;
@@ -1096,23 +1312,23 @@ export const fadoStyles = css`
   .light-cell { display: flex; align-items: center; cursor: pointer; }
   .light-cell:hover { opacity: 0.8; }
 
-  .light-icon { margin-right: 12px; --mdc-icon-size: 24px; color: var(--secondary-text-color); }
-  .light-icon.on { color: var(--amber-color, #ffc107); }
+  .light-icon { margin-right: 12px; --mdc-icon-size: 24px; color: var(--fado-text-muted); }
+  .light-icon.on { color: var(--fado-on); }
 
   .light-info { overflow: hidden; }
 
   .light-name {
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    font-size: var(--fado-font-md);
     font-weight: 500;
-    color: var(--primary-text-color);
+    color: var(--fado-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .entity-id {
-    font-size: var(--paper-font-caption_-_font-size, 12px);
-    color: var(--secondary-text-color);
+    font-size: var(--fado-font-sm);
+    color: var(--fado-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1121,16 +1337,16 @@ export const fadoStyles = css`
   input[type="number"] {
     width: 80px;
     padding: 4px 8px;
-    border: 1px solid var(--divider-color);
-    border-radius: 4px;
-    background: var(--card-background-color);
-    color: var(--primary-text-color);
+    border: 1px solid var(--fado-border);
+    border-radius: var(--fado-radius-sm);
+    background: var(--fado-surface);
+    color: var(--fado-text);
   }
 
   input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
   .hidden { display: none; }
-  .no-lights { color: var(--secondary-text-color); }
+  .no-lights { color: var(--fado-text-muted); }
 
   .empty-state {
     display: flex;
@@ -1138,19 +1354,19 @@ export const fadoStyles = css`
     align-items: center;
     justify-content: center;
     padding: 80px 16px;
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
   }
 
   .empty-state ha-icon { --mdc-icon-size: 64px; margin-bottom: 16px; opacity: 0.5; }
-  .empty-state .empty-message { font-size: 20px; font-weight: 400; }
+  .empty-state .empty-message { font-size: var(--fado-font-lg); font-weight: 400; }
 
   .testing-spinner { display: flex; justify-content: center; align-items: center; }
 
   .spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid var(--divider-color);
-    border-top-color: var(--primary-color);
+    border: 2px solid var(--fado-border);
+    border-top-color: var(--fado-accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -1160,8 +1376,8 @@ export const fadoStyles = css`
     align-items: center;
     gap: 12px;
     padding: 24px 16px;
-    color: var(--secondary-text-color);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    color: var(--fado-text-muted);
+    font-size: var(--fado-font-md);
   }
 
   .auth-error {
@@ -1169,12 +1385,12 @@ export const fadoStyles = css`
     align-items: center;
     gap: 12px;
     padding: 24px 16px;
-    color: var(--secondary-text-color);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    color: var(--fado-text-muted);
+    font-size: var(--fado-font-md);
   }
 
   .auth-error ha-icon {
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -1182,8 +1398,8 @@ export const fadoStyles = css`
   .button-spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: white;
+    border: 2px solid color-mix(in srgb, var(--fado-on-accent) 30%, transparent);
+    border-top-color: var(--fado-on-accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     display: inline-block;
@@ -1192,8 +1408,8 @@ export const fadoStyles = css`
   }
 
   .test-error {
-    color: var(--error-color, #db4437);
-    font-size: var(--paper-font-caption_-_font-size, 12px);
+    color: var(--fado-error);
+    font-size: var(--fado-font-sm);
     margin-top: 4px;
   }
 
@@ -1202,26 +1418,57 @@ export const fadoStyles = css`
 
   .col-native-transitions { width: 130px; text-align: center; }
 
-  .native-transitions-select {
-    padding: 4px 8px;
-    border: 1px solid var(--divider-color);
-    border-radius: 4px;
-    background: var(--card-background-color);
-    color: var(--primary-text-color);
-    font-size: var(--paper-font-caption_-_font-size, 12px);
-    cursor: pointer;
-    min-width: 80px;
-  }
-
-  .native-transitions-select:focus { outline: none; border-color: var(--primary-color); }
-  .native-transitions-select:disabled { opacity: 0.5; cursor: not-allowed; }
-
   .settings-row a {
-    color: var(--primary-color);
+    color: var(--fado-accent);
     text-decoration: none;
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    font-size: var(--fado-font-md);
     cursor: pointer;
   }
 
   .settings-row a:hover { text-decoration: underline; }
+
+  /* Card view (compact / narrow) */
+  .area-card { margin-bottom: var(--fado-space-4); }
+  .area-card-header {
+    display: flex; align-items: center; gap: var(--fado-space-2);
+    padding: var(--fado-space-3) var(--fado-space-4);
+    background: var(--fado-surface-2); cursor: pointer; user-select: none;
+    font-weight: 500;
+  }
+  .area-card-header .area-name { font-weight: 500; }
+  .needs-setup-rollup { color: var(--fado-warning); font-size: var(--fado-font-sm); }
+  .spacer { flex: 1; }
+  .area-card-check, .light-card-check { display: flex; align-items: center; }
+  .mini-label { font-size: var(--fado-font-sm); color: var(--fado-text-muted); margin-right: var(--fado-space-1); }
+
+  .light-card { border-top: 1px solid var(--fado-border); }
+  .light-card.excluded .light-card-body,
+  .light-card.excluded .light-name { opacity: 0.5; }
+  .light-card-header {
+    display: flex; align-items: center; gap: var(--fado-space-2);
+    padding: var(--fado-space-2) var(--fado-space-4); cursor: pointer;
+  }
+  .light-substatus { font-size: var(--fado-font-sm); color: var(--fado-text-muted); }
+  .needs-setup { color: var(--fado-warning); }
+  .light-card-body { padding: 0 var(--fado-space-4) var(--fado-space-3) var(--fado-space-4); }
+  .field-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--fado-space-3); padding: var(--fado-space-1) 0;
+    min-height: var(--fado-control-height);
+  }
+  .field-label { color: var(--fado-text-muted); }
+  .card-no-lights { padding: var(--fado-space-3) var(--fado-space-4); }
+
+  :host([compact]) { padding: var(--fado-space-3); --fado-control-height: 44px; }
+  :host([compact]) .controls-row { flex-direction: column; align-items: stretch; gap: var(--fado-space-2); }
+  :host([compact]) .controls-row ha-button { width: 100%; }
+  :host([compact]) .log-level-selector { justify-content: space-between; }
+  :host([compact]) .header-row { margin-bottom: var(--fado-space-3); }
+  :host([compact]) .settings-row { flex-wrap: wrap; gap: var(--fado-space-2); padding: var(--fado-space-3); }
+  :host([compact]) .settings-row ha-textfield,
+  :host([compact]) .settings-row ha-input { width: 100%; }
+  :host([compact]) .field-row ha-select,
+  :host([compact]) .field-row ha-input,
+  :host([compact]) .field-row ha-textfield { min-width: 140px; }
+  :host([compact]) ha-checkbox { --mdc-checkbox-ripple-size: 44px; }
 `;

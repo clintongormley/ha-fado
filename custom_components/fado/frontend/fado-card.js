@@ -19,6 +19,7 @@ class FadoCard extends FadoCoreMixin(LitElement) {
   getGridOptions() {
     return {
       columns: "full",
+      rows: "auto",
       min_columns: 6,
       min_rows: 3,
     };
