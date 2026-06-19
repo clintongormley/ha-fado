@@ -8,9 +8,11 @@ describes the conventions; follow them when editing or extending the UI.
 
 ## 1. Token layer (`--fado-*`)
 
-All colour and structural values are defined once in `fadoTokens` (a Lit `css`
-block applied at `:host`). Never hardcode a hex colour, pixel spacing, or font
-size directly in component styles — always reference a `--fado-*` token.
+Colour and structural values are defined in `fadoTokens` (a Lit `css` block
+applied at `:host`). Prefer `--fado-*` tokens and avoid introducing **new**
+hardcoded hex colours, pixel spacing, or font sizes in component styles. Some
+legacy `px` literals remain in `fadoStyles` (e.g. `:host { padding: 16px; }`,
+table cell padding) and are migrated to tokens opportunistically.
 
 ### Colour tokens
 
@@ -26,6 +28,7 @@ size directly in component styles — always reference a `--fado-*` token.
 | `--fado-border` | `var(--divider-color)` |
 | `--fado-surface` | `var(--card-background-color)` |
 | `--fado-surface-2` | `var(--secondary-background-color, rgba(0,0,0,0.05))` |
+| `--fado-disabled` | `var(--disabled-text-color)` — disabled `ha-button` colour |
 
 ### Structural tokens
 
