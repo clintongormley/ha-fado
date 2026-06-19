@@ -9,6 +9,18 @@ import {
   css,
 } from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
+import {
+  needsSetup,
+  areaNeedsSetupCount,
+  needsSetupLabel,
+  getCheckboxState,
+  getExcludeState,
+  collapseKeyForArea,
+  collapseKeyForLight,
+  nativeTransitionsToValue,
+  valueToNativeTransitions,
+} from "./fado-logic.js";
+
 // Re-export for consumers
 export { LitElement, html, css };
 
@@ -253,7 +265,7 @@ export const FadoCoreMixin = (superClass) =>
       const newCollapsed = { ...this._collapsed };
       if (this._data && this._data.areas) {
         for (const area of this._data.areas) {
-          const areaKey = `area_${area.area_id || "none"}`;
+          const areaKey = collapseKeyForArea(area);
           if (!(areaKey in newCollapsed)) {
             newCollapsed[areaKey] = true;
           }
@@ -267,7 +279,7 @@ export const FadoCoreMixin = (superClass) =>
       if (this._data && this._data.areas) {
         for (const area of this._data.areas) {
           for (const light of area.lights) {
-            if (!light.min_delay_ms && !light.exclude) {
+            if (needsSetup(light)) {
               toCheck.add(light.entity_id);
             }
           }
@@ -308,7 +320,7 @@ export const FadoCoreMixin = (superClass) =>
       }
       for (const area of newData.areas) {
         for (const light of area.lights) {
-          if (!existingLightIds.has(light.entity_id) && !light.min_delay_ms && !light.exclude) {
+          if (!existingLightIds.has(light.entity_id) && needsSetup(light)) {
             updatedChecked.add(light.entity_id);
           }
         }
@@ -475,13 +487,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _getCheckboxState(entityIds) {
-      if (entityIds.length === 0) {
-        return "none";
-      }
-      const checkedCount = entityIds.filter((id) => this._configureChecked.has(id)).length;
-      if (checkedCount === 0) return "none";
-      if (checkedCount === entityIds.length) return "all";
-      return "some";
+      return getCheckboxState(entityIds, this._configureChecked);
     }
 
     _handleAreaCheckboxChange(area, e) {
@@ -512,11 +518,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _getExcludeState(lights) {
-      if (lights.length === 0) return "none";
-      const excludedCount = lights.filter((light) => light.exclude).length;
-      if (excludedCount === 0) return "none";
-      if (excludedCount === lights.length) return "all";
-      return "some";
+      return getExcludeState(lights);
     }
 
     async _handleAreaExcludeChange(area, e) {
@@ -794,7 +796,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _renderAreaRows(area) {
-      const areaKey = `area_${area.area_id || "none"}`;
+      const areaKey = collapseKeyForArea(area);
       const isCollapsed = this._collapsed[areaKey];
       const areaIcon = area.icon || "mdi:texture-box";
       const areaLightIds = this._getAreaLightIds(area);
