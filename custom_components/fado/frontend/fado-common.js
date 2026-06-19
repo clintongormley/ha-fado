@@ -812,7 +812,133 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _renderCardView() {
-      return this._renderTableView();
+      return html`
+        ${this._data.areas.map((area) => this._renderAreaCard(area))}
+        ${this._renderSettingsCard()}
+      `;
+    }
+
+    _renderAreaCard(area) {
+      const areaKey = collapseKeyForArea(area);
+      const isCollapsed = this._collapsed[areaKey];
+      const areaIcon = area.icon || "mdi:texture-box";
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area));
+      const areaLightIds = this._getAreaLightIds(area);
+      const configureState = this._getCheckboxState(areaLightIds);
+      const excludeState = this._getExcludeState(area.lights);
+      return html`
+        <ha-card class="area-card">
+          <div class="area-card-header" @click=${() => this._toggleCollapse(areaKey)}>
+            <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
+            <ha-icon class="header-icon" icon="${areaIcon}"></ha-icon>
+            <span class="area-name">${area.name}</span>
+            ${setupLabel ? html`<span class="needs-setup-rollup">· ${setupLabel}</span>` : ""}
+            <span class="spacer"></span>
+            <span class="area-card-check" @click=${(e) => e.stopPropagation()}>
+              <span class="mini-label">Exclude</span>
+              <ha-checkbox
+                .checked=${excludeState === "all"}
+                .indeterminate=${excludeState === "some"}
+                @change=${(e) => this._handleAreaExcludeChange(area, e)}
+              ></ha-checkbox>
+            </span>
+            <span class="area-card-check" @click=${(e) => e.stopPropagation()}>
+              <span class="mini-label">Configure</span>
+              <ha-checkbox
+                .checked=${configureState === "all"}
+                .indeterminate=${configureState === "some"}
+                @change=${(e) => this._handleAreaCheckboxChange(area, e)}
+              ></ha-checkbox>
+            </span>
+          </div>
+          ${isCollapsed
+            ? ""
+            : area.lights.length > 0
+              ? area.lights.map((light) => this._renderLightCard(light))
+              : html`<div class="no-lights card-no-lights">No lights in this area</div>`}
+        </ha-card>
+      `;
+    }
+
+    _renderLightCard(light) {
+      const lightKey = collapseKeyForLight(light.entity_id);
+      const isCollapsed = this._collapsed[lightKey];
+      const lightIcon = light.icon || "mdi:lightbulb";
+      const state = this.hass.states[light.entity_id];
+      const isOn = state && state.state === "on";
+      const isTesting = this._testing.has(light.entity_id);
+      const errorMessage = this._testErrors.get(light.entity_id);
+      const isExcluded = light.exclude;
+      const flagSetup = needsSetup(light);
+      return html`
+        <div class="light-card ${isExcluded ? "excluded" : ""}">
+          <div class="light-card-header" @click=${() => this._toggleCollapse(lightKey)}>
+            <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
+            <ha-icon class="light-icon ${isOn ? "on" : ""}" icon="${lightIcon}"></ha-icon>
+            <div class="light-info">
+              <div class="light-name">${light.name}</div>
+              <div class="light-substatus">
+                ${flagSetup
+                  ? html`<span class="needs-setup">● Needs setup</span>`
+                  : html`<span class="entity-id">${light.min_delay_ms ? `${light.min_delay_ms} ms` : light.entity_id}</span>`}
+              </div>
+            </div>
+            <span class="spacer"></span>
+            <span class="light-card-check" @click=${(e) => e.stopPropagation()}>
+              <ha-checkbox
+                ?disabled=${isTesting || isExcluded}
+                .checked=${this._configureChecked.has(light.entity_id)}
+                @change=${(e) => this._handleConfigureChange(light.entity_id, e)}
+              ></ha-checkbox>
+            </span>
+          </div>
+          ${isCollapsed ? "" : html`
+            <div class="light-card-body">
+              <div class="field-row" @click=${() => this._openLightDialog(light.entity_id)}>
+                <span class="field-label">Entity</span>
+                <span class="entity-id">${light.entity_id}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Min delay</span>
+                ${isTesting
+                  ? html`<div class="testing-spinner"><div class="spinner"></div></div>`
+                  : html`${this._renderNumberInput({
+                      value: light.min_delay_ms || "",
+                      min: this._globalMinDelayMs, max: 2000, step: 10,
+                      disabled: isExcluded, suffix: "ms",
+                      onChange: (e) => this._handleDelayChange(light.entity_id, e),
+                    })}`}
+              </div>
+              ${errorMessage ? html`<div class="test-error">${errorMessage}</div>` : ""}
+              <div class="field-row">
+                <span class="field-label">Min brightness</span>
+                <span>${light.min_brightness != null ? light.min_brightness : "—"}</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Native transitions</span>
+                ${this._renderSelect({
+                  value: nativeTransitionsToValue(light.native_transitions),
+                  disabled: isExcluded,
+                  options: [
+                    { value: "", label: "" },
+                    { value: "true", label: "Yes" },
+                    { value: "false", label: "No" },
+                    { value: "disable", label: "Disable" },
+                  ],
+                  onChange: (value) => this._handleNativeTransitionsValue(light.entity_id, value),
+                })}
+              </div>
+              <div class="field-row">
+                <span class="field-label">Exclude</span>
+                <ha-checkbox
+                  .checked=${light.exclude}
+                  @change=${(e) => this._handleCheckboxChange(light.entity_id, "exclude", e)}
+                ></ha-checkbox>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
     }
 
     _renderAreaRows(area) {
@@ -1289,4 +1415,36 @@ export const fadoStyles = css`
   }
 
   .settings-row a:hover { text-decoration: underline; }
+
+  /* Card view (compact / narrow) */
+  .area-card { margin-bottom: var(--fado-space-4); }
+  .area-card-header {
+    display: flex; align-items: center; gap: var(--fado-space-2);
+    padding: var(--fado-space-3) var(--fado-space-4);
+    background: var(--fado-surface-2); cursor: pointer; user-select: none;
+    font-weight: 500;
+  }
+  .area-card-header .area-name { font-weight: 500; }
+  .needs-setup-rollup { color: var(--fado-warning); font-size: var(--fado-font-sm); }
+  .spacer { flex: 1; }
+  .area-card-check, .light-card-check { display: flex; align-items: center; }
+  .mini-label { font-size: var(--fado-font-sm); color: var(--fado-text-muted); margin-right: var(--fado-space-1); }
+
+  .light-card { border-top: 1px solid var(--fado-border); }
+  .light-card.excluded .light-card-body,
+  .light-card.excluded .light-name { opacity: 0.5; }
+  .light-card-header {
+    display: flex; align-items: center; gap: var(--fado-space-2);
+    padding: var(--fado-space-2) var(--fado-space-4); cursor: pointer;
+  }
+  .light-substatus { font-size: var(--fado-font-sm); color: var(--fado-text-muted); }
+  .needs-setup { color: var(--fado-warning); }
+  .light-card-body { padding: 0 var(--fado-space-4) var(--fado-space-3) var(--fado-space-4); }
+  .field-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--fado-space-3); padding: var(--fado-space-1) 0;
+    min-height: var(--fado-control-height);
+  }
+  .field-label { color: var(--fado-text-muted); }
+  .card-no-lights { padding: var(--fado-space-3) var(--fado-space-4); }
 `;
