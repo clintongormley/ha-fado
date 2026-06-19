@@ -1455,4 +1455,17 @@ export const fadoStyles = css`
   }
   .field-label { color: var(--fado-text-muted); }
   .card-no-lights { padding: var(--fado-space-3) var(--fado-space-4); }
+
+  :host([compact]) { padding: var(--fado-space-3); --fado-control-height: 44px; }
+  :host([compact]) .controls-row { flex-direction: column; align-items: stretch; gap: var(--fado-space-2); }
+  :host([compact]) .controls-row ha-button { width: 100%; }
+  :host([compact]) .log-level-selector { justify-content: space-between; }
+  :host([compact]) .header-row { margin-bottom: var(--fado-space-3); }
+  :host([compact]) .settings-row { flex-wrap: wrap; gap: var(--fado-space-2); padding: var(--fado-space-3); }
+  :host([compact]) .settings-row ha-textfield,
+  :host([compact]) .settings-row ha-input { width: 100%; }
+  :host([compact]) .field-row ha-select,
+  :host([compact]) .field-row ha-input,
+  :host([compact]) .field-row ha-textfield { min-width: 140px; }
+  :host([compact]) ha-checkbox { --mdc-checkbox-ripple-size: 44px; }
 `;

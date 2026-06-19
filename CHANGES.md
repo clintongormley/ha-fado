@@ -8,6 +8,12 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+### Added
+
+- Frontend: responsive layout — on narrow screens the lights table becomes
+  collapsible per-light cards with a "needs setup" indicator and a per-area
+  roll-up; touch-friendly controls.
+
 ### Changed
 
 - Frontend: configuration panel/card now use HA's themed select control and a
