@@ -47,6 +47,7 @@ export const FadoCoreMixin = (superClass) =>
         _globalMinDelayMs: { type: Number },
         _logLevel: { type: String },
         _entryId: { type: String },
+        _compact: { type: Boolean, reflect: true, attribute: "compact" },
       };
     }
 
@@ -67,6 +68,8 @@ export const FadoCoreMixin = (superClass) =>
       this._logLevel = "warning";
       this._entryId = null;
       this._lastConnection = null;
+      this._compact = false;
+      this._resizeObserver = null;
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -83,6 +86,12 @@ export const FadoCoreMixin = (superClass) =>
         }
       };
       window.addEventListener("location-changed", this._locationChangedHandler);
+      this._resizeObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect?.width ?? 0;
+        const compact = width > 0 && width < 720;
+        if (compact !== this._compact) this._compact = compact;
+      });
+      this._resizeObserver.observe(this);
     }
 
     disconnectedCallback() {
@@ -106,6 +115,10 @@ export const FadoCoreMixin = (superClass) =>
       if (this._deviceRegUnsub) {
         this._deviceRegUnsub();
         this._deviceRegUnsub = null;
+      }
+      if (this._resizeObserver) {
+        this._resizeObserver.disconnect();
+        this._resizeObserver = null;
       }
     }
 
@@ -742,6 +755,35 @@ export const FadoCoreMixin = (superClass) =>
 
       return html`
         ${this._renderHeader()}
+        ${this._compact ? this._renderCardView() : this._renderTableView()}
+      `;
+    }
+
+    _renderSettingsCard() {
+      return html`
+        <ha-card>
+          <div class="settings-row">
+            <label>Global min delay:</label>
+            ${this._renderNumberInput({
+              value: this._globalMinDelayMs || "",
+              min: 50, max: 2000, step: 10, suffix: "ms",
+              onChange: (e) => this._handleGlobalDelayChange(e),
+            })}
+            <span class="hint">The absolute minimum delay for all lights</span>
+          </div>
+          ${this._entryId ? html`
+            <div class="settings-row">
+              <a href="#" @click=${(e) => { e.preventDefault(); this._downloadDiagnostics(); }}>
+                <ha-icon icon="mdi:download" style="--mdc-icon-size: 18px; vertical-align: middle; margin-right: 4px;"></ha-icon>Download diagnostics
+              </a>
+            </div>
+          ` : ""}
+        </ha-card>
+      `;
+    }
+
+    _renderTableView() {
+      return html`
         <ha-card>
           <table class="lights-table">
             <thead>
@@ -765,28 +807,12 @@ export const FadoCoreMixin = (superClass) =>
             </tbody>
           </table>
         </ha-card>
-        <ha-card>
-          <div class="settings-row">
-            <label>Global min delay:</label>
-            ${this._renderNumberInput({
-              value: this._globalMinDelayMs || "",
-              min: 50,
-              max: 2000,
-              step: 10,
-              suffix: "ms",
-              onChange: (e) => this._handleGlobalDelayChange(e),
-            })}
-            <span class="hint">The absolute minimum delay for all lights</span>
-          </div>
-          ${this._entryId ? html`
-            <div class="settings-row">
-              <a href="#" @click=${(e) => { e.preventDefault(); this._downloadDiagnostics(); }}>
-                <ha-icon icon="mdi:download" style="--mdc-icon-size: 18px; vertical-align: middle; margin-right: 4px;"></ha-icon>Download diagnostics
-              </a>
-            </div>
-          ` : ""}
-        </ha-card>
+        ${this._renderSettingsCard()}
       `;
+    }
+
+    _renderCardView() {
+      return this._renderTableView();
     }
 
     _renderAreaRows(area) {
