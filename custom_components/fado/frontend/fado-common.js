@@ -51,7 +51,7 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     static get styles() {
-      return fadoStyles;
+      return [fadoTokens, fadoStyles];
     }
 
     constructor() {
@@ -942,22 +942,54 @@ export const FadoCoreMixin = (superClass) =>
 
 // ── Shared styles ────────────────────────────────────────────
 
+export const fadoTokens = css`
+  :host {
+    /* Colour — mapped to HA theme vars with real fallbacks */
+    --fado-accent: var(--primary-color, #03a9f4);
+    --fado-warning: var(--warning-color, #e09112);
+    --fado-error: var(--error-color, #db4437);
+    --fado-on: var(--amber-color, #ffc107);
+    --fado-on-accent: var(--text-primary-color, #fff);
+    --fado-text: var(--primary-text-color);
+    --fado-text-muted: var(--secondary-text-color);
+    --fado-border: var(--divider-color);
+    --fado-surface: var(--card-background-color);
+    --fado-surface-2: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+
+    /* Structural — fixed but overridable */
+    --fado-space-1: 4px;
+    --fado-space-2: 8px;
+    --fado-space-3: 12px;
+    --fado-space-4: 16px;
+    --fado-space-5: 24px;
+    --fado-space-6: 32px;
+    --fado-radius: 8px;
+    --fado-radius-sm: 4px;
+    --fado-font-sm: var(--ha-font-size-s, var(--paper-font-caption_-_font-size, 12px));
+    --fado-font-md: var(--ha-font-size-m, var(--paper-font-body1_-_font-size, 14px));
+    --fado-font-lg: 20px;
+    --fado-font-h1: var(--ha-card-header-font-size, 24px);
+    --fado-font-family: var(--ha-font-family-body, var(--paper-font-body1_-_font-family, Roboto, sans-serif));
+    --fado-control-height: 40px;
+  }
+`;
+
 export const fadoStyles = css`
   :host {
     display: block;
     padding: 16px;
     max-width: 1200px;
     margin: 0 auto;
-    font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
-    color: var(--primary-text-color);
+    font-family: var(--fado-font-family);
+    font-size: var(--fado-font-md);
+    color: var(--fado-text);
   }
 
   h1 {
     margin: 0;
-    font-size: var(--ha-card-header-font-size, 24px);
+    font-size: var(--fado-font-h1);
     font-weight: 400;
-    color: var(--primary-text-color);
+    color: var(--fado-text);
   }
 
   .header {
@@ -985,7 +1017,7 @@ export const fadoStyles = css`
     padding: 12px 16px;
   }
 
-  .settings-row label { font-weight: 500; color: var(--primary-text-color); }
+  .settings-row label { font-weight: 500; color: var(--fado-text); }
 
   .settings-row ha-textfield,
   .settings-row ha-input {
@@ -994,17 +1026,17 @@ export const fadoStyles = css`
   }
 
   .settings-row .hint {
-    font-size: var(--paper-font-caption_-_font-size, 12px);
-    color: var(--secondary-text-color);
+    font-size: var(--fado-font-sm);
+    color: var(--fado-text-muted);
   }
 
   .settings-row select {
     padding: 8px 12px;
-    border: 1px solid var(--divider-color);
+    border: 1px solid var(--fado-border);
     border-radius: 4px;
-    background: var(--card-background-color);
-    color: var(--primary-text-color);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    background: var(--fado-surface);
+    color: var(--fado-text);
+    font-size: var(--fado-font-md);
     cursor: pointer;
   }
 
@@ -1020,8 +1052,8 @@ export const fadoStyles = css`
   .log-level-selector { display: flex; align-items: center; gap: 8px; }
 
   .log-level-selector label {
-    font-size: var(--paper-font-body1_-_font-size, 14px);
-    color: var(--secondary-text-color);
+    font-size: var(--fado-font-md);
+    color: var(--fado-text-muted);
   }
 
   .controls-row {
@@ -1037,7 +1069,7 @@ export const fadoStyles = css`
     justify-content: center;
     transition: transform 0.15s ease-in-out;
     --mdc-icon-size: 24px;
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
     margin-right: 8px;
   }
 
@@ -1050,14 +1082,14 @@ export const fadoStyles = css`
   .lights-table th,
   .lights-table td {
     padding: 8px 16px;
-    border-bottom: 1px solid var(--divider-color);
+    border-bottom: 1px solid var(--fado-border);
   }
 
   .lights-table th {
     text-align: left;
-    font-size: var(--paper-font-caption_-_font-size, 12px);
+    font-size: var(--fado-font-sm);
     font-weight: 500;
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -1078,13 +1110,13 @@ export const fadoStyles = css`
   ha-textfield,
   ha-input { width: 120px; --mdc-text-field-fill-color: transparent; }
 
-  ha-checkbox { --mdc-checkbox-unchecked-color: var(--secondary-text-color); }
+  ha-checkbox { --mdc-checkbox-unchecked-color: var(--fado-text-muted); }
 
   .area-row td {
-    background: var(--secondary-background-color, rgba(0,0,0,0.05));
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    background: var(--fado-surface-2);
+    font-size: var(--fado-font-md);
     font-weight: 500;
-    color: var(--primary-text-color);
+    color: var(--fado-text);
     cursor: pointer;
     user-select: none;
     height: 48px;
@@ -1098,23 +1130,23 @@ export const fadoStyles = css`
   .light-cell { display: flex; align-items: center; cursor: pointer; }
   .light-cell:hover { opacity: 0.8; }
 
-  .light-icon { margin-right: 12px; --mdc-icon-size: 24px; color: var(--secondary-text-color); }
-  .light-icon.on { color: var(--amber-color, #ffc107); }
+  .light-icon { margin-right: 12px; --mdc-icon-size: 24px; color: var(--fado-text-muted); }
+  .light-icon.on { color: var(--fado-on); }
 
   .light-info { overflow: hidden; }
 
   .light-name {
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    font-size: var(--fado-font-md);
     font-weight: 500;
-    color: var(--primary-text-color);
+    color: var(--fado-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .entity-id {
-    font-size: var(--paper-font-caption_-_font-size, 12px);
-    color: var(--secondary-text-color);
+    font-size: var(--fado-font-sm);
+    color: var(--fado-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1123,16 +1155,16 @@ export const fadoStyles = css`
   input[type="number"] {
     width: 80px;
     padding: 4px 8px;
-    border: 1px solid var(--divider-color);
+    border: 1px solid var(--fado-border);
     border-radius: 4px;
-    background: var(--card-background-color);
-    color: var(--primary-text-color);
+    background: var(--fado-surface);
+    color: var(--fado-text);
   }
 
   input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
   .hidden { display: none; }
-  .no-lights { color: var(--secondary-text-color); }
+  .no-lights { color: var(--fado-text-muted); }
 
   .empty-state {
     display: flex;
@@ -1140,7 +1172,7 @@ export const fadoStyles = css`
     align-items: center;
     justify-content: center;
     padding: 80px 16px;
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
   }
 
   .empty-state ha-icon { --mdc-icon-size: 64px; margin-bottom: 16px; opacity: 0.5; }
@@ -1151,8 +1183,8 @@ export const fadoStyles = css`
   .spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid var(--divider-color);
-    border-top-color: var(--primary-color);
+    border: 2px solid var(--fado-border);
+    border-top-color: var(--fado-accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -1162,8 +1194,8 @@ export const fadoStyles = css`
     align-items: center;
     gap: 12px;
     padding: 24px 16px;
-    color: var(--secondary-text-color);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    color: var(--fado-text-muted);
+    font-size: var(--fado-font-md);
   }
 
   .auth-error {
@@ -1171,12 +1203,12 @@ export const fadoStyles = css`
     align-items: center;
     gap: 12px;
     padding: 24px 16px;
-    color: var(--secondary-text-color);
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    color: var(--fado-text-muted);
+    font-size: var(--fado-font-md);
   }
 
   .auth-error ha-icon {
-    color: var(--secondary-text-color);
+    color: var(--fado-text-muted);
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -1184,8 +1216,8 @@ export const fadoStyles = css`
   .button-spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: white;
+    border: 2px solid color-mix(in srgb, var(--fado-on-accent) 30%, transparent);
+    border-top-color: var(--fado-on-accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     display: inline-block;
@@ -1194,8 +1226,8 @@ export const fadoStyles = css`
   }
 
   .test-error {
-    color: var(--error-color, #db4437);
-    font-size: var(--paper-font-caption_-_font-size, 12px);
+    color: var(--fado-error);
+    font-size: var(--fado-font-sm);
     margin-top: 4px;
   }
 
@@ -1206,11 +1238,11 @@ export const fadoStyles = css`
 
   .native-transitions-select {
     padding: 4px 8px;
-    border: 1px solid var(--divider-color);
+    border: 1px solid var(--fado-border);
     border-radius: 4px;
-    background: var(--card-background-color);
-    color: var(--primary-text-color);
-    font-size: var(--paper-font-caption_-_font-size, 12px);
+    background: var(--fado-surface);
+    color: var(--fado-text);
+    font-size: var(--fado-font-sm);
     cursor: pointer;
     min-width: 80px;
   }
@@ -1219,9 +1251,9 @@ export const fadoStyles = css`
   .native-transitions-select:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .settings-row a {
-    color: var(--primary-color);
+    color: var(--fado-accent);
     text-decoration: none;
-    font-size: var(--paper-font-body1_-_font-size, 14px);
+    font-size: var(--fado-font-md);
     cursor: pointer;
   }
 
