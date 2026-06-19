@@ -1003,7 +1003,11 @@ export const FadoCoreMixin = (superClass) =>
             naturalMenuWidth
             ?disabled=${disabled}
             .value=${value}
-            @selected=${(e) => { e.stopPropagation(); onChange(e.target.value); }}
+            @selected=${(e) => {
+              e.stopPropagation();
+              const newValue = e.target.value;
+              if (newValue !== undefined && newValue !== value) onChange(newValue);
+            }}
             @closed=${(e) => e.stopPropagation()}
           >
             ${options.map(
