@@ -362,10 +362,6 @@ export const FadoCoreMixin = (superClass) =>
       }
     }
 
-    _handleLogLevelChange(e) {
-      this._saveLogLevel(e.target.value);
-    }
-
     async _saveGlobalMinDelay(value) {
       try {
         await this.hass.callWS({
@@ -636,16 +632,10 @@ export const FadoCoreMixin = (superClass) =>
       }
     }
 
-    async _handleNativeTransitionsChange(entityId, e) {
-      const value = e.target.value;
-      let nativeTransitions = null;
-      if (value === "true") nativeTransitions = true;
-      else if (value === "false") nativeTransitions = false;
-      else if (value === "disable") nativeTransitions = "disable";
-
+    async _handleNativeTransitionsValue(entityId, value) {
+      const nativeTransitions = valueToNativeTransitions(value);
       const light = this._findLight(entityId);
       if (light) light.native_transitions = nativeTransitions;
-
       await this.hass.callWS({
         type: "fado/save_light_config",
         entity_id: entityId,
@@ -684,11 +674,15 @@ export const FadoCoreMixin = (superClass) =>
         <div class="controls-row">
           <div class="log-level-selector">
             <label>Log level:</label>
-            <select .value=${this._logLevel} @change=${(e) => this._handleLogLevelChange(e)}>
-              <option value="warning" ?selected=${this._logLevel === "warning"}>Warning</option>
-              <option value="info" ?selected=${this._logLevel === "info"}>Info</option>
-              <option value="debug" ?selected=${this._logLevel === "debug"}>Debug</option>
-            </select>
+            ${this._renderSelect({
+              value: this._logLevel,
+              options: [
+                { value: "warning", label: "Warning" },
+                { value: "info", label: "Info" },
+                { value: "debug", label: "Debug" },
+              ],
+              onChange: (value) => this._saveLogLevel(value),
+            })}
           </div>
           ${isTesting
             ? html`<ha-button unelevated disabled>
@@ -839,6 +833,37 @@ export const FadoCoreMixin = (superClass) =>
       `;
     }
 
+    _renderSelect({ value, options, disabled, onChange }) {
+      // ha-select is the modern HA control; fall back to a native <select>
+      // on much-older HA that hasn't registered it yet.
+      if (customElements.get("ha-select")) {
+        return html`
+          <ha-select
+            naturalMenuWidth
+            ?disabled=${disabled}
+            .value=${value}
+            @selected=${(e) => { e.stopPropagation(); onChange(e.target.value); }}
+            @closed=${(e) => e.stopPropagation()}
+          >
+            ${options.map(
+              (o) => html`<ha-list-item .value=${o.value}>${o.label}</ha-list-item>`,
+            )}
+          </ha-select>
+        `;
+      }
+      return html`
+        <select
+          ?disabled=${disabled}
+          .value=${value}
+          @change=${(e) => onChange(e.target.value)}
+        >
+          ${options.map(
+            (o) => html`<option value=${o.value} ?selected=${o.value === value}>${o.label}</option>`,
+          )}
+        </select>
+      `;
+    }
+
     _renderNumberInput({ value, min, max, step, placeholder, disabled, suffix, onChange }) {
       // ha-textfield is being phased out in HA in favor of ha-input as part of
       // the migration from Material Design to Web Awesome. Pick whichever is
@@ -911,16 +936,18 @@ export const FadoCoreMixin = (superClass) =>
             ${light.min_brightness != null ? light.min_brightness : ""}
           </td>
           <td class="col-native-transitions">
-            <select
-              class="native-transitions-select"
-              ?disabled=${isExcluded}
-              @change=${(e) => this._handleNativeTransitionsChange(light.entity_id, e)}
-            >
-              <option value="" ?selected=${light.native_transitions === null || light.native_transitions === undefined}></option>
-              <option value="true" ?selected=${light.native_transitions === true}>Yes</option>
-              <option value="false" ?selected=${light.native_transitions === false}>No</option>
-              <option value="disable" ?selected=${light.native_transitions === "disable"}>Disable</option>
-            </select>
+            ${this._renderSelect({
+              value: nativeTransitionsToValue(light.native_transitions),
+              disabled: isExcluded,
+              options: [
+                { value: "", label: "" },
+                { value: "true", label: "Yes" },
+                { value: "false", label: "No" },
+                { value: "disable", label: "Disable" },
+              ],
+              onChange: (value) =>
+                this._handleNativeTransitionsValue(light.entity_id, value),
+            })}
           </td>
           <td class="col-exclude">
             <ha-checkbox
@@ -1030,17 +1057,9 @@ export const fadoStyles = css`
     color: var(--fado-text-muted);
   }
 
-  .settings-row select {
-    padding: 8px 12px;
-    border: 1px solid var(--fado-border);
-    border-radius: 4px;
-    background: var(--fado-surface);
-    color: var(--fado-text);
-    font-size: var(--fado-font-md);
-    cursor: pointer;
-  }
-
-  .settings-row select:focus { outline: none; border-color: var(--primary-color); }
+  ha-select { --mdc-menu-min-width: 120px; min-width: 120px; }
+  .native-transitions ha-select,
+  td.col-native-transitions ha-select { min-width: 110px; }
 
   .header-row {
     display: flex;
@@ -1235,20 +1254,6 @@ export const fadoStyles = css`
   .light-row.excluded td.col-exclude { opacity: 1; }
 
   .col-native-transitions { width: 130px; text-align: center; }
-
-  .native-transitions-select {
-    padding: 4px 8px;
-    border: 1px solid var(--fado-border);
-    border-radius: 4px;
-    background: var(--fado-surface);
-    color: var(--fado-text);
-    font-size: var(--fado-font-sm);
-    cursor: pointer;
-    min-width: 80px;
-  }
-
-  .native-transitions-select:focus { outline: none; border-color: var(--primary-color); }
-  .native-transitions-select:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .settings-row a {
     color: var(--fado-accent);

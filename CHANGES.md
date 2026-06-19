@@ -8,6 +8,11 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+### Changed
+
+- Frontend: configuration panel/card now use HA's themed select control and a
+  `--fado-*` design-token layer for consistent theming.
+
 ## [2.0.0] - 2026-06-14
 
 ### Added
