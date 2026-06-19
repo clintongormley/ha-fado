@@ -954,6 +954,7 @@ export const FadoCoreMixin = (superClass) =>
       const areaLightIds = this._getAreaLightIds(area);
       const configureState = this._getCheckboxState(areaLightIds);
       const excludeState = this._getExcludeState(area.lights);
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area));
 
       return html`
         <tr class="area-row" @click=${() => this._toggleCollapse(areaKey)}>
@@ -962,6 +963,7 @@ export const FadoCoreMixin = (superClass) =>
               <ha-icon class="chevron ${isCollapsed ? "collapsed" : ""}" icon="mdi:chevron-down"></ha-icon>
               <ha-icon class="header-icon" icon="${areaIcon}"></ha-icon>
               ${area.name}
+              ${setupLabel ? html`<span class="needs-setup-rollup">· ${setupLabel}</span>` : ""}
             </div>
           </td>
           <td class="col-min-brightness"></td>
