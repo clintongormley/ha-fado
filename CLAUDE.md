@@ -18,3 +18,11 @@
 - Before creating a PR, run `npx pyright` to check for Pylance/type errors and fix any that can be fixed
 - Before creating a release always update the docs and translations and tests
 - The `manifest.json` keys must be sorted: `domain`, `name` first, then all remaining keys in alphabetical order
+
+## Frontend design system
+
+The frontend uses a `--fado-*` token layer and conventions documented in
+`docs/developers/design-system.md`. Follow it: use the `--fado-*` tokens (never
+hardcode chrome colour/spacing), the guarded `ha-*` control helpers, and the
+720px `_compact` breakpoint. Pure logic goes in `fado-logic.js` with a vitest
+test (`npm test`).
