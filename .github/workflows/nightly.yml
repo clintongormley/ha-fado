@@ -1,0 +1,87 @@
+name: Nightly latest-deps
+
+# Exercises the suite and HA validation tooling against the LATEST upstream
+# dependencies, kept SEPARATE from PR CI (tests.yml / validate.yml / hassfest.yml)
+# so its inherently flaky "newest of everything" noise can never block a PR.
+# tests.yml already has a nightly stable/dev leg; this complements it by also
+# re-running hassfest + HACS against their latest tooling, catching HA-side
+# drift even when the unit tests are thin.
+on:
+  schedule:
+    - cron: "35 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Run the pytest suite against the newest published Home Assistant + harness
+  # (stable leg) and against HA dev (non-blocking). Both legs install the test
+  # deps unpinned so we track upstream rather than the pyproject floors.
+  test:
+    name: HA ${{ matrix.ha-version }} (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: stable
+            ha-version: stable
+            python-version: "3.14"
+          - leg: dev
+            ha-version: dev
+            python-version: "3.14"
+    continue-on-error: ${{ matrix.ha-version == 'dev' }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install latest dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade \
+            pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout syrupy
+          if [ "${{ matrix.ha-version }}" = "dev" ]; then
+            python -m pip install --upgrade --pre pytest-homeassistant-custom-component
+            python -m pip install --upgrade "homeassistant @ git+https://github.com/home-assistant/core.git"
+          else
+            python -m pip install --upgrade homeassistant pytest-homeassistant-custom-component
+          fi
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=custom_components.fado \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=90 \
+            -v
+
+  # Always run the HA validation tooling against its latest tooling. These pull
+  # the newest hassfest / HACS actions and catch HA-side manifest/brand drift
+  # even when the unit tests above are thin or skipped.
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
