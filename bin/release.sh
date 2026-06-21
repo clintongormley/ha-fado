@@ -6,6 +6,11 @@
 # Example: bin/release.sh 1.2.0
 #          bin/release.sh 1.2.0-rc.1
 #
+# Before running this, promote the changelog: in CHANGES.md rename
+# `## [Unreleased]` to `## [<version>] - <date>` (and start a fresh empty
+# Unreleased). That section is published as the GitHub Release notes; if it's
+# missing the release falls back to GitHub's auto-generated notes.
+#
 # What it does:
 #   1. Pre-flight: valid semver, on main, clean tree, tag not taken, main up to
 #      date with origin.
