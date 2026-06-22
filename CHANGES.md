@@ -19,6 +19,15 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 - Frontend: configuration panel/card now use HA's themed select control and a
   `--fado-*` design-token layer for consistent theming.
 
+### Removed
+
+- **BREAKING: Removed the Log level selector from the configuration panel.**
+  Fado logs through Home Assistant's standard logger, so adjust its verbosity
+  the usual way instead — **Enable debug logging** on the integration page, or a
+  `logger:` entry in `configuration.yaml`. See the Troubleshooting section of
+  the README. If you previously raised the level via the panel, that choice is
+  no longer re-applied on restart; set it the standard way to make it persist.
+
 ## [2.0.0] - 2026-06-14
 
 ### Added
