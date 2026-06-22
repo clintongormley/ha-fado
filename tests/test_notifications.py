@@ -375,7 +375,6 @@ class TestNotifySkippedBeforeStart:
 
         with (
             patch("custom_components.fado.async_register_websocket_api"),
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -408,7 +407,6 @@ class TestSetupNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]  # Skip panel registration
             await async_setup_entry(hass, mock_entry)
@@ -434,7 +432,6 @@ class TestSetupNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -458,7 +455,6 @@ class TestEntityRegistryNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -487,7 +483,6 @@ class TestEntityRegistryNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -520,7 +515,6 @@ class TestEntityRegistryNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -549,7 +543,6 @@ class TestEntityRegistryNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -578,7 +571,6 @@ class TestEntityRegistryNotification:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights") as mock_notify,
-            patch("custom_components.fado._apply_stored_log_level"),
         ):
             hass.http = None  # type: ignore[assignment]
             await async_setup_entry(hass, mock_entry)
@@ -614,7 +606,6 @@ class TestDailyNotificationTimer:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights"),
-            patch("custom_components.fado._apply_stored_log_level"),
             patch("custom_components.fado.async_track_time_interval") as mock_timer,
         ):
             hass.http = None  # type: ignore[assignment]
@@ -881,7 +872,6 @@ class TestUpgradeCleanup:
         with (
             patch("custom_components.fado.async_register_websocket_api"),
             patch("custom_components.fado._notify_unconfigured_lights"),
-            patch("custom_components.fado._apply_stored_log_level"),
             patch("homeassistant.components.persistent_notification.async_dismiss") as mock_dismiss,
         ):
             hass.http = None  # type: ignore[assignment]

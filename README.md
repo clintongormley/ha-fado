@@ -602,7 +602,6 @@ brightness for each light
 | [**Min brightness**](#minimum-brightness)         | Minimum real brightness value that the light supports                           | `1`              | `1` - `255`                |
 | [**Native transitions**](#native-transitions)     | Whether to use the device's native transitions to smooth fading                 | `No`             | `No`, `Yes`, `Disable`     |
 | [**Exclude**](#exclude)                           | Exclude this light from management by Fado                                      | `No`             | `No`, `Yes`                |
-| [**Log level**](#log-level)                       | Controls logging verbosity                                                      | `warning`        | `warning`, `info`, `debug` |
 | [**Global min delay**](#global-minimum-delay)     | Absolute minimum delay (ms) for all lights. Per-light min delay cannot be lower | `100`            | `50` - `2000`              |
 | [**Download diagnostics**](#download-diagnostics) | Download diagnostic data for debugging                                          | —                | —                          |
 
@@ -666,10 +665,6 @@ original brightness level.
 This is the absolute minimum delay for all lights. No light may
 have a custom [minimum delay](#minimum-delay) setting below this
 value. It defaults to 100ms and has a minimum value of 50ms.
-
-#### Log level
-
-See [**Troubleshooting**](#troubleshooting)
 
 #### Download diagnostics
 
@@ -760,12 +755,24 @@ Services → Fado → Configure**:
 
 ## Troubleshooting
 
-### Enable logging via UI
+### Enable logging
 
-Go to the
-[**Autoconfiguration Panel**](#autoconfiguration-panel) by
-clicking **Fado** in the Home Assistant sidebar, and adjust the
-**Log level** verbosity setting:
+Fado logs through Home Assistant's standard logger, so you raise
+its verbosity the same way as any other integration.
+
+**From the UI:** go to **Settings → Devices & Services**, open
+the **Fado** integration, click the **⋮** menu and choose
+**Enable debug logging**. Reproduce the problem, then choose
+**Disable debug logging** to download the captured log.
+
+**From `configuration.yaml`** (lets you pick the level, and
+persists across restarts):
+
+```yaml
+logger:
+  logs:
+    custom_components.fado: info # or: debug
+```
 
 | Level     | What it shows                                                                        |
 | --------- | ------------------------------------------------------------------------------------ |
@@ -775,8 +782,6 @@ clicking **Fado** in the Home Assistant sidebar, and adjust the
 
 For most troubleshooting, `info` level is sufficient and easier
 to follow.
-
-This log level setting is persisted across restarts.
 
 ### Known Problems
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -52,15 +51,10 @@ from .const import (
     ATTR_RGBWW_COLOR,
     ATTR_TRANSITION,
     ATTR_XY_COLOR,
-    DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
     DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
     EVENT_CONFIG_UPDATED,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_WARNING,
-    OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
     OPTION_SHOW_SIDEBAR,
     SERVICE_EXCLUDE_LIGHTS,
@@ -325,9 +319,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 require_admin=True,
             )
 
-    # Apply stored log level on startup
-    await _apply_stored_log_level(hass, entry)
-
     # Prune stale storage and check for unconfigured lights after HA has fully
     # started (all entity states are available, so light groups can be detected).
     # If HA is already running (e.g. after an options-flow reload), run immediately.
@@ -356,28 +347,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(_safe_cancel)
 
     return True
-
-
-async def _apply_stored_log_level(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Apply the stored log level setting."""
-    log_level = entry.options.get(OPTION_LOG_LEVEL, DEFAULT_LOG_LEVEL)
-
-    # Map our level names to Python logging level names
-    level_map = {
-        LOG_LEVEL_WARNING: "warning",
-        LOG_LEVEL_INFO: "info",
-        LOG_LEVEL_DEBUG: "debug",
-    }
-    python_level = level_map.get(log_level, "warning")
-
-    # Use HA's logger service to set the level
-    # Logger service may not be available in tests
-    with contextlib.suppress(Exception):
-        await hass.services.async_call(
-            "logger",
-            "set_level",
-            {f"custom_components.{DOMAIN}": python_level},
-        )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

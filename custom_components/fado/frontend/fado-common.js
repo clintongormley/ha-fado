@@ -31,11 +31,6 @@ const NATIVE_TRANSITIONS_OPTIONS = [
   { value: "false", label: "No" },
   { value: "disable", label: "Disable" },
 ];
-const LOG_LEVEL_OPTIONS = [
-  { value: "warning", label: "Warning" },
-  { value: "info", label: "Info" },
-  { value: "debug", label: "Debug" },
-];
 
 /**
  * Mixin that adds all Fado core behaviour to a LitElement subclass.
@@ -58,7 +53,6 @@ export const FadoCoreMixin = (superClass) =>
         _testing: { type: Object },
         _testErrors: { type: Object },
         _globalMinDelayMs: { type: Number },
-        _logLevel: { type: String },
         _entryId: { type: String },
         _compact: { type: Boolean, reflect: true, attribute: "compact" },
       };
@@ -78,7 +72,6 @@ export const FadoCoreMixin = (superClass) =>
       this._testing = new Set();
       this._testErrors = new Map();
       this._globalMinDelayMs = 100;
-      this._logLevel = "warning";
       this._entryId = null;
       this._lastConnection = null;
       this._compact = false;
@@ -215,7 +208,6 @@ export const FadoCoreMixin = (superClass) =>
       try {
         const result = await this.hass.callWS({ type: "fado/get_settings" });
         this._globalMinDelayMs = result.default_min_delay_ms;
-        this._logLevel = result.log_level || "warning";
         this._entryId = result.entry_id || null;
       } catch (err) {
         // Non-admins are not allowed to read Fado config; _fetchLights renders
@@ -381,18 +373,6 @@ export const FadoCoreMixin = (superClass) =>
         });
       } catch (err) {
         console.error("Failed to save config:", err);
-      }
-    }
-
-    async _saveLogLevel(value) {
-      try {
-        await this.hass.callWS({
-          type: "fado/save_settings",
-          log_level: value,
-        });
-        this._logLevel = value;
-      } catch (err) {
-        console.error("Failed to save log level:", err);
       }
     }
 
@@ -702,14 +682,6 @@ export const FadoCoreMixin = (superClass) =>
           <h1>Fado Light Fader</h1>
         </div>
         <div class="controls-row">
-          <div class="log-level-selector">
-            <label>Log level:</label>
-            ${this._renderSelect({
-              value: this._logLevel,
-              options: LOG_LEVEL_OPTIONS,
-              onChange: (value) => this._saveLogLevel(value),
-            })}
-          </div>
           ${isTesting
             ? html`<ha-button unelevated disabled>
                 <span class="button-spinner"></span>${this._getTestingText()}
@@ -1231,16 +1203,9 @@ export const fadoStyles = css`
     margin-bottom: 16px;
   }
 
-  .log-level-selector { display: flex; align-items: center; gap: 8px; }
-
-  .log-level-selector label {
-    font-size: var(--fado-font-md);
-    color: var(--fado-text-muted);
-  }
-
   .controls-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 16px;
   }
@@ -1462,7 +1427,6 @@ export const fadoStyles = css`
   :host([compact]) { padding: var(--fado-space-3); --fado-control-height: 44px; }
   :host([compact]) .controls-row { flex-direction: column; align-items: stretch; gap: var(--fado-space-2); }
   :host([compact]) .controls-row ha-button { width: 100%; }
-  :host([compact]) .log-level-selector { justify-content: space-between; }
   :host([compact]) .header-row { margin-bottom: var(--fado-space-3); }
   :host([compact]) .settings-row { flex-wrap: wrap; gap: var(--fado-space-2); padding: var(--fado-space-3); }
   :host([compact]) .settings-row ha-textfield,

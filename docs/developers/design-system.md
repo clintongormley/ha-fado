@@ -84,13 +84,13 @@ availability at render time and fall back to the nearest native element:
 
 ```js
 this._renderSelect({
-  value: this._logLevel,
+  value: nativeTransitionsToValue(light.native_transitions),
   options: [
-    { value: "warning", label: "Warning" },
-    { value: "info",    label: "Info" },
-    { value: "debug",   label: "Debug" },
+    { value: "true",    label: "Yes" },
+    { value: "false",   label: "No" },
+    { value: "disable", label: "Disable" },
   ],
-  onChange: (value) => this._saveLogLevel(value),
+  onChange: (value) => this._handleNativeTransitionsValue(light.entity_id, value),
 })
 ```
 
@@ -170,7 +170,6 @@ All compact adjustments live in `fadoStyles` under `:host([compact])` selectors:
 :host([compact]) { padding: var(--fado-space-3); --fado-control-height: 44px; }
 :host([compact]) .controls-row { flex-direction: column; align-items: stretch; gap: var(--fado-space-2); }
 :host([compact]) .controls-row ha-button { width: 100%; }
-:host([compact]) .log-level-selector { justify-content: space-between; }
 :host([compact]) .header-row { margin-bottom: var(--fado-space-3); }
 :host([compact]) .settings-row { flex-wrap: wrap; gap: var(--fado-space-2); padding: var(--fado-space-3); }
 :host([compact]) .settings-row ha-textfield,

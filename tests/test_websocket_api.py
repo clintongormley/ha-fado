@@ -561,10 +561,7 @@ async def test_get_light_config(hass: HomeAssistant, init_integration) -> None:
 
 async def test_get_settings(hass: HomeAssistant, init_integration) -> None:
     """Test ws_get_settings returns current settings."""
-    from custom_components.fado.const import (
-        DEFAULT_LOG_LEVEL,
-        DEFAULT_MIN_STEP_DELAY_MS,
-    )
+    from custom_components.fado.const import DEFAULT_MIN_STEP_DELAY_MS
     from custom_components.fado.websocket_api import _get_config_entry
 
     entry = _get_config_entry(hass)
@@ -575,7 +572,6 @@ async def test_get_settings(hass: HomeAssistant, init_integration) -> None:
         entry.options.get("min_step_delay_ms", DEFAULT_MIN_STEP_DELAY_MS)
         == DEFAULT_MIN_STEP_DELAY_MS
     )
-    assert entry.options.get("log_level", DEFAULT_LOG_LEVEL) == DEFAULT_LOG_LEVEL
 
 
 async def test_save_settings_updates_min_delay(hass: HomeAssistant, init_integration) -> None:
@@ -595,61 +591,6 @@ async def test_save_settings_updates_min_delay(hass: HomeAssistant, init_integra
     entry = _get_config_entry(hass)
     assert entry is not None
     assert entry.options.get(OPTION_MIN_STEP_DELAY_MS) == 200
-
-
-async def test_apply_log_level(hass: HomeAssistant, init_integration) -> None:
-    """Test _apply_log_level calls logger service."""
-
-    from custom_components.fado.websocket_api import _apply_log_level
-
-    # Register a mock logger service to capture the call
-    calls = []
-
-    async def mock_set_level(call):
-        calls.append(call.data)
-
-    hass.services.async_register("logger", "set_level", mock_set_level)
-
-    await _apply_log_level(hass, "debug")
-
-    assert len(calls) == 1
-    assert calls[0] == {"custom_components.fado": "debug"}
-
-
-async def test_apply_log_level_warning(hass: HomeAssistant, init_integration) -> None:
-    """Test _apply_log_level with warning level."""
-    from custom_components.fado.websocket_api import _apply_log_level
-
-    calls = []
-
-    async def mock_set_level(call):
-        calls.append(call.data)
-
-    hass.services.async_register("logger", "set_level", mock_set_level)
-
-    await _apply_log_level(hass, "warning")
-
-    assert len(calls) == 1
-    assert calls[0] == {"custom_components.fado": "warning"}
-
-
-async def test_apply_log_level_unknown_defaults_to_warning(
-    hass: HomeAssistant, init_integration
-) -> None:
-    """Test _apply_log_level defaults to warning for unknown level."""
-    from custom_components.fado.websocket_api import _apply_log_level
-
-    calls = []
-
-    async def mock_set_level(call):
-        calls.append(call.data)
-
-    hass.services.async_register("logger", "set_level", mock_set_level)
-
-    await _apply_log_level(hass, "unknown_level")
-
-    assert len(calls) == 1
-    assert calls[0] == {"custom_components.fado": "warning"}
 
 
 async def test_get_lights_includes_min_brightness(

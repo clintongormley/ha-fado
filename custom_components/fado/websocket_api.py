@@ -25,16 +25,11 @@ from homeassistant.helpers import (
 
 from .const import (
     AUTOCONFIGURE_MAX_PARALLEL,
-    DEFAULT_LOG_LEVEL,
     DEFAULT_MIN_STEP_DELAY_MS,
     DEFAULT_SHOW_SIDEBAR,
     DOMAIN,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_WARNING,
     MAX_STEP_DELAY_MS,
     MIN_STEP_DELAY_MS,
-    OPTION_LOG_LEVEL,
     OPTION_MIN_STEP_DELAY_MS,
     OPTION_SHOW_SIDEBAR,
 )
@@ -529,7 +524,6 @@ async def ws_get_settings(
         return
 
     default_min_delay_ms = entry.options.get(OPTION_MIN_STEP_DELAY_MS, DEFAULT_MIN_STEP_DELAY_MS)
-    log_level = entry.options.get(OPTION_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
     show_sidebar = entry.options.get(OPTION_SHOW_SIDEBAR, DEFAULT_SHOW_SIDEBAR)
 
@@ -537,7 +531,6 @@ async def ws_get_settings(
         msg["id"],
         {
             "default_min_delay_ms": default_min_delay_ms,
-            "log_level": log_level,
             "entry_id": entry.entry_id,
             "show_sidebar": show_sidebar,
         },
@@ -550,7 +543,6 @@ async def ws_get_settings(
         vol.Optional("default_min_delay_ms"): vol.All(
             int, vol.Range(min=MIN_STEP_DELAY_MS, max=MAX_STEP_DELAY_MS)
         ),
-        vol.Optional("log_level"): vol.In([LOG_LEVEL_WARNING, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG]),
     }
 )
 @websocket_api.require_admin
@@ -575,29 +567,6 @@ async def ws_save_settings(
         if coordinator_obj is not None:
             coordinator_obj.min_step_delay_ms = msg["default_min_delay_ms"]
 
-    if "log_level" in msg:
-        new_options[OPTION_LOG_LEVEL] = msg["log_level"]
-        # Apply log level immediately via HA's logger service
-        await _apply_log_level(hass, msg["log_level"])
-
     hass.config_entries.async_update_entry(entry, options=new_options)
 
     connection.send_result(msg["id"], {"success": True})
-
-
-async def _apply_log_level(hass: HomeAssistant, level: str) -> None:
-    """Apply log level to Home Assistant's logger system."""
-    # Map our level names to Python logging level names
-    level_map = {
-        LOG_LEVEL_WARNING: "warning",
-        LOG_LEVEL_INFO: "info",
-        LOG_LEVEL_DEBUG: "debug",
-    }
-    python_level = level_map.get(level, "warning")
-
-    # Use HA's logger service to set the level
-    await hass.services.async_call(
-        "logger",
-        "set_level",
-        {f"custom_components.{DOMAIN}": python_level},
-    )
