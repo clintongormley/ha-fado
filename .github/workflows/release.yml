@@ -5,9 +5,15 @@ name: Release
 # minor so unreleased work no longer carries the just-released version.
 #
 # Release flow:
-#   1. bin/release.sh <version>  -> opens the chore/release PR (bumps manifest)
-#   2. merge the PR
-#   3. git tag v<version> && git push origin v<version>  -> triggers this workflow
+#   1. In CHANGES.md, promote `## [Unreleased]` -> `## [<version>] - <date>`
+#      (start a fresh empty Unreleased). This section becomes the release notes;
+#      if it's missing the release falls back to auto-generated notes.
+#   2. bin/release.sh <version>  -> opens the chore/release PR (bumps manifest)
+#   3. merge the PR
+#   4. git tag v<version> && git push origin v<version>  -> triggers this workflow
+#
+# The published release body is the matching CHANGES.md section, extracted by
+# scripts/extract_changelog.py; see the "Extract release notes" step below.
 #
 # Requires a RELEASE_PAT repo secret (fine-grained PAT, contents:write +
 # pull-requests:write) and the repo "Allow auto-merge" setting enabled — the
@@ -63,10 +69,32 @@ jobs:
             exit 1
           fi
 
+      # Prefer the curated CHANGES.md entry for this version as the release body.
+      # The changelog section is promoted manually (## [Unreleased] -> ## [<ver>]
+      # - <date>) before tagging; if it's absent (e.g. a pre-release, or a
+      # forgotten promotion) the script exits non-zero and we fall back to
+      # GitHub's auto-generated notes below.
+      - name: Extract release notes from CHANGES.md
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if python3 scripts/extract_changelog.py "$VERSION" > release-notes.md; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "Using CHANGES.md section for v$VERSION as the release notes."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No CHANGES.md section for v$VERSION; falling back to auto-generated release notes."
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          # When the changelog section was found, use it and suppress auto-notes;
+          # otherwise leave body_path empty (the action treats '' as unset) and
+          # let GitHub generate notes — the prior behaviour.
+          body_path: ${{ steps.notes.outputs.found == 'true' && 'release-notes.md' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.found != 'true' }}
           # Pre-releases (alpha/beta/rc) stay off "latest" until promoted via:
           #   gh release edit v<version> --prerelease=false --latest=true
           prerelease: ${{ steps.version.outputs.prerelease }}
