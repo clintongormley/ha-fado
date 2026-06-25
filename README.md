@@ -5,9 +5,10 @@
 [![Active Installations](https://img.shields.io/badge/dynamic/json?label=Active%20Installations&query=%24.fado.total&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&color=blue&logo=home-assistant)](https://analytics.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Home Assistant custom integration that provides smooth light fading for
-brightness, colors, and color temperatures, with automatic brightness
-restoration, autoconfiguration via the UI, and support for native transitions.
+A Home Assistant custom integration, available in the HACS default store, that
+provides smooth light fading for brightness, colors, and color temperatures,
+with automatic brightness restoration, autoconfiguration via the UI, and
+support for native transitions.
 
 ## Table of Contents
 
