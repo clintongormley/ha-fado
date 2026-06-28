@@ -16,11 +16,12 @@ export function areaNeedsSetupCount(area) {
   return area.lights.filter(needsSetup).length;
 }
 
-/** Roll-up label for an area header; "" when none need setup. */
-export function needsSetupLabel(count) {
+/** Roll-up label for an area header; "" when none need setup. `t` is a localizer. */
+export function needsSetupLabel(count, t) {
   if (!count) return "";
-  if (count === 1) return "1 needs setup";
-  return `${count} need setup`;
+  return count === 1
+    ? t("status.needs_setup_one", { count })
+    : t("status.needs_setup_other", { count });
 }
 
 /** Tri-state of the configure checkboxes for a set of entity ids. */

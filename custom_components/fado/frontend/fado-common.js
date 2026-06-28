@@ -22,15 +22,10 @@ import {
   pruneCollapsedState,
 } from "./fado-logic.js";
 
+import { EN, localize, loadCatalog } from "./fado-i18n.js";
+
 // Re-export for consumers
 export { LitElement, html, css };
-
-const NATIVE_TRANSITIONS_OPTIONS = [
-  { value: "", label: "" },
-  { value: "true", label: "Yes" },
-  { value: "false", label: "No" },
-  { value: "disable", label: "Disable" },
-];
 
 /**
  * Mixin that adds all Fado core behaviour to a LitElement subclass.
@@ -55,6 +50,7 @@ export const FadoCoreMixin = (superClass) =>
         _globalMinDelayMs: { type: Number },
         _entryId: { type: String },
         _compact: { type: Boolean, reflect: true, attribute: "compact" },
+        _catalog: { type: Object },
       };
     }
 
@@ -76,6 +72,8 @@ export const FadoCoreMixin = (superClass) =>
       this._lastConnection = null;
       this._compact = false;
       this._resizeObserver = null;
+      this._catalog = null;
+      this._catalogLang = null;
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -85,6 +83,7 @@ export const FadoCoreMixin = (superClass) =>
       if (this.hass) {
         this._fetchAll();
         this._subscribeConfigUpdates();
+        this._maybeLoadCatalog();
       }
       this._locationChangedHandler = () => {
         if (this._data && !this._isTesting()) {
@@ -131,6 +130,7 @@ export const FadoCoreMixin = (superClass) =>
     updated(changedProperties) {
       super.updated(changedProperties);
       if (changedProperties.has("hass") && this.hass) {
+        this._maybeLoadCatalog();
         const isReconnect =
           this._lastConnection && this._lastConnection !== this.hass.connection;
         this._lastConnection = this.hass.connection;
@@ -551,9 +551,10 @@ export const FadoCoreMixin = (superClass) =>
     // ── Autoconfigure ──────────────────────────────────────────
 
     _getButtonText() {
-      const checkedCount = this._configureChecked.size;
-      if (checkedCount > 0) return `Autoconfigure (${checkedCount})`;
-      return "Autoconfigure";
+      const c = this._configureChecked.size;
+      return c > 0
+        ? this._t("actions.autoconfigure_count", { count: c })
+        : this._t("actions.autoconfigure");
     }
 
     _isTesting() {
@@ -561,7 +562,12 @@ export const FadoCoreMixin = (superClass) =>
     }
 
     _getTestingText() {
-      return `Configuring ${this._testing.size} light${this._testing.size === 1 ? "" : "s"}... (${this._completedTests}/${this._totalToTest})`;
+      const c = this._testing.size;
+      return this._t(c === 1 ? "actions.configuring_one" : "actions.configuring_other", {
+        count: c,
+        done: this._completedTests,
+        total: this._totalToTest,
+      });
     }
 
     _isButtonDisabled() {
@@ -673,13 +679,36 @@ export const FadoCoreMixin = (superClass) =>
       }
     }
 
+    // ── i18n ───────────────────────────────────────────────────
+
+    _t(key, params) {
+      return localize(this._catalog, EN, key, params);
+    }
+
+    async _maybeLoadCatalog() {
+      const lang =
+        this.hass?.locale?.language ?? this.hass?.language ?? "en";
+      if (lang === this._catalogLang) return;
+      this._catalogLang = lang;
+      this._catalog = await loadCatalog(lang); // null -> EN fallback
+    }
+
+    _nativeTransitionsOptions() {
+      return [
+        { value: "", label: "" },
+        { value: "true", label: this._t("native_transitions.yes") },
+        { value: "false", label: this._t("native_transitions.no") },
+        { value: "disable", label: this._t("native_transitions.disable") },
+      ];
+    }
+
     // ── Rendering ──────────────────────────────────────────────
 
     _renderHeader() {
       const isTesting = this._isTesting();
       return html`
         <div class="header-row">
-          <h1>Fado Light Fader</h1>
+          <h1>${this._t("header.title")}</h1>
         </div>
         <div class="controls-row">
           ${isTesting
@@ -700,11 +729,11 @@ export const FadoCoreMixin = (superClass) =>
       if (!this.hass || this._loading) {
         return html`
           <div class="header-row">
-            <h1>Fado Light Fader</h1>
+            <h1>${this._t("header.title")}</h1>
           </div>
           <div class="loading-container">
             <div class="spinner"></div>
-            <span>Loading...</span>
+            <span>${this._t("states.loading")}</span>
           </div>
         `;
       }
@@ -712,28 +741,28 @@ export const FadoCoreMixin = (superClass) =>
       if (this._authError) {
         return html`
           <div class="header-row">
-            <h1>Fado Light Fader</h1>
+            <h1>${this._t("header.title")}</h1>
           </div>
           <div class="auth-error">
             <ha-icon icon="mdi:shield-lock-outline"></ha-icon>
-            <p>Administrator access is required to configure Fado.</p>
+            <p>${this._t("states.auth_error")}</p>
           </div>
         `;
       }
 
       if (!this._data || !this._data.areas) {
-        return html`${this._renderHeader()}<p>No lights found.</p>`;
+        return html`${this._renderHeader()}<p>${this._t("states.no_lights_found")}</p>`;
       }
 
       const totalLights = this._data.areas.reduce((sum, area) => sum + area.lights.length, 0);
       if (totalLights === 0) {
         return html`
           <div class="header-row">
-            <h1>Fado Light Fader</h1>
+            <h1>${this._t("header.title")}</h1>
           </div>
           <div class="empty-state">
             <ha-icon icon="mdi:lightbulb-off-outline"></ha-icon>
-            <div class="empty-message">No active lights available</div>
+            <div class="empty-message">${this._t("states.no_active_lights")}</div>
           </div>
         `;
       }
@@ -748,18 +777,18 @@ export const FadoCoreMixin = (superClass) =>
       return html`
         <ha-card>
           <div class="settings-row">
-            <label>Global min delay:</label>
+            <label>${this._t("settings.global_min_delay")}</label>
             ${this._renderNumberInput({
               value: this._globalMinDelayMs || "",
-              min: 50, max: 2000, step: 10, suffix: "ms",
+              min: 50, max: 2000, step: 10, suffix: this._t("units.ms"),
               onChange: (e) => this._handleGlobalDelayChange(e),
             })}
-            <span class="hint">The absolute minimum delay for all lights</span>
+            <span class="hint">${this._t("settings.global_min_delay_hint")}</span>
           </div>
           ${this._entryId ? html`
             <div class="settings-row">
               <a href="#" @click=${(e) => { e.preventDefault(); this._downloadDiagnostics(); }}>
-                <ha-icon icon="mdi:download" style="--mdc-icon-size: 18px; vertical-align: middle; margin-right: 4px;"></ha-icon>Download diagnostics
+                <ha-icon icon="mdi:download" style="--mdc-icon-size: 18px; vertical-align: middle; margin-right: 4px;"></ha-icon>${this._t("settings.download_diagnostics")}
               </a>
             </div>
           ` : ""}
@@ -776,10 +805,10 @@ export const FadoCoreMixin = (superClass) =>
             <thead>
               <tr>
                 <th class="col-light"></th>
-                <th class="col-delay">Min Delay (ms)</th>
-                <th class="col-min-brightness">Min Brightness</th>
-                <th class="col-native-transitions">Native Transitions</th>
-                <th class="col-exclude">Exclude</th>
+                <th class="col-delay">${this._t("table.min_delay")}</th>
+                <th class="col-min-brightness">${this._t("table.min_brightness")}</th>
+                <th class="col-native-transitions">${this._t("table.native_transitions")}</th>
+                <th class="col-exclude">${this._t("labels.exclude")}</th>
                 <th class="col-configure">
                   <ha-checkbox
                     .checked=${allState === "all"}
@@ -809,7 +838,7 @@ export const FadoCoreMixin = (superClass) =>
       const areaKey = collapseKeyForArea(area);
       const isCollapsed = this._collapsed[areaKey];
       const areaIcon = area.icon || "mdi:texture-box";
-      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area));
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area), (k, p) => this._t(k, p));
       const areaLightIds = this._getAreaLightIds(area);
       const configureState = this._getCheckboxState(areaLightIds);
       const excludeState = this._getExcludeState(area.lights);
@@ -822,7 +851,7 @@ export const FadoCoreMixin = (superClass) =>
             ${setupLabel ? html`<span class="needs-setup-rollup">· ${setupLabel}</span>` : ""}
             <span class="spacer"></span>
             <span class="area-card-check" @click=${(e) => e.stopPropagation()}>
-              <span class="mini-label">Exclude</span>
+              <span class="mini-label">${this._t("labels.exclude")}</span>
               <ha-checkbox
                 .checked=${excludeState === "all"}
                 .indeterminate=${excludeState === "some"}
@@ -830,7 +859,7 @@ export const FadoCoreMixin = (superClass) =>
               ></ha-checkbox>
             </span>
             <span class="area-card-check" @click=${(e) => e.stopPropagation()}>
-              <span class="mini-label">Configure</span>
+              <span class="mini-label">${this._t("labels.configure")}</span>
               <ha-checkbox
                 .checked=${configureState === "all"}
                 .indeterminate=${configureState === "some"}
@@ -842,7 +871,7 @@ export const FadoCoreMixin = (superClass) =>
             ? ""
             : area.lights.length > 0
               ? area.lights.map((light) => this._renderLightCard(light))
-              : html`<div class="no-lights card-no-lights">No lights in this area</div>`}
+              : html`<div class="no-lights card-no-lights">${this._t("states.no_lights_in_area")}</div>`}
         </ha-card>
       `;
     }
@@ -866,7 +895,7 @@ export const FadoCoreMixin = (superClass) =>
               <div class="light-name">${light.name}</div>
               <div class="light-substatus">
                 ${flagSetup
-                  ? html`<span class="needs-setup">● Needs setup</span>`
+                  ? html`<span class="needs-setup">● ${this._t("status.needs_setup")}</span>`
                   : html`<span class="entity-id">${light.min_delay_ms ? `${light.min_delay_ms} ms` : light.entity_id}</span>`}
               </div>
             </div>
@@ -882,36 +911,36 @@ export const FadoCoreMixin = (superClass) =>
           ${isCollapsed ? "" : html`
             <div class="light-card-body">
               <div class="field-row" @click=${() => this._openLightDialog(light.entity_id)}>
-                <span class="field-label">Entity</span>
+                <span class="field-label">${this._t("card.entity")}</span>
                 <span class="entity-id">${light.entity_id}</span>
               </div>
               <div class="field-row">
-                <span class="field-label">Min delay</span>
+                <span class="field-label">${this._t("card.min_delay")}</span>
                 ${isTesting
                   ? html`<div class="testing-spinner"><div class="spinner"></div></div>`
                   : html`${this._renderNumberInput({
                       value: light.min_delay_ms || "",
                       min: this._globalMinDelayMs, max: 2000, step: 10,
-                      disabled: isExcluded, suffix: "ms",
+                      disabled: isExcluded, suffix: this._t("units.ms"),
                       onChange: (e) => this._handleDelayChange(light.entity_id, e),
                     })}`}
               </div>
               ${errorMessage ? html`<div class="test-error">${errorMessage}</div>` : ""}
               <div class="field-row">
-                <span class="field-label">Min brightness</span>
+                <span class="field-label">${this._t("card.min_brightness")}</span>
                 <span>${light.min_brightness != null ? light.min_brightness : "—"}</span>
               </div>
               <div class="field-row">
-                <span class="field-label">Native transitions</span>
+                <span class="field-label">${this._t("card.native_transitions")}</span>
                 ${this._renderSelect({
                   value: nativeTransitionsToValue(light.native_transitions),
                   disabled: isExcluded,
-                  options: NATIVE_TRANSITIONS_OPTIONS,
+                  options: this._nativeTransitionsOptions(),
                   onChange: (value) => this._handleNativeTransitionsValue(light.entity_id, value),
                 })}
               </div>
               <div class="field-row">
-                <span class="field-label">Exclude</span>
+                <span class="field-label">${this._t("labels.exclude")}</span>
                 <ha-checkbox
                   .checked=${light.exclude}
                   @change=${(e) => this._handleCheckboxChange(light.entity_id, "exclude", e)}
@@ -930,7 +959,7 @@ export const FadoCoreMixin = (superClass) =>
       const areaLightIds = this._getAreaLightIds(area);
       const configureState = this._getCheckboxState(areaLightIds);
       const excludeState = this._getExcludeState(area.lights);
-      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area));
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area), (k, p) => this._t(k, p));
 
       return html`
         <tr class="area-row" @click=${() => this._toggleCollapse(areaKey)}>
@@ -965,7 +994,7 @@ export const FadoCoreMixin = (superClass) =>
           ? ""
           : area.lights.length > 0
             ? area.lights.map((light) => this._renderLightRow(light))
-            : html`<tr><td colspan="6" class="no-lights">No lights in this area</td></tr>`}
+            : html`<tr><td colspan="6" class="no-lights">${this._t("states.no_lights_in_area")}</td></tr>`}
       `;
     }
 
@@ -1079,7 +1108,7 @@ export const FadoCoreMixin = (superClass) =>
             ${this._renderSelect({
               value: nativeTransitionsToValue(light.native_transitions),
               disabled: isExcluded,
-              options: NATIVE_TRANSITIONS_OPTIONS,
+              options: this._nativeTransitionsOptions(),
               onChange: (value) =>
                 this._handleNativeTransitionsValue(light.entity_id, value),
             })}

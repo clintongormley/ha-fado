@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EN, localize, defaultLocalize } from "../../custom_components/fado/frontend/fado-i18n.js";
+import { readFileSync } from "node:fs";
 
 describe("localize", () => {
   const cat = { a: { b: "from cat" }, only: "cat only" };
@@ -36,5 +37,38 @@ describe("defaultLocalize / EN", () => {
   it("interpolates against EN", () => {
     expect(defaultLocalize("actions.autoconfigure_count", { count: 2 }))
       .toBe("Autoconfigure (2)");
+  });
+});
+
+describe("source key coverage", () => {
+  const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
+  const sources = [
+    read("../../custom_components/fado/frontend/fado-common.js"),
+    read("../../custom_components/fado/frontend/fado-logic.js"),
+    read("../../custom_components/fado/frontend/fado-lang-banner.js"),
+  ].join("\n");
+  // Collect every key passed to this._t("…") / this.localize("…") / the
+  // injected `t("…")` localizer. The patterns are anchored so identifiers that
+  // merely END in `t(` — e.g. `split("-")`, `.at(` — are NOT matched.
+  const keys = new Set();
+  const re = /(?:\._t|\.localize|(?<![\w.])t)\(\s*["'`]([\w.]+)["'`]/g;
+  for (const m of sources.matchAll(re)) {
+    keys.add(m[1]);
+  }
+  const has = (key) => {
+    let cur = EN;
+    for (const part of key.split(".")) {
+      if (cur == null || typeof cur !== "object") return false;
+      cur = cur[part];
+    }
+    return typeof cur === "string";
+  };
+
+  it("found a sensible number of keys", () => {
+    expect(keys.size).toBeGreaterThan(15);
+  });
+  it("every key used in source exists in EN", () => {
+    const missing = [...keys].filter((k) => !has(k));
+    expect(missing).toEqual([]);
   });
 });

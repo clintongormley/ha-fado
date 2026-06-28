@@ -38,6 +38,11 @@ export const EN = {
     exclude: "Exclude",
     configure: "Configure",
   },
+  settings: {
+    global_min_delay: "Global min delay:",
+    global_min_delay_hint: "The absolute minimum delay for all lights",
+    download_diagnostics: "Download diagnostics",
+  },
   status: {
     needs_setup: "Needs setup",
     needs_setup_one: "{count} needs setup",

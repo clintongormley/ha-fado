@@ -37,10 +37,15 @@ describe("areaNeedsSetupCount / needsSetupLabel", () => {
   it("counts only lights needing setup", () => {
     expect(areaNeedsSetupCount(area)).toBe(2);
   });
-  it("labels with pluralisation", () => {
-    expect(needsSetupLabel(0)).toBe("");
-    expect(needsSetupLabel(1)).toBe("1 needs setup");
-    expect(needsSetupLabel(3)).toBe("3 need setup");
+  it("labels with pluralisation via the injected localizer", () => {
+    const t = (key, params) =>
+      ({
+        "status.needs_setup_one": `${params.count} needs setup`,
+        "status.needs_setup_other": `${params.count} need setup`,
+      })[key];
+    expect(needsSetupLabel(0, t)).toBe("");
+    expect(needsSetupLabel(1, t)).toBe("1 needs setup");
+    expect(needsSetupLabel(3, t)).toBe("3 need setup");
   });
 });
 
