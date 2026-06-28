@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "加载中...",
+    "auth_error": "配置 Fado 需要管理员权限。",
+    "no_lights_found": "未找到灯光。",
+    "no_active_lights": "没有可用的活动灯光",
+    "no_lights_in_area": "此区域没有灯光"
+  },
+  "actions": {
+    "autoconfigure": "自动配置",
+    "autoconfigure_count": "自动配置 ({count})",
+    "configuring_one": "正在配置 {count} 个灯光... ({done}/{total})",
+    "configuring_other": "正在配置 {count} 个灯光... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "最小延迟 (ms)",
+    "min_brightness": "最小亮度",
+    "native_transitions": "原生过渡"
+  },
+  "card": {
+    "entity": "实体",
+    "min_delay": "最小延迟",
+    "min_brightness": "最小亮度",
+    "native_transitions": "原生过渡"
+  },
+  "labels": {
+    "exclude": "排除",
+    "configure": "配置"
+  },
+  "settings": {
+    "global_min_delay": "全局最小延迟：",
+    "global_min_delay_hint": "所有灯光的绝对最小延迟",
+    "download_diagnostics": "下载诊断信息"
+  },
+  "status": {
+    "needs_setup": "需要设置",
+    "needs_setup_one": "{count} 个需要设置",
+    "needs_setup_other": "{count} 个需要设置"
+  },
+  "native_transitions": {
+    "yes": "是",
+    "no": "否",
+    "disable": "禁用"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "您的 Home Assistant 语言为 {language}，但 {product} 尚不支持该语言。",
+    "action": "请求翻译 →",
+    "dismiss": "忽略"
+  }
+}

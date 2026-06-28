@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Načítání...",
+    "auth_error": "Pro konfiguraci Fado je vyžadován přístup správce.",
+    "no_lights_found": "Nebyla nalezena žádná světla.",
+    "no_active_lights": "Žádná aktivní světla nejsou k dispozici",
+    "no_lights_in_area": "V této oblasti nejsou žádná světla"
+  },
+  "actions": {
+    "autoconfigure": "Automatická konfigurace",
+    "autoconfigure_count": "Automatická konfigurace ({count})",
+    "configuring_one": "Konfiguruji {count} světlo... ({done}/{total})",
+    "configuring_other": "Konfiguruji {count} světel... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Min. zpoždění (ms)",
+    "min_brightness": "Min. jas",
+    "native_transitions": "Nativní přechody"
+  },
+  "card": {
+    "entity": "Entita",
+    "min_delay": "Min. zpoždění",
+    "min_brightness": "Min. jas",
+    "native_transitions": "Nativní přechody"
+  },
+  "labels": {
+    "exclude": "Vyloučit",
+    "configure": "Konfigurovat"
+  },
+  "settings": {
+    "global_min_delay": "Globální min. zpoždění:",
+    "global_min_delay_hint": "Absolutní minimální zpoždění pro všechna světla",
+    "download_diagnostics": "Stáhnout diagnostiku"
+  },
+  "status": {
+    "needs_setup": "Vyžaduje nastavení",
+    "needs_setup_one": "{count} vyžaduje nastavení",
+    "needs_setup_other": "{count} vyžadují nastavení"
+  },
+  "native_transitions": {
+    "yes": "Ano",
+    "no": "Ne",
+    "disable": "Zakázat"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Jazyk vašeho Home Assistant je {language}, ale {product} v něm zatím není k dispozici.",
+    "action": "Požádat o překlad →",
+    "dismiss": "Zavřít"
+  }
+}

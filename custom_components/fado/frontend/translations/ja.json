@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "読み込み中...",
+    "auth_error": "Fado を設定するには管理者アクセスが必要です。",
+    "no_lights_found": "ライトが見つかりません。",
+    "no_active_lights": "利用可能なアクティブなライトがありません",
+    "no_lights_in_area": "このエリアにライトがありません"
+  },
+  "actions": {
+    "autoconfigure": "自動設定",
+    "autoconfigure_count": "自動設定 ({count})",
+    "configuring_one": "{count} 個のライトを設定中... ({done}/{total})",
+    "configuring_other": "{count} 個のライトを設定中... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "最小遅延 (ms)",
+    "min_brightness": "最小輝度",
+    "native_transitions": "ネイティブトランジション"
+  },
+  "card": {
+    "entity": "エンティティ",
+    "min_delay": "最小遅延",
+    "min_brightness": "最小輝度",
+    "native_transitions": "ネイティブトランジション"
+  },
+  "labels": {
+    "exclude": "除外",
+    "configure": "設定"
+  },
+  "settings": {
+    "global_min_delay": "グローバル最小遅延:",
+    "global_min_delay_hint": "すべてのライトの絶対最小遅延",
+    "download_diagnostics": "診断をダウンロード"
+  },
+  "status": {
+    "needs_setup": "設定が必要",
+    "needs_setup_one": "{count} 個の設定が必要",
+    "needs_setup_other": "{count} 個の設定が必要"
+  },
+  "native_transitions": {
+    "yes": "はい",
+    "no": "いいえ",
+    "disable": "無効"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "あなたの Home Assistant の言語は {language} ですが、{product} はまだその言語に対応していません。",
+    "action": "翻訳をリクエスト →",
+    "dismiss": "閉じる"
+  }
+}

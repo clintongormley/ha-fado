@@ -13,11 +13,19 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 - Frontend: responsive layout — on narrow screens the lights table becomes
   collapsible per-light cards with a "needs setup" indicator and a per-area
   roll-up; touch-friendly controls.
+- Frontend internationalisation: the Fado panel/card UI now loads per-language
+  catalogs (`frontend/translations/<lang>.json`); English is the built-in
+  fallback. Non-English UI translations are AI-generated and pending native
+  review — corrections welcome.
+- A dismissable banner that nudges users whose Home Assistant language Fado does
+  not yet support to request a translation via a prefilled GitHub issue.
 
 ### Changed
 
 - Frontend: configuration panel/card now use HA's themed select control and a
   `--fado-*` design-token layer for consistent theming.
+- Panel/card UI strings are now localised via the new i18n layer (English output
+  unchanged).
 
 ### Removed
 

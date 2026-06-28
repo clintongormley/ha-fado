@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Laden...",
+    "auth_error": "Administratorzugriff ist erforderlich, um Fado zu konfigurieren.",
+    "no_lights_found": "Keine Lichter gefunden.",
+    "no_active_lights": "Keine aktiven Lichter verfügbar",
+    "no_lights_in_area": "Keine Lichter in diesem Bereich"
+  },
+  "actions": {
+    "autoconfigure": "Automatisch konfigurieren",
+    "autoconfigure_count": "Automatisch konfigurieren ({count})",
+    "configuring_one": "{count} Licht wird konfiguriert... ({done}/{total})",
+    "configuring_other": "{count} Lichter werden konfiguriert... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Mindestverzögerung (ms)",
+    "min_brightness": "Mindesthelligkeit",
+    "native_transitions": "Native Übergänge"
+  },
+  "card": {
+    "entity": "Entität",
+    "min_delay": "Mindestverzögerung",
+    "min_brightness": "Mindesthelligkeit",
+    "native_transitions": "Native Übergänge"
+  },
+  "labels": {
+    "exclude": "Ausschließen",
+    "configure": "Konfigurieren"
+  },
+  "settings": {
+    "global_min_delay": "Globale Mindestverzögerung:",
+    "global_min_delay_hint": "Die absolute Mindestverzögerung für alle Lichter",
+    "download_diagnostics": "Diagnose herunterladen"
+  },
+  "status": {
+    "needs_setup": "Einrichtung erforderlich",
+    "needs_setup_one": "{count} erfordert Einrichtung",
+    "needs_setup_other": "{count} erfordern Einrichtung"
+  },
+  "native_transitions": {
+    "yes": "Ja",
+    "no": "Nein",
+    "disable": "Deaktivieren"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Ihre Home Assistant-Sprache ist {language}, aber {product} ist darin noch nicht verfügbar.",
+    "action": "Übersetzung anfragen →",
+    "dismiss": "Schließen"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Завантаження...",
+    "auth_error": "Для налаштування Fado потрібен доступ адміністратора.",
+    "no_lights_found": "Світла не знайдено.",
+    "no_active_lights": "Немає активних світел",
+    "no_lights_in_area": "У цій зоні немає світел"
+  },
+  "actions": {
+    "autoconfigure": "Автоналаштування",
+    "autoconfigure_count": "Автоналаштування ({count})",
+    "configuring_one": "Налаштування {count} світла... ({done}/{total})",
+    "configuring_other": "Налаштування {count} світел... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Мін. затримка (ms)",
+    "min_brightness": "Мін. яскравість",
+    "native_transitions": "Нативні переходи"
+  },
+  "card": {
+    "entity": "Сутність",
+    "min_delay": "Мін. затримка",
+    "min_brightness": "Мін. яскравість",
+    "native_transitions": "Нативні переходи"
+  },
+  "labels": {
+    "exclude": "Виключити",
+    "configure": "Налаштувати"
+  },
+  "settings": {
+    "global_min_delay": "Глобальна мін. затримка:",
+    "global_min_delay_hint": "Абсолютна мінімальна затримка для всіх світел",
+    "download_diagnostics": "Завантажити діагностику"
+  },
+  "status": {
+    "needs_setup": "Потребує налаштування",
+    "needs_setup_one": "{count} потребує налаштування",
+    "needs_setup_other": "{count} потребують налаштування"
+  },
+  "native_transitions": {
+    "yes": "Так",
+    "no": "Ні",
+    "disable": "Вимкнути"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Мова вашого Home Assistant — {language}, але {product} ще не доступний нею.",
+    "action": "Запросити переклад →",
+    "dismiss": "Закрити"
+  }
+}

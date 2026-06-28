@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Nalaganje...",
+    "auth_error": "Za konfiguracijo Fado je potreben skrbniški dostop.",
+    "no_lights_found": "Ni najdenih luči.",
+    "no_active_lights": "Ni aktivnih luči",
+    "no_lights_in_area": "Na tem območju ni luči"
+  },
+  "actions": {
+    "autoconfigure": "Samodejna konfiguracija",
+    "autoconfigure_count": "Samodejna konfiguracija ({count})",
+    "configuring_one": "Konfiguriranje {count} luči... ({done}/{total})",
+    "configuring_other": "Konfiguriranje {count} luči... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Min. zamik (ms)",
+    "min_brightness": "Min. svetlost",
+    "native_transitions": "Nativni prehodi"
+  },
+  "card": {
+    "entity": "Entiteta",
+    "min_delay": "Min. zamik",
+    "min_brightness": "Min. svetlost",
+    "native_transitions": "Nativni prehodi"
+  },
+  "labels": {
+    "exclude": "Izključi",
+    "configure": "Konfiguriraj"
+  },
+  "settings": {
+    "global_min_delay": "Globalni min. zamik:",
+    "global_min_delay_hint": "Absolutni minimalni zamik za vse luči",
+    "download_diagnostics": "Prenesi diagnostiko"
+  },
+  "status": {
+    "needs_setup": "Zahteva nastavitev",
+    "needs_setup_one": "{count} zahteva nastavitev",
+    "needs_setup_other": "{count} zahteva nastavitev"
+  },
+  "native_transitions": {
+    "yes": "Da",
+    "no": "Ne",
+    "disable": "Onemogoči"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Jezik vašega Home Assistant je {language}, vendar {product} v njem še ni na voljo.",
+    "action": "Zahtevaj prevod →",
+    "dismiss": "Opusti"
+  }
+}
