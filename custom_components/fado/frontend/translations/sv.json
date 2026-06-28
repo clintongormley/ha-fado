@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Laddar...",
+    "auth_error": "Administratörsåtkomst krävs för att konfigurera Fado.",
+    "no_lights_found": "Inga ljus hittades.",
+    "no_active_lights": "Inga aktiva ljus tillgängliga",
+    "no_lights_in_area": "Inga ljus i det här området"
+  },
+  "actions": {
+    "autoconfigure": "Automatisk konfigurering",
+    "autoconfigure_count": "Automatisk konfigurering ({count})",
+    "configuring_one": "Konfigurerar {count} ljus... ({done}/{total})",
+    "configuring_other": "Konfigurerar {count} ljus... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Min. fördröjning (ms)",
+    "min_brightness": "Min. ljusstyrka",
+    "native_transitions": "Inbyggda övergångar"
+  },
+  "card": {
+    "entity": "Enhet",
+    "min_delay": "Min. fördröjning",
+    "min_brightness": "Min. ljusstyrka",
+    "native_transitions": "Inbyggda övergångar"
+  },
+  "labels": {
+    "exclude": "Uteslut",
+    "configure": "Konfigurera"
+  },
+  "settings": {
+    "global_min_delay": "Global min. fördröjning:",
+    "global_min_delay_hint": "Den absoluta minimumsfördröjningen för alla ljus",
+    "download_diagnostics": "Ladda ned diagnostik"
+  },
+  "status": {
+    "needs_setup": "Kräver inställning",
+    "needs_setup_one": "{count} kräver inställning",
+    "needs_setup_other": "{count} kräver inställning"
+  },
+  "native_transitions": {
+    "yes": "Ja",
+    "no": "Nej",
+    "disable": "Inaktivera"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Ditt Home Assistant-språk är {language}, men {product} är ännu inte tillgängligt på det.",
+    "action": "Begär en översättning →",
+    "dismiss": "Stäng"
+  }
+}

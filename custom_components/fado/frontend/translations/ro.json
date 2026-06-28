@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Se încarcă...",
+    "auth_error": "Este necesar accesul de administrator pentru a configura Fado.",
+    "no_lights_found": "Nu s-au găsit lumini.",
+    "no_active_lights": "Nu există lumini active disponibile",
+    "no_lights_in_area": "Nu există lumini în această zonă"
+  },
+  "actions": {
+    "autoconfigure": "Autoconfigurare",
+    "autoconfigure_count": "Autoconfigurare ({count})",
+    "configuring_one": "Se configurează {count} lumină... ({done}/{total})",
+    "configuring_other": "Se configurează {count} lumini... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Întârziere min. (ms)",
+    "min_brightness": "Luminozitate min.",
+    "native_transitions": "Tranziții native"
+  },
+  "card": {
+    "entity": "Entitate",
+    "min_delay": "Întârziere min.",
+    "min_brightness": "Luminozitate min.",
+    "native_transitions": "Tranziții native"
+  },
+  "labels": {
+    "exclude": "Excludere",
+    "configure": "Configurare"
+  },
+  "settings": {
+    "global_min_delay": "Întârziere min. globală:",
+    "global_min_delay_hint": "Întârzierea minimă absolută pentru toate luminile",
+    "download_diagnostics": "Descărcare diagnostice"
+  },
+  "status": {
+    "needs_setup": "Necesită configurare",
+    "needs_setup_one": "{count} necesită configurare",
+    "needs_setup_other": "{count} necesită configurare"
+  },
+  "native_transitions": {
+    "yes": "Da",
+    "no": "Nu",
+    "disable": "Dezactivare"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Limba Home Assistant-ului dvs. este {language}, dar {product} nu este încă disponibil în această limbă.",
+    "action": "Solicitați o traducere →",
+    "dismiss": "Ignorare"
+  }
+}

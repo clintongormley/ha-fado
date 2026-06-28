@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Đang tải...",
+    "auth_error": "Cần quyền quản trị viên để cấu hình Fado.",
+    "no_lights_found": "Không tìm thấy đèn nào.",
+    "no_active_lights": "Không có đèn đang hoạt động",
+    "no_lights_in_area": "Không có đèn trong khu vực này"
+  },
+  "actions": {
+    "autoconfigure": "Tự động cấu hình",
+    "autoconfigure_count": "Tự động cấu hình ({count})",
+    "configuring_one": "Đang cấu hình {count} đèn... ({done}/{total})",
+    "configuring_other": "Đang cấu hình {count} đèn... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Độ trễ tối thiểu (ms)",
+    "min_brightness": "Độ sáng tối thiểu",
+    "native_transitions": "Chuyển đổi gốc"
+  },
+  "card": {
+    "entity": "Thực thể",
+    "min_delay": "Độ trễ tối thiểu",
+    "min_brightness": "Độ sáng tối thiểu",
+    "native_transitions": "Chuyển đổi gốc"
+  },
+  "labels": {
+    "exclude": "Loại trừ",
+    "configure": "Cấu hình"
+  },
+  "settings": {
+    "global_min_delay": "Độ trễ tối thiểu toàn cục:",
+    "global_min_delay_hint": "Độ trễ tối thiểu tuyệt đối cho tất cả đèn",
+    "download_diagnostics": "Tải xuống chẩn đoán"
+  },
+  "status": {
+    "needs_setup": "Cần thiết lập",
+    "needs_setup_one": "{count} cần thiết lập",
+    "needs_setup_other": "{count} cần thiết lập"
+  },
+  "native_transitions": {
+    "yes": "Có",
+    "no": "Không",
+    "disable": "Vô hiệu hóa"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Ngôn ngữ Home Assistant của bạn là {language}, nhưng {product} chưa có sẵn bằng ngôn ngữ đó.",
+    "action": "Yêu cầu bản dịch →",
+    "dismiss": "Bỏ qua"
+  }
+}

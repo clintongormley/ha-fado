@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Memuat...",
+    "auth_error": "Akses administrator diperlukan untuk mengonfigurasi Fado.",
+    "no_lights_found": "Tidak ada lampu yang ditemukan.",
+    "no_active_lights": "Tidak ada lampu aktif yang tersedia",
+    "no_lights_in_area": "Tidak ada lampu di area ini"
+  },
+  "actions": {
+    "autoconfigure": "Konfigurasi otomatis",
+    "autoconfigure_count": "Konfigurasi otomatis ({count})",
+    "configuring_one": "Mengonfigurasi {count} lampu... ({done}/{total})",
+    "configuring_other": "Mengonfigurasi {count} lampu... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Penundaan Min (ms)",
+    "min_brightness": "Kecerahan Min",
+    "native_transitions": "Transisi Bawaan"
+  },
+  "card": {
+    "entity": "Entitas",
+    "min_delay": "Penundaan min",
+    "min_brightness": "Kecerahan min",
+    "native_transitions": "Transisi bawaan"
+  },
+  "labels": {
+    "exclude": "Kecualikan",
+    "configure": "Konfigurasikan"
+  },
+  "settings": {
+    "global_min_delay": "Penundaan min global:",
+    "global_min_delay_hint": "Penundaan minimum absolut untuk semua lampu",
+    "download_diagnostics": "Unduh diagnostik"
+  },
+  "status": {
+    "needs_setup": "Perlu penyiapan",
+    "needs_setup_one": "{count} perlu penyiapan",
+    "needs_setup_other": "{count} perlu penyiapan"
+  },
+  "native_transitions": {
+    "yes": "Ya",
+    "no": "Tidak",
+    "disable": "Nonaktifkan"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Bahasa Home Assistant Anda adalah {language}, tetapi {product} belum tersedia dalam bahasa tersebut.",
+    "action": "Minta terjemahan →",
+    "dismiss": "Tutup"
+  }
+}

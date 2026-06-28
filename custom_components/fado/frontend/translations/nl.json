@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Laden...",
+    "auth_error": "Beheerderstoegang is vereist om Fado te configureren.",
+    "no_lights_found": "Geen lampen gevonden.",
+    "no_active_lights": "Geen actieve lampen beschikbaar",
+    "no_lights_in_area": "Geen lampen in dit gebied"
+  },
+  "actions": {
+    "autoconfigure": "Automatisch configureren",
+    "autoconfigure_count": "Automatisch configureren ({count})",
+    "configuring_one": "{count} lamp configureren... ({done}/{total})",
+    "configuring_other": "{count} lampen configureren... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Minimale vertraging (ms)",
+    "min_brightness": "Minimale helderheid",
+    "native_transitions": "Eigen overgangen"
+  },
+  "card": {
+    "entity": "Entiteit",
+    "min_delay": "Minimale vertraging",
+    "min_brightness": "Minimale helderheid",
+    "native_transitions": "Eigen overgangen"
+  },
+  "labels": {
+    "exclude": "Uitsluiten",
+    "configure": "Configureren"
+  },
+  "settings": {
+    "global_min_delay": "Globale minimale vertraging:",
+    "global_min_delay_hint": "De absolute minimale vertraging voor alle lampen",
+    "download_diagnostics": "Diagnostics downloaden"
+  },
+  "status": {
+    "needs_setup": "Vereist instelling",
+    "needs_setup_one": "{count} vereist instelling",
+    "needs_setup_other": "{count} vereisen instelling"
+  },
+  "native_transitions": {
+    "yes": "Ja",
+    "no": "Nee",
+    "disable": "Uitschakelen"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Uw Home Assistant-taal is {language}, maar {product} is er nog niet in beschikbaar.",
+    "action": "Een vertaling aanvragen →",
+    "dismiss": "Sluiten"
+  }
+}

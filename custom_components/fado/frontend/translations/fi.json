@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Ladataan...",
+    "auth_error": "Fadon määrittäminen vaatii järjestelmänvalvojan oikeudet.",
+    "no_lights_found": "Valoja ei löydy.",
+    "no_active_lights": "Ei aktiivisia valoja saatavilla",
+    "no_lights_in_area": "Ei valoja tällä alueella"
+  },
+  "actions": {
+    "autoconfigure": "Automaattinen määritys",
+    "autoconfigure_count": "Automaattinen määritys ({count})",
+    "configuring_one": "Määritetään {count} valo... ({done}/{total})",
+    "configuring_other": "Määritetään {count} valoa... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Minimiviive (ms)",
+    "min_brightness": "Minimiluminanssi",
+    "native_transitions": "Natiivimuutokset"
+  },
+  "card": {
+    "entity": "Entiteetti",
+    "min_delay": "Minimiviive",
+    "min_brightness": "Minimiluminanssi",
+    "native_transitions": "Natiivimuutokset"
+  },
+  "labels": {
+    "exclude": "Poissulje",
+    "configure": "Määritä"
+  },
+  "settings": {
+    "global_min_delay": "Yleinen minimiviive:",
+    "global_min_delay_hint": "Kaikkien valojen absoluuttinen minimiviive",
+    "download_diagnostics": "Lataa diagnostiikka"
+  },
+  "status": {
+    "needs_setup": "Vaatii määrityksen",
+    "needs_setup_one": "{count} vaatii määrityksen",
+    "needs_setup_other": "{count} vaatii määrityksen"
+  },
+  "native_transitions": {
+    "yes": "Kyllä",
+    "no": "Ei",
+    "disable": "Poista käytöstä"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Home Assistantin kielesi on {language}, mutta {product} ei ole vielä saatavilla sillä kielellä.",
+    "action": "Pyydä käännöstä →",
+    "dismiss": "Sulje"
+  }
+}

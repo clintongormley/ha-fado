@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "로딩 중...",
+    "auth_error": "Fado를 구성하려면 관리자 액세스가 필요합니다.",
+    "no_lights_found": "조명을 찾을 수 없습니다.",
+    "no_active_lights": "사용 가능한 활성 조명이 없습니다",
+    "no_lights_in_area": "이 영역에 조명이 없습니다"
+  },
+  "actions": {
+    "autoconfigure": "자동 구성",
+    "autoconfigure_count": "자동 구성 ({count})",
+    "configuring_one": "{count}개 조명 구성 중... ({done}/{total})",
+    "configuring_other": "{count}개 조명 구성 중... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "최소 지연 (ms)",
+    "min_brightness": "최소 밝기",
+    "native_transitions": "기본 전환"
+  },
+  "card": {
+    "entity": "엔티티",
+    "min_delay": "최소 지연",
+    "min_brightness": "최소 밝기",
+    "native_transitions": "기본 전환"
+  },
+  "labels": {
+    "exclude": "제외",
+    "configure": "구성"
+  },
+  "settings": {
+    "global_min_delay": "글로벌 최소 지연:",
+    "global_min_delay_hint": "모든 조명의 절대 최소 지연",
+    "download_diagnostics": "진단 다운로드"
+  },
+  "status": {
+    "needs_setup": "설정 필요",
+    "needs_setup_one": "{count}개 설정 필요",
+    "needs_setup_other": "{count}개 설정 필요"
+  },
+  "native_transitions": {
+    "yes": "예",
+    "no": "아니요",
+    "disable": "비활성화"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Home Assistant 언어가 {language}로 설정되어 있지만 {product}은(는) 아직 해당 언어를 지원하지 않습니다.",
+    "action": "번역 요청 →",
+    "dismiss": "닫기"
+  }
+}

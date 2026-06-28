@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Betöltés...",
+    "auth_error": "A Fado konfigurálásához rendszergazdai hozzáférés szükséges.",
+    "no_lights_found": "Nem találhatók lámpák.",
+    "no_active_lights": "Nincs elérhető aktív lámpa",
+    "no_lights_in_area": "Nincs lámpa ezen a területen"
+  },
+  "actions": {
+    "autoconfigure": "Automatikus konfiguráció",
+    "autoconfigure_count": "Automatikus konfiguráció ({count})",
+    "configuring_one": "{count} lámpa konfigurálása... ({done}/{total})",
+    "configuring_other": "{count} lámpa konfigurálása... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Minimális késleltetés (ms)",
+    "min_brightness": "Minimális fényerő",
+    "native_transitions": "Natív átmenetek"
+  },
+  "card": {
+    "entity": "Entitás",
+    "min_delay": "Minimális késleltetés",
+    "min_brightness": "Minimális fényerő",
+    "native_transitions": "Natív átmenetek"
+  },
+  "labels": {
+    "exclude": "Kizárás",
+    "configure": "Konfigurálás"
+  },
+  "settings": {
+    "global_min_delay": "Globális minimális késleltetés:",
+    "global_min_delay_hint": "Az összes lámpa abszolút minimális késleltetése",
+    "download_diagnostics": "Diagnosztika letöltése"
+  },
+  "status": {
+    "needs_setup": "Beállítás szükséges",
+    "needs_setup_one": "{count} beállítás szükséges",
+    "needs_setup_other": "{count} beállítás szükséges"
+  },
+  "native_transitions": {
+    "yes": "Igen",
+    "no": "Nem",
+    "disable": "Letiltás"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "A Home Assistant nyelve {language}, de a {product} még nem érhető el ezen a nyelven.",
+    "action": "Fordítás kérése →",
+    "dismiss": "Bezárás"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Chargement...",
+    "auth_error": "Un accès administrateur est requis pour configurer Fado.",
+    "no_lights_found": "Aucune lumière trouvée.",
+    "no_active_lights": "Aucune lumière active disponible",
+    "no_lights_in_area": "Aucune lumière dans cette zone"
+  },
+  "actions": {
+    "autoconfigure": "Autoconfiguration",
+    "autoconfigure_count": "Autoconfiguration ({count})",
+    "configuring_one": "Configuration de {count} lumière... ({done}/{total})",
+    "configuring_other": "Configuration de {count} lumières... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Délai min (ms)",
+    "min_brightness": "Luminosité min",
+    "native_transitions": "Transitions natives"
+  },
+  "card": {
+    "entity": "Entité",
+    "min_delay": "Délai min",
+    "min_brightness": "Luminosité min",
+    "native_transitions": "Transitions natives"
+  },
+  "labels": {
+    "exclude": "Exclure",
+    "configure": "Configurer"
+  },
+  "settings": {
+    "global_min_delay": "Délai min global :",
+    "global_min_delay_hint": "Le délai minimum absolu pour toutes les lumières",
+    "download_diagnostics": "Télécharger les diagnostics"
+  },
+  "status": {
+    "needs_setup": "Configuration requise",
+    "needs_setup_one": "{count} nécessite une configuration",
+    "needs_setup_other": "{count} nécessitent une configuration"
+  },
+  "native_transitions": {
+    "yes": "Oui",
+    "no": "Non",
+    "disable": "Désactiver"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "La langue de votre Home Assistant est {language}, mais {product} n'est pas encore disponible dans cette langue.",
+    "action": "Demander une traduction →",
+    "dismiss": "Ignorer"
+  }
+}

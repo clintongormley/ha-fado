@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Зареждане...",
+    "auth_error": "Необходим е достъп на администратор за конфигуриране на Fado.",
+    "no_lights_found": "Не са намерени светлини.",
+    "no_active_lights": "Няма активни светлини",
+    "no_lights_in_area": "Няма светлини в тази зона"
+  },
+  "actions": {
+    "autoconfigure": "Автоконфигуриране",
+    "autoconfigure_count": "Автоконфигуриране ({count})",
+    "configuring_one": "Конфигуриране на {count} светлина... ({done}/{total})",
+    "configuring_other": "Конфигуриране на {count} светлини... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Мин. закъснение (ms)",
+    "min_brightness": "Мин. яркост",
+    "native_transitions": "Нативни преходи"
+  },
+  "card": {
+    "entity": "Обект",
+    "min_delay": "Мин. закъснение",
+    "min_brightness": "Мин. яркост",
+    "native_transitions": "Нативни преходи"
+  },
+  "labels": {
+    "exclude": "Изключи",
+    "configure": "Конфигуриране"
+  },
+  "settings": {
+    "global_min_delay": "Глобално мин. закъснение:",
+    "global_min_delay_hint": "Абсолютното минимално закъснение за всички светлини",
+    "download_diagnostics": "Изтегли диагностика"
+  },
+  "status": {
+    "needs_setup": "Изисква настройка",
+    "needs_setup_one": "{count} изисква настройка",
+    "needs_setup_other": "{count} изискват настройка"
+  },
+  "native_transitions": {
+    "yes": "Да",
+    "no": "Не",
+    "disable": "Деактивирай"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Езикът на вашия Home Assistant е {language}, но {product} все още не е достъпен на него.",
+    "action": "Поискайте превод →",
+    "dismiss": "Отхвърли"
+  }
+}

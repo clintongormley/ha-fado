@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Laster...",
+    "auth_error": "Administratortilgang kreves for å konfigurere Fado.",
+    "no_lights_found": "Ingen lys funnet.",
+    "no_active_lights": "Ingen aktive lys tilgjengelig",
+    "no_lights_in_area": "Ingen lys i dette området"
+  },
+  "actions": {
+    "autoconfigure": "Automatisk konfigurering",
+    "autoconfigure_count": "Automatisk konfigurering ({count})",
+    "configuring_one": "Konfigurerer {count} lys... ({done}/{total})",
+    "configuring_other": "Konfigurerer {count} lys... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Min. forsinkelse (ms)",
+    "min_brightness": "Min. lysstyrke",
+    "native_transitions": "Native overganger"
+  },
+  "card": {
+    "entity": "Enhet",
+    "min_delay": "Min. forsinkelse",
+    "min_brightness": "Min. lysstyrke",
+    "native_transitions": "Native overganger"
+  },
+  "labels": {
+    "exclude": "Utelat",
+    "configure": "Konfigurer"
+  },
+  "settings": {
+    "global_min_delay": "Global min. forsinkelse:",
+    "global_min_delay_hint": "Den absolutte minimumsforsinkelsen for alle lys",
+    "download_diagnostics": "Last ned diagnostikk"
+  },
+  "status": {
+    "needs_setup": "Krever oppsett",
+    "needs_setup_one": "{count} krever oppsett",
+    "needs_setup_other": "{count} krever oppsett"
+  },
+  "native_transitions": {
+    "yes": "Ja",
+    "no": "Nei",
+    "disable": "Deaktiver"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Ditt Home Assistant-språk er {language}, men {product} er ikke tilgjengelig på det ennå.",
+    "action": "Be om en oversettelse →",
+    "dismiss": "Avvis"
+  }
+}

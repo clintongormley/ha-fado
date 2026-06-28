@@ -1,0 +1,52 @@
+{
+  "header": { "title": "Fado Light Fader" },
+  "states": {
+    "loading": "Yükleniyor...",
+    "auth_error": "Fado'yu yapılandırmak için yönetici erişimi gereklidir.",
+    "no_lights_found": "Işık bulunamadı.",
+    "no_active_lights": "Kullanılabilir aktif ışık yok",
+    "no_lights_in_area": "Bu alanda ışık yok"
+  },
+  "actions": {
+    "autoconfigure": "Otomatik yapılandır",
+    "autoconfigure_count": "Otomatik yapılandır ({count})",
+    "configuring_one": "{count} ışık yapılandırılıyor... ({done}/{total})",
+    "configuring_other": "{count} ışık yapılandırılıyor... ({done}/{total})"
+  },
+  "table": {
+    "min_delay": "Min. Gecikme (ms)",
+    "min_brightness": "Min. Parlaklık",
+    "native_transitions": "Yerel Geçişler"
+  },
+  "card": {
+    "entity": "Varlık",
+    "min_delay": "Min. gecikme",
+    "min_brightness": "Min. parlaklık",
+    "native_transitions": "Yerel geçişler"
+  },
+  "labels": {
+    "exclude": "Dışla",
+    "configure": "Yapılandır"
+  },
+  "settings": {
+    "global_min_delay": "Genel min. gecikme:",
+    "global_min_delay_hint": "Tüm ışıklar için mutlak minimum gecikme",
+    "download_diagnostics": "Tanılamayı indir"
+  },
+  "status": {
+    "needs_setup": "Kurulum gerekli",
+    "needs_setup_one": "{count} kurulum gerekli",
+    "needs_setup_other": "{count} kurulum gerekli"
+  },
+  "native_transitions": {
+    "yes": "Evet",
+    "no": "Hayır",
+    "disable": "Devre dışı bırak"
+  },
+  "units": { "ms": "ms" },
+  "language_request": {
+    "message": "Home Assistant diliniz {language}, ancak {product} henüz bu dilde mevcut değil.",
+    "action": "Çeviri talep et →",
+    "dismiss": "Kapat"
+  }
+}
