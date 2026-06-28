@@ -677,24 +677,27 @@ describe("getLanguageSupport", () => {
 });
 
 describe("language coverage guards", () => {
+  // Resolve via fileURLToPath (not the happy-dom URL global, which readdirSync
+  // rejects with "URL must be of scheme file").
+  const here = dirname(fileURLToPath(import.meta.url));
   const langs = (rel) =>
-    readdirSync(new URL(rel, import.meta.url))
+    readdirSync(join(here, rel))
       .filter((f) => f.endsWith(".json"))
       .map((f) => f.replace(/\.json$/, ""));
 
   it("BACKEND_LANGUAGES matches the backend translations folder", () => {
     expect([...BACKEND_LANGUAGES].sort()).toEqual(
-      langs("../../custom_components/fado/translations/").sort(),
+      langs("../../custom_components/fado/translations").sort(),
     );
   });
   it("FRONTEND_LANGUAGES matches the frontend catalogs plus embedded en", () => {
-    const files = langs("../../custom_components/fado/frontend/translations/");
+    const files = langs("../../custom_components/fado/frontend/translations");
     expect([...FRONTEND_LANGUAGES].sort()).toEqual(["en", ...files].sort());
   });
 });
 ```
 
-Add to the top of the test file: `import { readdirSync } from "node:fs";`, and add `getLanguageSupport, BACKEND_LANGUAGES, FRONTEND_LANGUAGES` to the existing `fado-logic.js` import.
+Add to the top of the test file: `import { readdirSync } from "node:fs";`, `import { fileURLToPath } from "node:url";`, `import { dirname, join } from "node:path";`, and add `getLanguageSupport, BACKEND_LANGUAGES, FRONTEND_LANGUAGES` to the existing `fado-logic.js` import. (`readFileSync(new URL(...))` already works for the source-key-coverage test, but `readdirSync` needs a real path string.)
 
 - [ ] **Step 2: Run test to verify it fails**
 
