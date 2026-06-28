@@ -23,6 +23,7 @@ import {
 } from "./fado-logic.js";
 
 import { EN, localize, loadCatalog } from "./fado-i18n.js";
+import "./fado-lang-banner.js";
 
 // Re-export for consumers
 export { LitElement, html, css };
@@ -768,6 +769,11 @@ export const FadoCoreMixin = (superClass) =>
       }
 
       return html`
+        <fado-lang-banner
+          class="lang-banner"
+          .hass=${this.hass}
+          .localize=${(k, p) => this._t(k, p)}
+        ></fado-lang-banner>
         ${this._renderHeader()}
         ${this._compact ? this._renderCardView() : this._renderTableView()}
       `;
