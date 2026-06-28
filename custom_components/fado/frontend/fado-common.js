@@ -75,6 +75,10 @@ export const FadoCoreMixin = (superClass) =>
       this._resizeObserver = null;
       this._catalog = null;
       this._catalogLang = null;
+      this._ntOptsCache = null;
+      // Stable localizer reference: passed to child renderers (the banner,
+      // needsSetupLabel) so they aren't handed a fresh closure every render.
+      this._tBound = (key, params) => this._t(key, params);
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -693,16 +697,20 @@ export const FadoCoreMixin = (superClass) =>
       this._catalogLang = lang;
       const cat = await loadCatalog(lang); // null -> EN fallback
       // Ignore a superseded load (language changed again while awaiting).
-      if (lang === this._catalogLang) this._catalog = cat;
+      if (lang === this._catalogLang) {
+        this._catalog = cat;
+        this._ntOptsCache = null; // labels are localized — rebuild on next use
+      }
     }
 
     _nativeTransitionsOptions() {
-      return [
+      // Built once per language (called per-light per-render otherwise).
+      return (this._ntOptsCache ??= [
         { value: "", label: "" },
         { value: "true", label: this._t("native_transitions.yes") },
         { value: "false", label: this._t("native_transitions.no") },
         { value: "disable", label: this._t("native_transitions.disable") },
-      ];
+      ]);
     }
 
     // ── Rendering ──────────────────────────────────────────────
@@ -774,7 +782,7 @@ export const FadoCoreMixin = (superClass) =>
         <fado-lang-banner
           class="lang-banner"
           .hass=${this.hass}
-          .localize=${(k, p) => this._t(k, p)}
+          .localize=${this._tBound}
         ></fado-lang-banner>
         ${this._renderHeader()}
         ${this._compact ? this._renderCardView() : this._renderTableView()}
@@ -846,7 +854,7 @@ export const FadoCoreMixin = (superClass) =>
       const areaKey = collapseKeyForArea(area);
       const isCollapsed = this._collapsed[areaKey];
       const areaIcon = area.icon || "mdi:texture-box";
-      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area), (k, p) => this._t(k, p));
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area), this._tBound);
       const areaLightIds = this._getAreaLightIds(area);
       const configureState = this._getCheckboxState(areaLightIds);
       const excludeState = this._getExcludeState(area.lights);
@@ -967,7 +975,7 @@ export const FadoCoreMixin = (superClass) =>
       const areaLightIds = this._getAreaLightIds(area);
       const configureState = this._getCheckboxState(areaLightIds);
       const excludeState = this._getExcludeState(area.lights);
-      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area), (k, p) => this._t(k, p));
+      const setupLabel = needsSetupLabel(areaNeedsSetupCount(area), this._tBound);
 
       return html`
         <tr class="area-row" @click=${() => this._toggleCollapse(areaKey)}>
