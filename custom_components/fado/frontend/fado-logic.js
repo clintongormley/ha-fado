@@ -91,3 +91,40 @@ export function pruneCollapsedState(collapsed, data) {
   }
   return pruned;
 }
+
+// ── Language coverage ────────────────────────────────────────
+// Two source-of-truth arrays, each guarded by a test against its folder so
+// they cannot silently drift. "en" is in FRONTEND_LANGUAGES even though it
+// has no file (English is embedded in fado-i18n.js).
+
+export const BACKEND_LANGUAGES = [
+  "bg", "cs", "da", "de", "en", "es", "fi", "fr", "hu", "id", "it", "ja",
+  "ko", "nb", "nl", "pl", "pt", "ro", "sk", "sl", "sv", "tr", "uk", "vi",
+  "zh-Hans",
+];
+
+export const FRONTEND_LANGUAGES = [
+  "bg", "cs", "da", "de", "en", "es", "fi", "fr", "hu", "id", "it", "ja",
+  "ko", "nb", "nl", "pl", "pt", "ro", "sk", "sl", "sv", "tr", "uk", "vi",
+  "zh-Hans",
+];
+
+function covers(list, code, baseCode) {
+  return list.includes(code) || list.includes(baseCode);
+}
+
+/**
+ * Resolve the user's language and whether Fado is "translated" into it.
+ * Covered = intersection: a backend translation AND a frontend UI catalog,
+ * each matched exact-then-base. Undeterminable language -> available:true
+ * (no nudge).
+ */
+export function getLanguageSupport(hass) {
+  const code = hass?.locale?.language ?? hass?.language ?? null;
+  if (!code) return { available: true, code: null, baseCode: null };
+  const baseCode = code.split("-")[0];
+  const available =
+    covers(BACKEND_LANGUAGES, code, baseCode) &&
+    covers(FRONTEND_LANGUAGES, code, baseCode);
+  return { available, code, baseCode };
+}

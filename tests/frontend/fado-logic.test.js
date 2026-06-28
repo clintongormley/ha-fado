@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   needsSetup,
   areaNeedsSetupCount,
@@ -10,6 +13,9 @@ import {
   nativeTransitionsToValue,
   valueToNativeTransitions,
   pruneCollapsedState,
+  getLanguageSupport,
+  BACKEND_LANGUAGES,
+  FRONTEND_LANGUAGES,
 } from "../../custom_components/fado/frontend/fado-logic.js";
 
 describe("needsSetup", () => {
@@ -153,5 +159,58 @@ describe("pruneCollapsedState", () => {
     const snapshot = { ...collapsed };
     pruneCollapsedState(collapsed, data);
     expect(collapsed).toEqual(snapshot);
+  });
+});
+
+describe("getLanguageSupport", () => {
+  const hass = (language, locale) => ({ language, locale });
+
+  it("covered when both backend and frontend have the exact code", () => {
+    const r = getLanguageSupport(hass("fr", { language: "fr" }));
+    expect(r).toEqual({ available: true, code: "fr", baseCode: "fr" });
+  });
+  it("prefers hass.locale.language over hass.language", () => {
+    expect(getLanguageSupport(hass("en", { language: "fr" })).code).toBe("fr");
+  });
+  it("covered via base for a region variant (pt-BR -> pt)", () => {
+    const r = getLanguageSupport(hass("pt-BR"));
+    expect(r).toEqual({ available: true, code: "pt-BR", baseCode: "pt" });
+  });
+  it("covered via base for en-GB -> en", () => {
+    expect(getLanguageSupport(hass("en-GB")).available).toBe(true);
+  });
+  it("NOT covered for an unsupported language (el)", () => {
+    expect(getLanguageSupport(hass("el")).available).toBe(false);
+  });
+  it("NOT covered for a script variant we don't ship (zh-Hant)", () => {
+    // we ship zh-Hans, not bare zh, so zh-Hant is uncovered
+    expect(getLanguageSupport(hass("zh-Hant")).available).toBe(false);
+  });
+  it("covered for the script we ship (zh-Hans)", () => {
+    expect(getLanguageSupport(hass("zh-Hans")).available).toBe(true);
+  });
+  it("no nudge when the language is undeterminable", () => {
+    expect(getLanguageSupport({}).available).toBe(true);
+    expect(getLanguageSupport(undefined).available).toBe(true);
+  });
+});
+
+describe("language coverage guards", () => {
+  // Resolve via fileURLToPath (not the happy-dom URL global, which readdirSync
+  // rejects with "URL must be of scheme file").
+  const here = dirname(fileURLToPath(import.meta.url));
+  const langs = (rel) =>
+    readdirSync(join(here, rel))
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => f.replace(/\.json$/, ""));
+
+  it("BACKEND_LANGUAGES matches the backend translations folder", () => {
+    expect([...BACKEND_LANGUAGES].sort()).toEqual(
+      langs("../../custom_components/fado/translations").sort(),
+    );
+  });
+  it("FRONTEND_LANGUAGES matches the frontend catalogs plus embedded en", () => {
+    const files = langs("../../custom_components/fado/frontend/translations");
+    expect([...FRONTEND_LANGUAGES].sort()).toEqual(["en", ...files].sort());
   });
 });
