@@ -112,7 +112,8 @@ class FadoLangBanner extends LitElement {
         padding: var(--fado-space-2, 8px) var(--fado-space-4, 16px);
         margin-bottom: var(--fado-space-4, 16px);
         border: 1px solid var(--fado-border, var(--divider-color));
-        border-left: 4px solid var(--fado-accent, var(--primary-color, #03a9f4));
+        border-left: var(--fado-space-1, 4px) solid
+          var(--fado-accent, var(--primary-color, #03a9f4));
         border-radius: var(--fado-radius, 8px);
         background: var(
           --fado-surface-2,

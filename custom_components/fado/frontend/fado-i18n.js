@@ -97,9 +97,11 @@ export function defaultLocalize(key, params) {
  */
 export async function loadCatalog(code) {
   if (!code) return null;
-  const candidates = [code, code.split("-")[0]];
-  for (const candidate of candidates) {
-    if (!candidate || candidate === "en") continue;
+  const base = code.split("-")[0];
+  // English (and any en-* variant) is embedded — never fetched.
+  if (base === "en") return null;
+  // Try the exact code then the base; de-dup so a simple code ("fr") isn't fetched twice.
+  for (const candidate of [...new Set([code, base])]) {
     try {
       const url = new URL(`./translations/${candidate}.json`, import.meta.url);
       const resp = await fetch(url);
