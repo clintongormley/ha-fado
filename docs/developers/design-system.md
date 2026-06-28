@@ -285,7 +285,7 @@ The test suite lives at the repo root (`tests/frontend/fado-logic.test.js` or
 similar) and runs with:
 
 ```bash
-npm test        # vitest run — all 15 tests in one pass, ~200 ms
+npm test        # vitest run — fast, runs in well under a second
 npm run test:watch  # interactive watch mode during development
 ```
 
