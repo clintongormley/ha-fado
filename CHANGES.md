@@ -8,17 +8,20 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-06-28
+
 ### Added
 
+- **Frontend internationalisation (i18n).** The Fado panel/card UI now loads
+  per-language catalogs (`frontend/translations/<lang>.json`) and renders in
+  your Home Assistant language, with English as the built-in fallback. Ships
+  with 24 languages out of the box. Non-English UI translations are
+  AI-generated and pending native review — corrections welcome.
+- A dismissable banner that nudges users whose Home Assistant language Fado does
+  not yet support to request a translation via a prefilled GitHub issue.
 - Frontend: responsive layout — on narrow screens the lights table becomes
   collapsible per-light cards with a "needs setup" indicator and a per-area
   roll-up; touch-friendly controls.
-- Frontend internationalisation: the Fado panel/card UI now loads per-language
-  catalogs (`frontend/translations/<lang>.json`); English is the built-in
-  fallback. Non-English UI translations are AI-generated and pending native
-  review — corrections welcome.
-- A dismissable banner that nudges users whose Home Assistant language Fado does
-  not yet support to request a translation via a prefilled GitHub issue.
 
 ### Changed
 
