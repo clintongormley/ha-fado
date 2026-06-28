@@ -213,8 +213,10 @@ describe("languageDisplayName", () => {
   it("falls back to the raw code for an unknown tag (Intl echoes the code)", () => {
     // Intl.DisplayNames defaults to fallback:'code' so an unknown tag echoes back;
     // the guard must skip that and ultimately return the raw code.
-    // Note: 'tlh' (Klingon) is known to ICU in Node 26 so we use 'xyz' instead,
-    // which is a private-use subtag guaranteed to echo in all ICU builds.
+    // Note: 'tlh' (Klingon) is known to ICU in Node 26, so we use 'xyz' — a
+    // syntactically valid but unassigned language subtag that ICU has no name
+    // for, so Intl echoes it back (exercising the echo-guard). A private-use
+    // tag like 'x-xyz' would make Intl throw instead, testing a different path.
     expect(languageDisplayName("xyz")).toBe("xyz");
   });
 });
