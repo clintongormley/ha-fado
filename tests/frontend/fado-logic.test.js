@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -16,6 +16,13 @@ import {
   getLanguageSupport,
   BACKEND_LANGUAGES,
   FRONTEND_LANGUAGES,
+  languageDisplayName,
+  buildTranslationRequestUrl,
+  splitMessageParts,
+  LANG_DISMISSED_KEY,
+  readDismissedLangRequests,
+  isLangRequestDismissed,
+  persistDismissedLangRequest,
 } from "../../custom_components/fado/frontend/fado-logic.js";
 
 describe("needsSetup", () => {
@@ -192,6 +199,83 @@ describe("getLanguageSupport", () => {
   it("no nudge when the language is undeterminable", () => {
     expect(getLanguageSupport({}).available).toBe(true);
     expect(getLanguageSupport(undefined).available).toBe(true);
+  });
+});
+
+describe("languageDisplayName", () => {
+  it("returns a native display name for a known language", () => {
+    // fr in fr -> "français" (capitalisation varies by ICU; just assert non-code)
+    const name = languageDisplayName("fr");
+    expect(typeof name).toBe("string");
+    expect(name).not.toBe("fr");
+    expect(name.toLowerCase()).toContain("fran");
+  });
+  it("falls back to the raw code for an unknown tag (Intl echoes the code)", () => {
+    // Intl.DisplayNames defaults to fallback:'code' so an unknown tag echoes back;
+    // the guard must skip that and ultimately return the raw code.
+    // Note: 'tlh' (Klingon) is known to ICU in Node 26 so we use 'xyz' instead,
+    // which is a private-use subtag guaranteed to echo in all ICU builds.
+    expect(languageDisplayName("xyz")).toBe("xyz");
+  });
+});
+
+describe("buildTranslationRequestUrl", () => {
+  it("targets the repo issues/new with body, title and label", () => {
+    const url = buildTranslationRequestUrl("el", "Greek");
+    expect(url.startsWith("https://github.com/clintongormley/ha-fado/issues/new?")).toBe(true);
+    const q = new URL(url).searchParams;
+    expect(q.get("labels")).toBe("translation");
+    expect(q.get("title")).toBe("Translation request: Greek (el)");
+    expect(q.get("body")).toContain("Fado Light Fader");
+    expect(q.get("body")).toContain("Greek (el)");
+  });
+  it("encodes region variants", () => {
+    const q = new URL(buildTranslationRequestUrl("pt-BR", "Brazilian Portuguese")).searchParams;
+    expect(q.get("title")).toBe("Translation request: Brazilian Portuguese (pt-BR)");
+  });
+});
+
+describe("splitMessageParts", () => {
+  it("splits a template into text and bold parts", () => {
+    const parts = splitMessageParts("Hi {language}, try {product}!", {
+      language: "Français",
+      product: "Fado Light Fader",
+    });
+    expect(parts).toEqual([
+      { text: "Hi " },
+      { bold: "Français" },
+      { text: ", try " },
+      { bold: "Fado Light Fader" },
+      { text: "!" },
+    ]);
+  });
+  it("keeps an unknown placeholder as literal text", () => {
+    expect(splitMessageParts("a {x} b", {})).toEqual([{ text: "a {x} b" }]);
+  });
+});
+
+describe("dismissal set", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("round-trips a single dismissal", () => {
+    expect(isLangRequestDismissed("fr")).toBe(false);
+    persistDismissedLangRequest("fr");
+    expect(isLangRequestDismissed("fr")).toBe(true);
+  });
+  it("remembers earlier dismissals when a new one is added (it's a set)", () => {
+    persistDismissedLangRequest("fr");
+    persistDismissedLangRequest("de");
+    expect(isLangRequestDismissed("fr")).toBe(true);
+    expect(isLangRequestDismissed("de")).toBe(true);
+  });
+  it("de-dups", () => {
+    persistDismissedLangRequest("fr");
+    persistDismissedLangRequest("fr");
+    expect(readDismissedLangRequests()).toEqual(["fr"]);
+  });
+  it("returns [] on malformed storage", () => {
+    localStorage.setItem(LANG_DISMISSED_KEY, "not json");
+    expect(readDismissedLangRequests()).toEqual([]);
   });
 });
 
