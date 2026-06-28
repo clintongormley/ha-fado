@@ -691,7 +691,9 @@ export const FadoCoreMixin = (superClass) =>
         this.hass?.locale?.language ?? this.hass?.language ?? "en";
       if (lang === this._catalogLang) return;
       this._catalogLang = lang;
-      this._catalog = await loadCatalog(lang); // null -> EN fallback
+      const cat = await loadCatalog(lang); // null -> EN fallback
+      // Ignore a superseded load (language changed again while awaiting).
+      if (lang === this._catalogLang) this._catalog = cat;
     }
 
     _nativeTransitionsOptions() {

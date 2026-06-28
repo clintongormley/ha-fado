@@ -89,7 +89,7 @@ first-class.
   placeholders. Unit-tested.
 - **`loadCatalog(code)` — impure/thin.** Resolves exact→base (e.g. `pt-BR` →
   `pt-BR.json` → `pt.json` → none), fetches relative to `import.meta.url`
-  (`./translations/<code>.json`), caches the result, swallows fetch errors
+  (`./translations/<code>.json`), (no internal cache — the mixin's `_catalogLang` guard avoids re-fetching the same language), swallows fetch errors
   (returns `null` → English fallback). Not unit-tested (IO; matches repo
   convention).
 - **Mixin wiring (`fado-common.js`):** in `willUpdate(changed.has("hass"))`,

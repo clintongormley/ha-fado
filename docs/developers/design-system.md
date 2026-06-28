@@ -271,8 +271,10 @@ logic** that does not touch the DOM or Lit:
   code (e.g. `"de"` → `"Deutsch"`).
 - `buildTranslationRequestUrl(code)` — builds a prefilled GitHub new-issue URL
   for the translation-request template.
-- `splitMessageParts(message)` — splits a message string containing a `{link}`
-  placeholder into `[before, label, after]` for inline-link rendering.
+- `splitMessageParts(template, boldValues)` — splits a `{placeholder}` template
+  into an array of `{text}` / `{bold}` parts; placeholders named in `boldValues`
+  become `{bold: value}`, unknown placeholders stay literal text, adjacent text
+  is merged. Used by the banner to render the language name and product name bold.
 - `readDismissedLangRequests()` — reads the dismissal set from `localStorage`.
 - `isLangRequestDismissed(code)` — checks whether a locale has been dismissed.
 - `persistDismissedLangRequest(code)` — adds a locale to the dismissal set and
