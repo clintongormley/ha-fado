@@ -253,7 +253,8 @@ logic** that does not touch the DOM or Lit:
 
 - `needsSetup(light)` — needs-setup predicate (see §4).
 - `areaNeedsSetupCount(area)` — area roll-up count.
-- `needsSetupLabel(count)` — human-readable area label.
+- `needsSetupLabel(count, t)` — human-readable area label; takes a localizer `t`
+  so the string is translated (see §7).
 - `getCheckboxState(entityIds, configureChecked)` — tri-state (`"none"` /
   `"some"` / `"all"`) for the configure checkboxes.
 - `getExcludeState(lights)` — tri-state for the exclude checkboxes.
@@ -262,6 +263,20 @@ logic** that does not touch the DOM or Lit:
 - `nativeTransitionsToValue(nt)` — `native_transitions` config value → select
   string value (`true`/`false`/`"disable"`/`""`).
 - `valueToNativeTransitions(value)` — inverse mapping.
+- `getLanguageSupport(hass)` — returns `{ available, code, baseCode }` for the
+  active HA language (see §7).
+- `BACKEND_LANGUAGES` / `FRONTEND_LANGUAGES` — arrays of supported language
+  codes; guarded by tests against their respective folders so they can't drift.
+- `languageDisplayName(code)` — returns the display name for a BCP-47 language
+  code (e.g. `"de"` → `"Deutsch"`).
+- `buildTranslationRequestUrl(code)` — builds a prefilled GitHub new-issue URL
+  for the translation-request template.
+- `splitMessageParts(message)` — splits a message string containing a `{link}`
+  placeholder into `[before, label, after]` for inline-link rendering.
+- `readDismissedLangRequests()` — reads the dismissal set from `localStorage`.
+- `isLangRequestDismissed(code)` — checks whether a locale has been dismissed.
+- `persistDismissedLangRequest(code)` — adds a locale to the dismissal set and
+  persists it.
 
 **Rule:** any new pure logic (predicates, string formatters, state derivations)
 goes in `fado-logic.js`, not in the mixin. This keeps it unit-testable.
@@ -308,3 +323,43 @@ This means:
   your edits. (Pre-approved in `CLAUDE.local.md` — run without asking.)
 - The only `npm` usage is the vitest test runner for `fado-logic.js`; it does
   not touch the frontend JS files served to the browser.
+
+---
+
+## 7. Frontend i18n and the translation-request banner
+
+### Catalogs
+
+- English is embedded in `fado-i18n.js` as `EN` — the source of truth and the
+  synchronous fallback (no fetch, no flash).
+- Other languages live as `frontend/translations/<lang>.json`, fetched on demand
+  by `loadCatalog(code)` (exact code, then the base before `-`). They are
+  **AI-generated, pending native review**.
+- `localize(catalog, fallback, key, params)` does a dotted-key lookup
+  (catalog → fallback → raw key) and interpolates `{param}` placeholders.
+
+### Using it in the mixin
+
+`FadoCoreMixin` exposes `this._t(key, params)` and loads the active language's
+catalog into the reactive `_catalog` state via `_maybeLoadCatalog()` (called
+from `connectedCallback` and `updated()` — lit-element 2.4.0 has no
+`willUpdate`). Any new UI string must be added to `EN` and rendered via
+`this._t("…")`. A test (`tests/frontend/fado-i18n.test.js`) scans the source for
+`_t("…")` keys and fails if one is missing from `EN`.
+
+### Language coverage
+
+`getLanguageSupport(hass)` returns `{ available, code, baseCode }`. A language is
+"available" only if it is in **both** `BACKEND_LANGUAGES` and
+`FRONTEND_LANGUAGES` (exact-then-base) — the two arrays are guarded by tests
+against their folders so they can't drift.
+
+### Banner
+
+`<fado-lang-banner>` (`fado-lang-banner.js`) renders at the top of the populated
+main-content branch when the user's language is not covered and hasn't been
+dismissed for that locale. Dismissals are stored as a **set** under
+`fado_lang_request_dismissed`. The action link is a prefilled GitHub issue built
+by `buildTranslationRequestUrl` using `?body=` (so it prefills before any
+template PR is merged). The copy always renders in English (its audience has no
+catalog for their language — expected).
