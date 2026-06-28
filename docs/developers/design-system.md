@@ -269,8 +269,8 @@ logic** that does not touch the DOM or Lit:
   codes; guarded by tests against their respective folders so they can't drift.
 - `languageDisplayName(code)` — returns the display name for a BCP-47 language
   code (e.g. `"de"` → `"Deutsch"`).
-- `buildTranslationRequestUrl(code)` — builds a prefilled GitHub new-issue URL
-  for the translation-request template.
+- `buildTranslationRequestUrl(code, displayName)` — builds a prefilled GitHub
+  new-issue URL for the translation-request template.
 - `splitMessageParts(template, boldValues)` — splits a `{placeholder}` template
   into an array of `{text}` / `{bold}` parts; placeholders named in `boldValues`
   become `{bold: value}`, unknown placeholders stay literal text, adjacent text
