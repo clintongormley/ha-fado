@@ -3,6 +3,8 @@ name = "fade_lights"
 version = "0.1.0"
 description = "Home Assistant custom integration for smooth light fading"
 requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.optional-dependencies]
 test = [

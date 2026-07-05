@@ -843,4 +843,4 @@ workflow tests against Python 3.13.
 
 ## License
 
-MIT License - feel free to modify and redistribute
+Licensed under the [MIT License](LICENSE) - feel free to modify and redistribute.
