@@ -8,6 +8,15 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+### Added
+
+- Add a top-level `LICENSE` file with the full MIT License text. The project was
+  already declared MIT in the README; this makes the license explicit and
+  machine-readable for HACS, GitHub, and packaging tools.
+- Bundle the integration's brand icons inside the component
+  (`custom_components/fado/brand/`) so Home Assistant/HACS source them from the
+  integration rather than the deprecated brands CDN.
+
 ## [2.1.0] - 2026-06-28
 
 ### Added
