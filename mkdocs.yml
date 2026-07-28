@@ -75,4 +75,10 @@ nav:
   - Actions:
       - fado.fade_lights: actions/fade-lights.md
       - Exclude & include lights: actions/exclude-include.md
+  - Autoconfiguration panel: panel.md
+  - Troubleshooting: troubleshooting.md
+  - Changelog: changelog.md
+  - Development:
+      - Contributing & tests: development/index.md
+      - Frontend design system: development/design-system.md
   - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/

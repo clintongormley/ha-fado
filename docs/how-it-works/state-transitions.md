@@ -4,7 +4,7 @@
 
 This table details how the fade is executed depending on the initial state of
 the light and the target state. If the
-**`from`** parameter is used, the
+[**`from`**](../actions/fade-lights.md#starting-values-optional-from-block) parameter is used, the
 specified values are used as the initial state.
 
 | Initial State                 | Target            | Action                                                                 |

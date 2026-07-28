@@ -36,5 +36,5 @@ Once configured, the Fado actions will be available in **Settings** >
 **Developer Tools** → **Actions**.
 
 Before anything, you should open the
-**Autoconfiguration Panel** in the Home Assistant
+[**Autoconfiguration Panel**](panel.md) in the Home Assistant
 sidebar and autoconfigure your lights.

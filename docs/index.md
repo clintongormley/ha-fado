@@ -46,3 +46,6 @@ support for native transitions.
 ## Next steps
 
 - [Install Fado](installation.md)
+- [Understand how it works](how-it-works/index.md)
+- [The `fado.fade_lights` action reference](actions/fade-lights.md)
+- [Set up the autoconfiguration panel](panel.md)

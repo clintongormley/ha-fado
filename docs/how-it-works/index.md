@@ -25,7 +25,7 @@ In **Settings** > **Developer tools** > **Actions**, or when configuring an
 - optionally specify a **from** starting point in case you don't want to start
     from the current state of the light.
 
-See **Usage: `fado.fade_lights`** for parameter
+See [**Usage: `fado.fade_lights`**](../actions/fade-lights.md) for parameter
 specifications.
 
 ### Fade resolution
@@ -34,7 +34,7 @@ Fado resolves the targets list to a list of unique light entities and dispatches
 a fade action for each entity, so the fade for each light begins from the state
 that that light is currently in.
 
-It uses the transition time, **minimum delay** setting, and
+It uses the transition time, [**minimum delay**](../panel.md#minimum-delay) setting, and
 the distance between the beginning and end states (e.g. start- and
 end-brightness, or start- and end-color) to calculate the optimal number of
 steps and the size of each step that the fade should use.
@@ -57,13 +57,13 @@ specified `from` state, after which the fade loop begins.
 
 For each step in the fade loop, Fado determines the next brightness and
 color/color temp values, sets them, and records how long it took. If the elapsed
-time is less than the **minimum delay**, then it sleeps for
+time is less than the [**minimum delay**](../panel.md#minimum-delay), then it sleeps for
 the remaining time before continuing with the next step. This means that the
 total transition time will be at least as long as the specified `transition`
 time. (It may, however, be longer if Home Assistant or the network or the light
 itself is responding slowly.)
 
-If the light supports **native transitions** then a short
+If the light supports [**native transitions**](../panel.md#native-transitions) then a short
 `transition` time is used to apply a fade step to use the light's hardware to
 make the fade smoother.
 
