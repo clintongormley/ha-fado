@@ -21,3 +21,6 @@ HA_CHANGES_REPORT.md
 
 # Node test toolchain
 node_modules/
+demo/dist-pages/
+site/
+dist/
