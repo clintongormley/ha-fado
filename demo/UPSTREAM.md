@@ -42,17 +42,20 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
 4. `github-pages/index.html` — `canonical`, `og:url` and the social images point
    at <https://clintongormley.github.io/ha-fado/>; "unofficial" dropped from the
    descriptions.
-5. `public/og.png` shrunk from 2,194,672 bytes (1731×909) to 947,079 bytes
-   (1200×630): lossless `oxipng -o 4 --strip safe` alone only reached
-   2,063,850 bytes, so the image was also resized to the canonical Open
-   Graph size of 1200×630 with `sips` (near-identical aspect ratio, no
-   distortion) and re-run through `oxipng -o max --zopfli --strip safe`.
-   `github-pages/index.html` declares no `og:image:width`/`height`, so no
-   metadata changes were needed. The result (947,079 bytes) is still above
-   an aspirational 800 KB target — the image has no alpha channel and no
-   stray metadata left to strip, so nothing further can be cut without
-   lossy recompression (palette reduction or JPEG), which was deliberately
-   not applied to avoid visible banding in the social-preview image.
+5. `public/og.png` shrunk from 2,194,672 bytes (1731×909) to 501,908 bytes
+   (1200×630). Losslessly: resized to the canonical Open Graph size of
+   1200×630 with `sips` (near-identical aspect ratio, no distortion) and run
+   through `oxipng -o max --zopfli --strip safe`, reaching a floor of 947,079
+   bytes — still over the 800 KB budget, with no alpha channel or metadata
+   left to strip. Quantized to a 256-colour palette with Floyd–Steinberg
+   dithering (Pillow `Image.quantize(colors=256, method=MEDIANCUT,
+   dither=FLOYDSTEINBERG)`) to avoid banding in the hero's orange/teal
+   gradients, then re-ran `oxipng -o max --zopfli --strip safe` on the
+   quantized file, landing at 501,908 bytes. Verified against the lossless
+   1200×630 version with `PIL.ImageChops.difference`: mean per-channel diff
+   ≈1.3/255, max ≈71/255, confined to gradient dithering noise — no visible
+   banding on inspection. `github-pages/index.html` declares no
+   `og:image:width`/`height`, so no metadata changes were needed.
 
 ## Re-syncing with upstream
 
