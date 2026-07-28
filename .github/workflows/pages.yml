@@ -77,7 +77,10 @@ jobs:
   # Pull requests run the identical build without deploying, so a broken link
   # fails the PR rather than the live site.
   deploy:
-    if: github.event_name != 'pull_request'
+    # A custom `if:` on a job with `needs:` replaces the implicit success()
+    # check unless it says so explicitly — spell it out so a failed build
+    # skips deploy instead of a confusing double failure.
+    if: needs.build.result == 'success' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
