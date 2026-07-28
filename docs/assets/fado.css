@@ -1,19 +1,25 @@
-/* Fado docs theme — palette taken from the demo's own tokens so the landing
-   page and the documentation read as one site. */
+/* Fado docs theme — palette taken from the demo's own tokens
+   (demo/app/globals.css) so the landing page and the documentation read as
+   one site. Every colour value below must trace back to a real token in
+   that file, or be an rgba() alpha derivation of one — no invented tints. */
 :root {
-  --md-primary-fg-color:        #0d7a73;
-  --md-primary-fg-color--light: #0f8d85;
-  --md-primary-fg-color--dark:  #095951;
-  --md-accent-fg-color:         #ff6933;
-  --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1);
+  --md-primary-fg-color:        #0d7a73; /* --teal */
+  --md-primary-fg-color--light: #0d7a73; /* no --teal-light token; reuse --teal rather than invent one */
+  --md-primary-fg-color--dark:  #095951; /* --teal-dark */
+  --md-accent-fg-color:         #ff6933; /* --orange */
+  --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1); /* --orange, alpha */
+  --md-default-fg-color--light: #686e64; /* --muted */
+  --md-typeset-table-color:     #d8d3c8; /* --line */
 }
 
 [data-md-color-scheme="default"] {
-  --md-default-bg-color: #fffdf8;
-  --md-typeset-a-color:  #0d7a73;
+  --md-default-bg-color: #f6f2e9; /* --paper — the demo's real page background */
+  --md-default-fg-color: #20231e; /* --ink */
+  --md-typeset-a-color:  #0d7a73; /* --teal */
 }
 
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #0f8d85;
-  --md-typeset-a-color:  #ff6933;
+  --md-default-bg-color: #182725; /* --night */
+  --md-primary-fg-color: #0d7a73; /* --teal */
+  --md-typeset-a-color:  #ff6933; /* --orange */
 }
