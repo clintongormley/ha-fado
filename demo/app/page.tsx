@@ -307,6 +307,7 @@ export default function Home() {
         <div className="nav-links">
           <a href="#playground">Playground</a>
           <a href="#how">How it works</a>
+          <a href={`${import.meta.env.BASE_URL}docs/`}>Docs</a>
           <a
             className="nav-github"
             href="https://github.com/clintongormley/ha-fado"
@@ -574,7 +575,7 @@ export default function Home() {
           </p>
           <a
             className="text-link dark-link"
-            href="https://github.com/clintongormley/ha-fado#usage-fadofade_lights"
+            href={`${import.meta.env.BASE_URL}docs/actions/fade-lights/`}
             target="_blank"
             rel="noreferrer"
           >
