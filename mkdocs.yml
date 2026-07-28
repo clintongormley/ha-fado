@@ -68,4 +68,5 @@ plugins:
 
 nav:
   - Home: index.md
+  - Installation: installation.md
   - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/
