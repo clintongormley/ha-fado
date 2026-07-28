@@ -55,7 +55,7 @@ echo "pre-push: $(printf '%s\n' "$changed" | grep -c . || true) changed file(s) 
 py_changed=$(printf '%s\n' "$changed"   | grep -E '^(custom_components/fado/|tests/).*\.py$' || true)
 i18n_changed=$(printf '%s\n' "$changed" | grep -E '^custom_components/fado/(strings\.json|translations/)' || true)
 site_changed=$(printf '%s\n' "$changed" | grep -E '^(docs/|mkdocs\.yml|requirements-docs\.txt|CHANGES\.md)' || true)
-demo_changed=$(printf '%s\n' "$changed" | grep -E '^(demo/|tests/frontend/)' || true)
+demo_changed=$(printf '%s\n' "$changed" | grep -E '^(demo/|tests/frontend/|docs/)' || true)
 
 # --- Step 1: fast lint/format (Python) ---
 if [ -n "$py_changed" ]; then

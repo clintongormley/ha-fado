@@ -19,8 +19,8 @@ Specify which lights to fade using any combination of:
 
 - **`label_id`**: One or more label IDs
 
-    Light groups are automatically expanded to their individual lights. Duplicate
-    entities are automatically deduplicated.
+Light groups are automatically expanded to their individual lights. Duplicate
+entities are automatically deduplicated.
 
 ### **Transition** (optional, default: `3`):
 

@@ -1,10 +1,10 @@
 # Development
 
-## Running tests
+## Testing
 
-The integration includes a comprehensive test suite with 668 tests covering
-config flow, action handling, fade execution, color fading, manual interruption
-detection, and brightness restoration.
+The integration includes a comprehensive test suite covering config flow,
+action handling, fade execution, color fading, manual interruption detection,
+and brightness restoration.
 
 ### Prerequisites
 
@@ -42,7 +42,8 @@ pytest tests/test_fade_execution.py -v
 
 ### Test Coverage
 
-The test suite achieves 100% code coverage and includes tests for:
+The pre-push hook enforces a minimum of 90% code coverage, and the suite
+includes tests for:
 
 - **Config flow** (`test_config_flow.py`): User setup, import flow, options
     validation

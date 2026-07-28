@@ -666,7 +666,7 @@ export default function Home() {
           target="_blank"
           rel="noreferrer"
         >
-          Original Fado project
+          Fado on GitHub
         </a>
       </footer>
     </main>

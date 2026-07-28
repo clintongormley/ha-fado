@@ -13,6 +13,12 @@ site_dir: site
 exclude_docs: |
   superpowers/
 
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
 theme:
   name: material
   language: en
@@ -29,6 +35,7 @@ theme:
     - search.suggest
     - content.code.copy
     - content.tabs.link
+    - content.action.edit
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
