@@ -1,0 +1,71 @@
+site_name: Fado Light Fader
+site_description: >-
+  Smooth light fading for Home Assistant — brightness, colour and colour
+  temperature, with automatic brightness restoration.
+site_url: https://clintongormley.github.io/ha-fado/docs/
+repo_url: https://github.com/clintongormley/ha-fado
+repo_name: clintongormley/ha-fado
+edit_uri: edit/main/docs/
+copyright: Licensed under the MIT License
+
+docs_dir: docs
+site_dir: site
+exclude_docs: |
+  superpowers/
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - assets/fado.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/

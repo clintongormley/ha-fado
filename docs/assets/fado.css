@@ -1,0 +1,19 @@
+/* Fado docs theme — palette taken from the demo's own tokens so the landing
+   page and the documentation read as one site. */
+:root {
+  --md-primary-fg-color:        #0d7a73;
+  --md-primary-fg-color--light: #0f8d85;
+  --md-primary-fg-color--dark:  #095951;
+  --md-accent-fg-color:         #ff6933;
+  --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1);
+}
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #fffdf8;
+  --md-typeset-a-color:  #0d7a73;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #0f8d85;
+  --md-typeset-a-color:  #ff6933;
+}
