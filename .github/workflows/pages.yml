@@ -1,0 +1,88 @@
+name: Docs site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "demo/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - "scripts/build_site.sh"
+      - "CHANGES.md"
+      - "tests/frontend/**"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "demo/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - "scripts/build_site.sh"
+      - "CHANGES.md"
+      - "tests/frontend/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install documentation dependencies
+        run: pip install -r requirements-docs.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demo/package-lock.json
+
+      - name: Install demo dependencies
+        run: npm ci
+        working-directory: demo
+
+      - name: Install frontend test dependencies
+        run: npm ci
+
+      # Guards the vendored demo's links against the docs pages they point at.
+      - name: Frontend tests
+        run: npm test
+
+      - name: Build site
+        run: scripts/build_site.sh
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  # Pull requests run the identical build without deploying, so a broken link
+  # fails the PR rather than the live site.
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
