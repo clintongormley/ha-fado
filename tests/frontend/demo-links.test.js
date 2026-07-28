@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -52,5 +52,24 @@ describe("vendored demo — page metadata", () => {
 
   it("no longer advertises the upstream pages origin", () => {
     expect(INDEX).not.toContain("florianhorner.github.io");
+  });
+});
+
+describe("vendored demo — attribution", () => {
+  it("credits the original author on the page", () => {
+    expect(PAGE).toContain("Interactive demo originally created by");
+    expect(PAGE).toContain("Florian Horner");
+    expect(PAGE).toContain("https://github.com/florianhorner/fado-light-fader-demo");
+  });
+
+  it("records provenance in UPSTREAM.md", () => {
+    const upstream = readFileSync(join(ROOT, "demo/UPSTREAM.md"), "utf8");
+    expect(upstream).toContain("77481986df105472976af02997f11b8c257c96ae");
+    expect(upstream).toContain("BSD Zero Clause License");
+  });
+
+  it("keeps og.png small enough to ship", () => {
+    const bytes = statSync(join(ROOT, "demo/public/og.png")).size;
+    expect(bytes).toBeLessThan(800_000);
   });
 });

@@ -643,9 +643,23 @@ export default function Home() {
           Fado demo
         </a>
         <p>
-          <strong>Unofficial community demo.</strong> Fado is created and
-          maintained by Clinton Gormley. No affiliation, endorsement, or support
-          is implied.
+          Interactive demo originally created by{" "}
+          <a
+            href="https://github.com/florianhorner"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Florian Horner
+          </a>{" "}
+          (
+          <a
+            href="https://github.com/florianhorner/fado-light-fader-demo"
+            target="_blank"
+            rel="noreferrer"
+          >
+            source
+          </a>
+          , 0BSD). Fado is created and maintained by Clinton Gormley.
         </p>
         <a
           href="https://github.com/clintongormley/ha-fado"
