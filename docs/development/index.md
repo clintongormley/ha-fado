@@ -85,12 +85,25 @@ mkdocs serve                            # docs only, live reload
 
 cd demo && npm install && npm run dev:pages   # demo only, live reload
 
-scripts/build_site.sh                   # the whole site, exactly as deployed
-python3 -m http.server -d dist          # then browse http://localhost:8000/
+PAGES_BASE_PATH=/ scripts/build_site.sh   # the whole site, for local preview
+python3 -m http.server -d dist            # then browse http://localhost:8000/
 ```
 
 `scripts/build_site.sh` runs `mkdocs build --strict`, so a broken internal link
-fails the build rather than shipping.
+fails the build rather than shipping. `PAGES_BASE_PATH=/` builds the demo with
+root-relative asset paths, which is what makes them resolve when `dist/` is
+served at `http://localhost:8000/`; the default build (no env var) targets
+`/ha-fado/` to match GitHub Pages, and its assets 404 at the plain root.
+
+To check the site exactly as it deploys — assets served from `/ha-fado/` —
+build with the default base path and serve through a symlink that reproduces
+that prefix:
+
+```bash
+scripts/build_site.sh                     # the whole site, exactly as deployed
+mkdir -p /tmp/fado-serve && ln -sfn "$PWD/dist" /tmp/fado-serve/ha-fado
+python3 -m http.server -d /tmp/fado-serve  # then browse http://localhost:8000/ha-fado/
+```
 
 ## Credits
 
