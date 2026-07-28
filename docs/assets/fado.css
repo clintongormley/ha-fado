@@ -8,14 +8,18 @@
   --md-primary-fg-color--dark:  #095951; /* --teal-dark */
   --md-accent-fg-color:         #ff6933; /* --orange */
   --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1); /* --orange, alpha */
-  --md-default-fg-color--light: #686e64; /* --muted */
-  --md-typeset-table-color:     #d8d3c8; /* --line */
 }
 
 [data-md-color-scheme="default"] {
   --md-default-bg-color: #f6f2e9; /* --paper — the demo's real page background */
   --md-default-fg-color: #20231e; /* --ink */
   --md-typeset-a-color:  #0d7a73; /* --teal */
+  /* --muted and --line only ever sit on the demo's light (--paper) background —
+     the demo has no dark-mode variant of either, so scope them to the light
+     scheme only rather than let them leak into slate via :root, where they'd
+     override Material's own (better-contrast) slate defaults. */
+  --md-default-fg-color--light: #686e64; /* --muted */
+  --md-typeset-table-color:     #d8d3c8; /* --line */
 }
 
 [data-md-color-scheme="slate"] {
