@@ -72,4 +72,7 @@ nav:
   - How it works:
       - Overview: how-it-works/index.md
       - State transitions: how-it-works/state-transitions.md
+  - Actions:
+      - fado.fade_lights: actions/fade-lights.md
+      - Exclude & include lights: actions/exclude-include.md
   - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/
