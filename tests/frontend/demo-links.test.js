@@ -82,6 +82,15 @@ describe("vendored demo — branding", () => {
     expect(PAGE).not.toContain("Lightbulb");
   });
 
+  it("imports a brand icon that actually exists", () => {
+    // Asserting the import path alone would still pass if the icon were moved
+    // or deleted — only the Vite build would notice, and only later.
+    const ref = PAGE.match(/from "([^"]*brand\/icon\.png)"/)?.[1];
+    expect(ref, "no brand icon import found in page.tsx").toBeDefined();
+    const resolved = join(ROOT, "demo/app", ref);
+    expect(existsSync(resolved), `${ref} → ${resolved}`).toBe(true);
+  });
+
   it("names the project in full in the brand marks", () => {
     expect(PAGE).toContain("Fado Light Fader for Home Assistant");
     expect(PAGE).not.toContain("Fado demo");

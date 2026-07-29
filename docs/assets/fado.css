@@ -5,7 +5,10 @@
 :root {
   --md-primary-fg-color:        #0d7a73; /* --teal */
   --md-primary-fg-color--dark:  #095951; /* --teal-dark */
-  --md-accent-fg-color:         #ff6933; /* --orange */
+  /* --teal-dark, not --orange: Material drives link hover from the accent,
+     and #ff6933 on the --paper background is 2.57:1 — hovering a link would
+     make it harder to read than at rest. #095951 is 7.34:1. */
+  --md-accent-fg-color:         #095951; /* --teal-dark */
   --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1); /* --orange, alpha */
 }
 
@@ -25,5 +28,9 @@
   --md-default-bg-color: #182725; /* --night */
   --md-primary-fg-color: #0d7a73; /* --teal */
   --md-typeset-a-color:  #ff6933; /* --orange */
+  /* The light scheme's teal-dark accent would be near-invisible on --night, and
+     leaving the accent equal to the link colour gives dark mode no hover state
+     at all. --lime is what the demo itself accents with on this background. */
+  --md-accent-fg-color:  #d8ee7c; /* --lime */
 }
 

@@ -31,7 +31,9 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
    `drizzle-*`, `@cloudflare/vite-plugin`, `@vitejs/plugin-rsc`,
    `react-server-dom-webpack`, `vinext`, `wrangler`, `eslint*`); `dev` replaced
    by `dev:pages`.
-2. `tsconfig.json` stripped of the `next` TS plugin and `.next` type includes.
+2. `tsconfig.json` stripped of the `next` TS plugin, the `.next` type
+   includes, and the `@/*` path alias (unused here, and with no matching
+   `resolve.alias` in `vite.pages.config.ts` it would type-check but not bundle).
 3. `app/page.tsx` — the README deep link and a new header Docs link point at the
    Fado docs site via `import.meta.env.BASE_URL`; the footer paragraph was
    reworded to credit Florian Horner as the demo's original author (with a
@@ -41,7 +43,8 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
    landing page.
 4. `github-pages/index.html` — `canonical`, `og:url` and the social images point
    at <https://clintongormley.github.io/ha-fado/>; "unofficial" dropped from the
-   descriptions.
+   descriptions; the `<title>` and `og:image:alt` name the product rather than
+   the demo, since this page is the project's landing page.
 5. `public/og.png` shrunk from 2,194,672 bytes (1731×909) to 501,908 bytes
    (1200×630). Losslessly: resized to the canonical Open Graph size of
    1200×630 with `sips` (near-identical aspect ratio, no distortion) and run
@@ -62,16 +65,18 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
    imported from `custom_components/fado/brand/icon.png` (the integration's
    copy — one source of truth, no duplicate in `demo/public/`), so `.brand-mark`
    lost the orange chip, rounded corners and −5° tilt that the old monochrome
-   glyph needed; a full-colour logo stands on its own.
+   glyph needed; a full-colour logo stands on its own. `.brand` and
+   `.brand-mark` also gained rules in the 760px and 430px media queries: the
+   longer product name overflows the nav on a phone at the original 20px.
 
 ## Re-syncing with upstream
 
 ```bash
 git clone https://github.com/florianhorner/fado-light-fader-demo.git /tmp/fado-demo
-git -C /tmp/fado-demo diff 77481986df105472976af02997f11b8c257c96ae..main -- app github-pages public vite.pages.config.ts postcss.config.mjs
+git -C /tmp/fado-demo diff 77481986df105472976af02997f11b8c257c96ae..main -- app github-pages public vite.pages.config.ts postcss.config.mjs tsconfig.json package.json
 ```
 
-Apply the relevant hunks by hand, keeping the five changes above intact, then
+Apply the relevant hunks by hand, keeping the six changes above intact, then
 update the "Vendored at" SHA here and the SHA asserted in
 `tests/frontend/demo-links.test.js`. Run `npm test` and
 `scripts/build_site.sh` before committing.

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Pre-push gate for ha-fado (Python-only integration; static JS frontend has no
-# build/tests). Strategy: cheap lint first (what usually breaks), then drift
+# Pre-push gate for ha-fado. Strategy: cheap lint first (what usually breaks), then drift
 # checks (i18n, docs), then the slower test+coverage run — and only for the
 # areas whose files actually changed in this push.
 #
@@ -55,7 +54,7 @@ echo "pre-push: $(printf '%s\n' "$changed" | grep -c . || true) changed file(s) 
 py_changed=$(printf '%s\n' "$changed"   | grep -E '^(custom_components/fado/|tests/).*\.py$' || true)
 i18n_changed=$(printf '%s\n' "$changed" | grep -E '^custom_components/fado/(strings\.json|translations/)' || true)
 site_changed=$(printf '%s\n' "$changed" | grep -E '^(docs/|mkdocs\.yml|requirements-docs\.txt|CHANGES\.md|scripts/build_site\.sh|\.github/workflows/pages\.yml)' || true)
-demo_changed=$(printf '%s\n' "$changed" | grep -E '^(demo/|tests/frontend/|docs/)' || true)
+demo_changed=$(printf '%s\n' "$changed" | grep -E '^(demo/|tests/frontend/|docs/|custom_components/fado/(brand|frontend)/)' || true)
 
 # --- Step 1: fast lint/format (Python) ---
 if [ -n "$py_changed" ]; then

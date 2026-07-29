@@ -28,7 +28,7 @@ Full instructions: [Installation](https://clintongormley.github.io/ha-fado/docs/
 
 ## Contributing
 
-Tests, the design system, and how to build the documentation site are covered in
+Tests and how to build the documentation site are covered in
 [Development](https://clintongormley.github.io/ha-fado/docs/development/).
 
 ## Credits

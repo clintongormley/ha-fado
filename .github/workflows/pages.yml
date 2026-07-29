@@ -7,11 +7,18 @@ name: Docs site
 # `## [Unreleased]` into a version section, so the published changelog holds
 # released entries only.
 #
-# The trigger is `release: published` rather than the v*.*.* tag push that
-# release.yml uses, for two reasons: a `paths` filter would also apply to a tag
-# push (both must match, so a release whose commit touched no docs path would
-# silently not publish), and this way the site goes out only after the release
-# itself succeeded.
+# Two things can publish. The normal path is a workflow_dispatch fired by
+# release.yml's last step: that workflow creates the Release with GITHUB_TOKEN,
+# and GitHub does not start workflow runs from token-triggered events, so a
+# `release: published` trigger would never fire for the automated flow.
+# workflow_dispatch is exempt from that rule, and dispatching against main also
+# satisfies the github-pages environment's branch policy (main only — a job
+# running from a tag ref is rejected).
+#
+# `release: published` is kept as well, for a release published by hand through
+# the GitHub UI: that is a human-authored event, so it does fire. The two paths
+# cannot both run for one release, so this is a safety net rather than a
+# duplicate deploy.
 #
 # Pushes to main and pull requests still BUILD but never deploy, so a broken
 # link or a failed demo build surfaces when it lands rather than months later
@@ -26,6 +33,8 @@ on:
     paths:
       - "docs/**"
       - "demo/**"
+      - "custom_components/fado/brand/**"
+      - "custom_components/fado/frontend/**"
       - "mkdocs.yml"
       - "requirements-docs.txt"
       - "scripts/build_site.sh"
@@ -37,6 +46,8 @@ on:
     paths:
       - "docs/**"
       - "demo/**"
+      - "custom_components/fado/brand/**"
+      - "custom_components/fado/frontend/**"
       - "mkdocs.yml"
       - "requirements-docs.txt"
       - "scripts/build_site.sh"
