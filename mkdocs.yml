@@ -23,8 +23,6 @@ validation:
 theme:
   name: material
   language: en
-  # Adds only partials/header.html, for the Demo link in the title bar.
-  custom_dir: overrides
   icon:
     repo: fontawesome/brands/github
   features:
@@ -77,6 +75,7 @@ plugins:
   - search
 
 nav:
+  - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/
   - Home: index.md
   - Installation: installation.md
   - How it works:

@@ -28,21 +28,3 @@
   --md-typeset-a-color:  #ff6933; /* --orange */
 }
 
-/* Demo link in the docs title bar (see overrides/partials/header.html). It sits
-   beside the repository link and inherits Material's header-button styling; the
-   text label collapses on narrow screens where the header runs out of room,
-   leaving just the icon. */
-.fado-header-demo {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  white-space: nowrap;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-@media screen and (max-width: 60em) {
-  .fado-header-demo__label {
-    display: none;
-  }
-}
