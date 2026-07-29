@@ -1,4 +1,4 @@
-site_name: Fado Light Fader
+site_name: Fado Light Fader for Home Assistant
 site_description: >-
   Smooth light fading for Home Assistant — brightness, colour and colour
   temperature, with automatic brightness restoration.
@@ -12,6 +12,7 @@ docs_dir: docs
 site_dir: site
 exclude_docs: |
   superpowers/
+  development/design-system.md
 
 validation:
   omitted_files: warn
@@ -22,6 +23,8 @@ validation:
 theme:
   name: material
   language: en
+  # Adds only partials/header.html, for the Demo link in the title bar.
+  custom_dir: overrides
   icon:
     repo: fontawesome/brands/github
   features:
@@ -85,7 +88,4 @@ nav:
   - Autoconfiguration panel: panel.md
   - Troubleshooting: troubleshooting.md
   - Changelog: changelog.md
-  - Development:
-      - Contributing & tests: development/index.md
-      - Frontend design system: development/design-system.md
-  - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/
+  - Development: development/index.md
