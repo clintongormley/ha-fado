@@ -6,13 +6,15 @@ import {
   ExternalLink,
   Github,
   Hand,
-  Lightbulb,
   Play,
   RotateCcw,
   SlidersHorizontal,
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+// Fado's own brand icon, sourced from the integration rather than duplicated
+// here, so the logo has one home in the repo.
+import fadoIcon from "../../custom_components/fado/brand/icon.png";
 import { BedroomScene } from "./components/BedroomScene";
 import { SignatureDemo } from "./components/SignatureDemo";
 import { copyTextWithFallback } from "./copy-text.mjs";
@@ -297,12 +299,10 @@ export default function Home() {
         <a
           className="brand"
           href="#top"
-          aria-label="Fado community demo home"
+          aria-label="Fado Light Fader for Home Assistant, back to top"
         >
-          <span className="brand-mark">
-            <Lightbulb size={19} strokeWidth={2.3} />
-          </span>
-          <span>Fado demo</span>
+          <img className="brand-mark" src={fadoIcon} alt="" />
+          <span>Fado Light Fader for Home Assistant</span>
         </a>
         <div className="nav-links">
           <a href="#playground">Playground</a>
@@ -637,10 +637,8 @@ export default function Home() {
 
       <footer>
         <a className="brand" href="#top">
-          <span className="brand-mark">
-            <Lightbulb size={18} aria-hidden="true" />
-          </span>
-          Fado demo
+          <img className="brand-mark" src={fadoIcon} alt="" />
+          Fado Light Fader for Home Assistant
         </a>
         <p>
           Interactive demo originally created by{" "}

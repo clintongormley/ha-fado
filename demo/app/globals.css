@@ -74,15 +74,14 @@ select:focus-visible {
   letter-spacing: -0.04em;
 }
 
+/* Fado's logo carries its own colour and outline, so it stands alone rather
+   than sitting in the tinted chip the old monochrome glyph needed. */
 .brand-mark {
   width: 34px;
   height: 34px;
-  display: grid;
-  place-items: center;
-  background: var(--orange);
-  color: white;
-  border-radius: 9px;
-  transform: rotate(-5deg);
+  display: block;
+  flex: none;
+  object-fit: contain;
 }
 
 .nav-links {

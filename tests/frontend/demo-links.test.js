@@ -73,3 +73,17 @@ describe("vendored demo — attribution", () => {
     expect(bytes).toBeLessThan(800_000);
   });
 });
+
+describe("vendored demo — branding", () => {
+  it("uses Fado's own brand icon, not a generic glyph", () => {
+    // The brand icon ships inside the integration (custom_components/fado/brand/)
+    // rather than being duplicated here, so there is one source of truth for it.
+    expect(PAGE).toContain("brand/icon.png");
+    expect(PAGE).not.toContain("Lightbulb");
+  });
+
+  it("names the project in full in the brand marks", () => {
+    expect(PAGE).toContain("Fado Light Fader for Home Assistant");
+    expect(PAGE).not.toContain("Fado demo");
+  });
+});

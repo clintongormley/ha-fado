@@ -56,6 +56,13 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
    ≈1.3/255, max ≈71/255, confined to gradient dithering noise — no visible
    banding on inspection. `github-pages/index.html` declares no
    `og:image:width`/`height`, so no metadata changes were needed.
+6. `app/page.tsx` + `app/globals.css` — the header and footer brand marks now
+   show Fado's own logo instead of a Lucide `Lightbulb` glyph, and read "Fado
+   Light Fader for Home Assistant" rather than "Fado demo". The logo is
+   imported from `custom_components/fado/brand/icon.png` (the integration's
+   copy — one source of truth, no duplicate in `demo/public/`), so `.brand-mark`
+   lost the orange chip, rounded corners and −5° tilt that the old monochrome
+   glyph needed; a full-colour logo stands on its own.
 
 ## Re-syncing with upstream
 
