@@ -8,6 +8,11 @@ htmlcov/
 
 # Local files
 Release instructions.txt
+# Personal working notes that live inside the published docs/ tree: ignored
+# here so they stay out of git, and excluded in mkdocs.yml so they can never
+# be built into the site.
+docs/plans/
+docs/Fado TODO.txt
 .worktrees/
 CLAUDE.local.md
 .claude/settings.local.json
