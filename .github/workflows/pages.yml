@@ -1,12 +1,33 @@
 name: Docs site
 
+# The site is PUBLISHED on release only. The docs describe the released
+# integration, and CHANGES.md is rendered as the changelog page, so publishing
+# from main would show users an Unreleased section describing code they cannot
+# install yet. By release time the flow in release.yml has already promoted
+# `## [Unreleased]` into a version section, so the published changelog holds
+# released entries only.
+#
+# The trigger is `release: published` rather than the v*.*.* tag push that
+# release.yml uses, for two reasons: a `paths` filter would also apply to a tag
+# push (both must match, so a release whose commit touched no docs path would
+# silently not publish), and this way the site goes out only after the release
+# itself succeeded.
+#
+# Pushes to main and pull requests still BUILD but never deploy, so a broken
+# link or a failed demo build surfaces when it lands rather than months later
+# at release. Use workflow_dispatch on main to publish out of band — a doc
+# correction that should not wait for the next version.
+
 on:
+  release:
+    types: [published]
   push:
     branches: [main]
     paths:
       - "docs/**"
       - "demo/**"
       - "mkdocs.yml"
+      - "overrides/**"
       - "requirements-docs.txt"
       - "scripts/build_site.sh"
       - "CHANGES.md"
@@ -18,6 +39,7 @@ on:
       - "docs/**"
       - "demo/**"
       - "mkdocs.yml"
+      - "overrides/**"
       - "requirements-docs.txt"
       - "scripts/build_site.sh"
       - "CHANGES.md"
@@ -73,8 +95,8 @@ jobs:
         with:
           path: dist
 
-  # Pull requests run the identical build without deploying, so a broken link
-  # fails the PR rather than the live site.
+  # Pushes to main and pull requests run the identical build without deploying,
+  # so a broken link fails the PR rather than the live site.
   deploy:
     # GitHub already skips a job whose `needs:` dependency failed, even with a
     # custom `if:` — that implicit success() gate only gets overridden by a
@@ -82,11 +104,15 @@ jobs:
     # doesn't use. So `needs.build.result == 'success'` is redundant, but it's
     # kept anyway: it's self-documenting and won't silently stop working if a
     # future edit adds a status function elsewhere in the expression.
-    # The second half restricts deploys to `main`: pushes are already
-    # branch-filtered above, but `workflow_dispatch` can be run from any
-    # branch, and without this a manual dispatch from a feature branch would
-    # publish that branch's build to production Pages.
-    if: needs.build.result == 'success' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    # Only two events publish: a published release (the normal path), and a
+    # manual dispatch, which is pinned to `main` because workflow_dispatch can
+    # be run from any branch and would otherwise push a feature branch's build
+    # to production Pages. A push to main deliberately builds without
+    # deploying — see the trigger comment at the top of this file.
+    if: >-
+      needs.build.result == 'success' &&
+      (github.event_name == 'release' ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     needs: build
     runs-on: ubuntu-latest
     environment:
