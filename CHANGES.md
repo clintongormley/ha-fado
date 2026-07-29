@@ -8,6 +8,8 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-29
+
 ### Added
 
 - Add a top-level `LICENSE` file with the full MIT License text. The project was
