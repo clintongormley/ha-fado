@@ -7,18 +7,18 @@ name: Docs site
 # `## [Unreleased]` into a version section, so the published changelog holds
 # released entries only.
 #
-# Two things can publish. The normal path is a workflow_dispatch fired by
-# release.yml's last step: that workflow creates the Release with GITHUB_TOKEN,
-# and GitHub does not start workflow runs from token-triggered events, so a
-# `release: published` trigger would never fire for the automated flow.
-# workflow_dispatch is exempt from that rule, and dispatching against main also
-# satisfies the github-pages environment's branch policy (main only — a job
-# running from a tag ref is rejected).
+# Publishing happens through exactly one route: a workflow_dispatch on main,
+# fired by release.yml's last step. Two GitHub rules force that shape, and both
+# rule out the obvious alternatives:
 #
-# `release: published` is kept as well, for a release published by hand through
-# the GitHub UI: that is a human-authored event, so it does fire. The two paths
-# cannot both run for one release, so this is a safety net rather than a
-# duplicate deploy.
+#   - `release: published` would never fire for the automated flow. release.yml
+#     creates the Release with GITHUB_TOKEN, and GitHub does not start workflow
+#     runs from token-triggered events. workflow_dispatch is exempt.
+#   - Deploying from a tag ref would be rejected regardless. The github-pages
+#     environment's deployment branch policy permits `main` only, and release
+#     events (and tag pushes) run from refs/tags/v*. That applies to a release
+#     published by hand through the UI too — so there is no useful fallback
+#     trigger to add here; it would fail rather than help.
 #
 # Pushes to main and pull requests still BUILD but never deploy, so a broken
 # link or a failed demo build surfaces when it lands rather than months later
@@ -26,8 +26,6 @@ name: Docs site
 # correction that should not wait for the next version.
 
 on:
-  release:
-    types: [published]
   push:
     branches: [main]
     paths:
@@ -117,15 +115,15 @@ jobs:
     # doesn't use. So `needs.build.result == 'success'` is redundant, but it's
     # kept anyway: it's self-documenting and won't silently stop working if a
     # future edit adds a status function elsewhere in the expression.
-    # Only two events publish: a published release (the normal path), and a
-    # manual dispatch, which is pinned to `main` because workflow_dispatch can
-    # be run from any branch and would otherwise push a feature branch's build
-    # to production Pages. A push to main deliberately builds without
-    # deploying — see the trigger comment at the top of this file.
+    # Only a manual dispatch publishes, and only from `main` — workflow_dispatch
+    # can be run from any branch, and without the ref check a dispatch from a
+    # feature branch would push that branch's build to production Pages. A push
+    # to main deliberately builds without deploying; see the trigger comment at
+    # the top of this file for why this is the only publish route.
     if: >-
       needs.build.result == 'success' &&
-      (github.event_name == 'release' ||
-       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:

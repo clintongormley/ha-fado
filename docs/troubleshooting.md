@@ -51,7 +51,7 @@ not removed from the list of expected states as the light should later report a
 final state which matches the `50->65` change.
 
 Fado maintains an expected-events list internally. These events are pruned after
-3 seconds so that, even if things do occassionally go wrong, within 3 seconds
+3 seconds so that, even if things do occasionally go wrong, within 3 seconds
 the light should be functioning normally again.
 
 ## Reporting issues
