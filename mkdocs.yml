@@ -16,6 +16,11 @@ exclude_docs: |
   # A contributor doc rather than user documentation: CLAUDE.md points at it by
   # path, so it stays in the tree, but it has no place in the published site.
   development/design-system.md
+  # Personal working notes kept locally inside docs/. Untracked, so CI never
+  # sees them — but without these entries a maintainer's own build publishes
+  # them, and `--strict` fails on them via validation.omitted_files.
+  plans/
+  Fado TODO.txt
 
 validation:
   omitted_files: warn
