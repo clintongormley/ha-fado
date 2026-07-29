@@ -1409,6 +1409,12 @@ footer > a:last-child {
     width: min(100% - 28px, 1180px);
   }
 
+  /* "Fado Light Fader for Home Assistant" is long enough to overflow the nav
+     on a phone at the full 20px, so step it down with the viewport. */
+  .brand {
+    font-size: 16px;
+  }
+
   .nav-links > a:not(.nav-github) {
     display: none;
   }
@@ -1502,6 +1508,15 @@ footer > a:last-child {
 }
 
 @media (max-width: 430px) {
+  .brand {
+    font-size: 14px;
+  }
+
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+
   .hero-signature {
     padding-top: 30px;
   }
