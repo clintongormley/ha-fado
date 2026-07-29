@@ -4,8 +4,8 @@ After installation, **Fado** appears in your Home Assistant sidebar. Click it to
 access the configuration panel where you can autoconfigure each light for the
 smoothest fades with the minimum of overhead.
 
-Run **auto-configure** to automatically measure optimal step timing, support for
-native transitions, and minimum real brightness for each light
+Run **Autoconfigure** to automatically measure optimal step timing, support for
+native transitions, and minimum real brightness for each light.
 
 ## Settings
 

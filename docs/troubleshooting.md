@@ -2,8 +2,8 @@
 
 ## Enable logging
 
-Fado logs through Home Assistant's standard logger, so you raise its verbosity
-the same way as any other integration.
+Fado logs through Home Assistant's standard logger, so you can raise its
+verbosity the same way as any other integration.
 
 **From the UI:** go to **Settings → Devices & Services**, open the **Fado**
 integration, click the **⋮** menu and choose **Enable debug logging**. Reproduce
