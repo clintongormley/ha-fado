@@ -4,7 +4,6 @@
    that file, or be an rgba() alpha derivation of one — no invented tints. */
 :root {
   --md-primary-fg-color:        #0d7a73; /* --teal */
-  --md-primary-fg-color--light: #0d7a73; /* no --teal-light token; reuse --teal rather than invent one */
   --md-primary-fg-color--dark:  #095951; /* --teal-dark */
   --md-accent-fg-color:         #ff6933; /* --orange */
   --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1); /* --orange, alpha */

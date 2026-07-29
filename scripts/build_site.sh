@@ -6,8 +6,10 @@
 # own place and this script assembles the result — nesting one inside the other
 # would let a rebuild erase the other half.
 #
-# Used identically by developers and by .github/workflows/pages.yml, so a green
-# local build means a green deploy.
+# This is the same build CI runs (.github/workflows/pages.yml), so a green run
+# here means a green build there. Note CI additionally runs the frontend test
+# suite first — `npm test` guards the demo's links against the docs pages they
+# point at, and is not part of this script.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

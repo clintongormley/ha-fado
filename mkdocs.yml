@@ -11,7 +11,10 @@ copyright: Licensed under the MIT License
 docs_dir: docs
 site_dir: site
 exclude_docs: |
+  # Local-only working files (brainstorm specs, implementation plans).
   superpowers/
+  # A contributor doc rather than user documentation: CLAUDE.md points at it by
+  # path, so it stays in the tree, but it has no place in the published site.
   development/design-system.md
 
 validation:

@@ -58,15 +58,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-          cache: pip
-          cache-dependency-path: requirements-docs.txt
-
-      - name: Install documentation dependencies
-        run: pip install -r requirements-docs.txt
-
+      # Ordered to fail fast: the frontend suite is the cheapest gate and the
+      # one most likely to catch this workflow's target failure (a docs page
+      # renamed out from under a demo link), so it runs before the Python
+      # toolchain and the demo's dependencies are installed for the build.
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -75,16 +70,25 @@ jobs:
             package-lock.json
             demo/package-lock.json
 
-      - name: Install demo dependencies
-        run: npm ci
-        working-directory: demo
-
       - name: Install frontend test dependencies
         run: npm ci
 
       # Guards the vendored demo's links against the docs pages they point at.
       - name: Frontend tests
         run: npm test
+
+      - name: Install demo dependencies
+        run: npm ci
+        working-directory: demo
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install documentation dependencies
+        run: pip install -r requirements-docs.txt
 
       - name: Build site
         run: scripts/build_site.sh
