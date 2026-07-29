@@ -16,6 +16,17 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 - Bundle the integration's brand icons inside the component
   (`custom_components/fado/brand/`) so Home Assistant/HACS source them from the
   integration rather than the deprecated brands CDN.
+- Documentation now has its own site at
+  <https://clintongormley.github.io/ha-fado/>, with an interactive demo as the
+  landing page and searchable, per-topic documentation under `/docs/`. The
+  README is now a short pointer to it. The demo was originally created by
+  [Florian Horner](https://github.com/florianhorner) and is included with
+  permission.
+
+### Changed
+
+- The integration's `documentation` link, shown in Home Assistant and HACS, now
+  points at the documentation site rather than the GitHub README.
 
 ## [2.1.0] - 2026-06-28
 

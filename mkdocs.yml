@@ -1,0 +1,93 @@
+site_name: Fado Light Fader for Home Assistant
+site_description: >-
+  Smooth light fading for Home Assistant — brightness, colour and colour
+  temperature, with automatic brightness restoration.
+site_url: https://clintongormley.github.io/ha-fado/docs/
+repo_url: https://github.com/clintongormley/ha-fado
+repo_name: clintongormley/ha-fado
+edit_uri: edit/main/docs/
+copyright: Licensed under the MIT License
+
+docs_dir: docs
+site_dir: site
+exclude_docs: |
+  # Local-only working files (brainstorm specs, implementation plans).
+  superpowers/
+  # A contributor doc rather than user documentation: CLAUDE.md points at it by
+  # path, so it stays in the tree, but it has no place in the published site.
+  development/design-system.md
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - assets/fado.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+plugins:
+  - search
+
+nav:
+  - "▶ Interactive demo": https://clintongormley.github.io/ha-fado/
+  - Home: index.md
+  - Installation: installation.md
+  - How it works:
+      - Overview: how-it-works/index.md
+      - State transitions: how-it-works/state-transitions.md
+  - Actions:
+      - fado.fade_lights: actions/fade-lights.md
+      - Exclude & include lights: actions/exclude-include.md
+  - Autoconfiguration panel: panel.md
+  - Troubleshooting: troubleshooting.md
+  - Changelog: changelog.md
+  - Development: development/index.md

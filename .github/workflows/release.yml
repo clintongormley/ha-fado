@@ -32,9 +32,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     name: Publish GitHub Release
-    # Creating the GitHub Release needs contents:write; nothing else.
+    # contents:write to create the Release; actions:write to dispatch the docs
+    # site build in the final step.
     permissions:
       contents: write
+      actions: write
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -99,6 +101,23 @@ jobs:
           #   gh release edit v<version> --prerelease=false --latest=true
           prerelease: ${{ steps.version.outputs.prerelease }}
           make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+
+      # The docs site publishes on release, but pages.yml cannot simply listen
+      # for `release: published`: the Release above is created with
+      # GITHUB_TOKEN, and GitHub does not start workflow runs from events a
+      # token triggered — the same rule the bump job below works around for
+      # `pull_request`. workflow_dispatch is explicitly exempt from it, so
+      # dispatch pages.yml here instead.
+      #
+      # Dispatching against main rather than the tag also satisfies the
+      # github-pages environment's deployment branch policy, which permits main
+      # only; a job running from refs/tags/v* would be rejected outright. At
+      # this point main is the commit the tag was cut from, so the built docs
+      # match the release.
+      - name: Publish the documentation site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
 
   bump:
     needs: publish

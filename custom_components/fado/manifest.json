@@ -4,7 +4,7 @@
   "codeowners": ["@clintongormley"],
   "config_flow": true,
   "dependencies": ["http"],
-  "documentation": "https://github.com/clintongormley/ha-fado",
+  "documentation": "https://clintongormley.github.io/ha-fado/docs/",
   "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/clintongormley/ha-fado/issues",

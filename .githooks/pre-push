@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Pre-push gate for ha-fado (Python-only integration; static JS frontend has no
-# build/tests). Strategy: cheap lint first (what usually breaks), then drift
+# Pre-push gate for ha-fado. Strategy: cheap lint first (what usually breaks), then drift
 # checks (i18n, docs), then the slower test+coverage run — and only for the
 # areas whose files actually changed in this push.
 #
@@ -54,6 +53,8 @@ echo "pre-push: $(printf '%s\n' "$changed" | grep -c . || true) changed file(s) 
 
 py_changed=$(printf '%s\n' "$changed"   | grep -E '^(custom_components/fado/|tests/).*\.py$' || true)
 i18n_changed=$(printf '%s\n' "$changed" | grep -E '^custom_components/fado/(strings\.json|translations/)' || true)
+site_changed=$(printf '%s\n' "$changed" | grep -E '^(docs/|mkdocs\.yml|requirements-docs\.txt|CHANGES\.md|scripts/build_site\.sh|\.github/workflows/pages\.yml)' || true)
+demo_changed=$(printf '%s\n' "$changed" | grep -E '^(demo/|tests/frontend/|docs/|custom_components/fado/(brand|frontend)/)' || true)
 
 # --- Step 1: fast lint/format (Python) ---
 if [ -n "$py_changed" ]; then
@@ -80,6 +81,31 @@ fi
 step "Docs"
 if python3 "$ROOT/scripts/check_docs.py" "$range"; then pass "Docs"
 else fail "Docs — structural change needs a docs update"; fi
+
+# --- Step 3b: docs site + demo build ---
+# Three distinct failures: mkdocs --strict turns a broken internal doc link or
+# anchor into an error; the frontend suite catches a docs page rename that
+# leaves the demo pointing at a page that no longer exists; the demo build
+# catches the vendored app failing to compile. The paths here mirror the
+# `paths:` filters in .github/workflows/pages.yml — keep the two in step.
+if [ -n "$site_changed" ]; then
+  step "Docs site build"
+  if need mkdocs && (cd "$ROOT" && mkdocs build --strict --site-dir /tmp/fado-mkdocs-check); then
+    pass "Docs site build"
+  else
+    fail "Docs site build — run: mkdocs build --strict"
+  fi
+fi
+
+if [ -n "$demo_changed" ]; then
+  step "Demo build + link checks"
+  if need npm && (cd "$ROOT/demo" && npm run build:pages >/dev/null 2>&1) \
+              && (cd "$ROOT" && npm test >/dev/null 2>&1); then
+    pass "Demo build + link checks"
+  else
+    fail "Demo build + link checks — run: (cd demo && npm run build:pages) && npm test"
+  fi
+fi
 
 # --- Step 4: tests + coverage (slower; only if Python changed) ---
 if [ -n "$py_changed" ]; then

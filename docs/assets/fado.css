@@ -1,0 +1,36 @@
+/* Fado docs theme — palette taken from the demo's own tokens
+   (demo/app/globals.css) so the landing page and the documentation read as
+   one site. Every colour value below must trace back to a real token in
+   that file, or be an rgba() alpha derivation of one — no invented tints. */
+:root {
+  --md-primary-fg-color:        #0d7a73; /* --teal */
+  --md-primary-fg-color--dark:  #095951; /* --teal-dark */
+  /* --teal-dark, not --orange: Material drives link hover from the accent,
+     and #ff6933 on the --paper background is 2.57:1 — hovering a link would
+     make it harder to read than at rest. #095951 is 7.34:1. */
+  --md-accent-fg-color:         #095951; /* --teal-dark */
+  --md-accent-fg-color--transparent: rgba(255, 105, 51, 0.1); /* --orange, alpha */
+}
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #f6f2e9; /* --paper — the demo's real page background */
+  --md-default-fg-color: #20231e; /* --ink */
+  --md-typeset-a-color:  #0d7a73; /* --teal */
+  /* --muted and --line only ever sit on the demo's light (--paper) background —
+     the demo has no dark-mode variant of either, so scope them to the light
+     scheme only rather than let them leak into slate via :root, where they'd
+     override Material's own (better-contrast) slate defaults. */
+  --md-default-fg-color--light: #686e64; /* --muted */
+  --md-typeset-table-color:     #d8d3c8; /* --line */
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #182725; /* --night */
+  --md-primary-fg-color: #0d7a73; /* --teal */
+  --md-typeset-a-color:  #ff6933; /* --orange */
+  /* The light scheme's teal-dark accent would be near-invisible on --night, and
+     leaving the accent equal to the link colour gives dark mode no hover state
+     at all. --lime is what the demo itself accents with on this background. */
+  --md-accent-fg-color:  #d8ee7c; /* --lime */
+}
+
