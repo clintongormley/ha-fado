@@ -46,7 +46,14 @@ class TestBrightnessAndBrightnessPctMutualExclusion:
         init_integration: MockConfigEntry,
         mock_light_entity: str,
     ) -> None:
-        """Test service rejects from: with both brightness and brightness_pct."""
+        """Test service rejects from: with both brightness and brightness_pct.
+
+        Use in-range values (brightness 1-255, brightness_pct 0-100) so the
+        *only* rule violated is the mutual-exclusion group. HA's newer schema
+        backend (probatio) collects every validation error rather than
+        short-circuiting like voluptuous did, so an out-of-range value here
+        would surface a range error ahead of the exclusion one and mask it.
+        """
         with pytest.raises(vol.Invalid, match="exclusion"):
             await hass.services.async_call(
                 DOMAIN,
@@ -54,8 +61,8 @@ class TestBrightnessAndBrightnessPctMutualExclusion:
                 {
                     ATTR_BRIGHTNESS_PCT: 100,
                     ATTR_FROM: {
-                        ATTR_BRIGHTNESS_PCT: 0,
-                        ATTR_BRIGHTNESS: 0,
+                        ATTR_BRIGHTNESS_PCT: 50,
+                        ATTR_BRIGHTNESS: 128,
                     },
                 },
                 target={"entity_id": mock_light_entity},
