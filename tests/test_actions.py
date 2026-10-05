@@ -288,8 +288,11 @@ async def test_service_requires_target(
     import pytest
     from voluptuous.error import MultipleInvalid
 
-    # Call service without target should raise validation error
-    with pytest.raises(MultipleInvalid, match="must contain at least one of"):
+    # Call service without target should raise validation error.
+    # Match only the stable substring: HA has reworded this message across
+    # versions ("must contain at least one of ..." vs "at least one of [...] is
+    # required"), and both phrasings contain "at least one of".
+    with pytest.raises(MultipleInvalid, match="at least one of"):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_FADE_LIGHTS,
