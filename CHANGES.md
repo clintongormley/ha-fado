@@ -8,6 +8,17 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 
 ## [Unreleased]
 
+### Added
+
+- The installation guide now covers the Marketplace, which replaces HACS in
+  Home Assistant 2026.11. HACS is still the way to install Fado on Home
+  Assistant 2026.10 and older.
+
+### Fixed
+
+- In the panel, a light with no state yet now shows the name you gave it rather
+  than the name its integration gave it.
+
 ## [2.2.0] - 2026-07-29
 
 ### Added
