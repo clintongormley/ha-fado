@@ -110,12 +110,12 @@ async def async_get_lights(hass: HomeAssistant) -> dict[str, Any]:
         # Get light config from storage
         light_config = storage_data.get(entity.entity_id, {})
 
-        # Get friendly name: prefer state name, then entity original_name, then entity_id
+        # Get friendly name: prefer state name, then entity name, then original_name, then entity_id
         friendly_name = None
         if state:
             friendly_name = state.attributes.get("friendly_name")
         if not friendly_name:
-            friendly_name = entity.original_name or entity.name or entity.entity_id
+            friendly_name = entity.name or entity.original_name or entity.entity_id
 
         # Get icon: prefer state icon, then entity icon
         icon = None
