@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import DOMAIN, SERVICE_FADE_LIGHTS
 from custom_components.fado.coordinator import FadeCoordinator
+from tests.ha_harness import MockConfigEntry
 
 
 async def test_setup_entry_registers_service(

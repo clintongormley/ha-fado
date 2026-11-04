@@ -7,9 +7,9 @@ on:
     branches: [main]
   schedule:
     # Nightly at 03:17 UTC. Catches upstream HA breakage: the "stable" leg
-    # tracks each monthly release automatically (it installs the latest
-    # published pytest-homeassistant-custom-component), and the "dev" leg
-    # tracks pre-releases. The pinned "min" leg is skipped on schedule.
+    # tracks each monthly release automatically, the "beta" leg tracks
+    # pre-releases, and the "dev" leg tracks the tip of HA core. The pinned
+    # "min" leg is skipped on schedule.
     - cron: "17 3 * * *"
 
 jobs:
@@ -34,14 +34,15 @@ jobs:
           # and the legacy homeassistant.helpers.service helper on older HA. This leg
           # exercises that fallback path. Pinned to the matching plugin version.
           MIN='{"leg":"min","ha-version":"2025.2.0","python-version":"3.13","phccc":"==0.13.210"}'
-          # Latest stable HA release (plugin unpinned → newest on PyPI).
+          # Latest stable HA release, chosen by scripts/ci_ha_install.py.
           STABLE='{"leg":"stable","ha-version":"stable","python-version":"3.14"}'
-          # HA dev / pre-release. Non-blocking.
+          # Newest HA beta, and the tip of HA core. Their test failures only warn.
+          BETA='{"leg":"beta","ha-version":"beta","python-version":"3.14"}'
           DEV='{"leg":"dev","ha-version":"dev","python-version":"3.14"}'
           if [ "$EVENT" = "schedule" ]; then
-            echo "include=[$STABLE,$DEV]" >> "$GITHUB_OUTPUT"
+            echo "include=[$STABLE,$BETA,$DEV]" >> "$GITHUB_OUTPUT"
           else
-            echo "include=[$MIN,$STABLE,$DEV]" >> "$GITHUB_OUTPUT"
+            echo "include=[$MIN,$STABLE,$BETA,$DEV]" >> "$GITHUB_OUTPUT"
           fi
 
   test:
@@ -52,7 +53,6 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.configure.outputs.include) }}
-    continue-on-error: ${{ matrix.ha-version == 'dev' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -65,13 +65,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ "${{ matrix.ha-version }}" = "dev" ]; then
-            python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout syrupy
-            python -m pip install --pre pytest-homeassistant-custom-component
-          else
+          if [ "${{ matrix.leg }}" = "min" ]; then
             python -m pip install pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout \
               "pytest-homeassistant-custom-component${{ matrix.phccc }}" syrupy
+          else
+            python scripts/ci_ha_install.py "${{ matrix.leg }}" \
+              --extra pytest --extra pytest-asyncio --extra pytest-cov \
+              --extra pytest-xdist --extra pytest-timeout --extra syrupy
           fi
+          python -c "from homeassistant.const import __version__; print(__version__)"
 
       # The min leg pins HA transitively via the plugin version, so the
       # ha-version label and the phccc pin are two sources of truth that could
@@ -90,6 +92,11 @@ jobs:
           fi
 
       - name: Run tests with coverage
+        id: pytest
+        # An unreleased HA must not block a PR. This sits on the step because a
+        # failed install must still fail the leg: a job that ended up on the
+        # wrong HA version would otherwise look like a real test of that version.
+        continue-on-error: ${{ matrix.leg == 'beta' || matrix.leg == 'dev' }}
         run: |
           pytest tests/ \
             --cov=custom_components.fado \
@@ -97,6 +104,10 @@ jobs:
             --cov-report=xml \
             --cov-fail-under=90 \
             -v
+
+      - name: Warn when an unreleased Home Assistant fails the suite
+        if: steps.pytest.outcome == 'failure'
+        run: echo "::warning::Pytest failed on Home Assistant ${{ matrix.leg }}"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
@@ -108,8 +119,9 @@ jobs:
   # Stable-named gate for branch protection. The individual test legs carry
   # dynamic names (the HA version moves), so requiring them directly would
   # break the rule on every floor bump. This aggregates them into one fixed
-  # check that is green only when every blocking leg passed. The "dev" leg is
-  # continue-on-error, so its failure does not flip needs.test.result.
+  # check that is green only when every blocking leg passed. On the "beta" and
+  # "dev" legs the test step is continue-on-error, so a test failure there does
+  # not flip needs.test.result, but a failed install does.
   # 90% coverage is enforced inside each leg via --cov-fail-under=90, so a
   # green "tests-passed" also guarantees the coverage floor.
   tests-passed:

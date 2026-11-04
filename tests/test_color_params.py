@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
     ATTR_BRIGHTNESS_PCT,
@@ -19,6 +18,7 @@ from custom_components.fado.const import (
     DOMAIN,
     SERVICE_FADE_LIGHTS,
 )
+from tests.ha_harness import MockConfigEntry
 
 
 class TestColorParameterValidation:

@@ -7,7 +7,6 @@ from unittest.mock import patch
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
     DEFAULT_NOTIFICATIONS_ENABLED,
@@ -17,6 +16,7 @@ from custom_components.fado.const import (
     OPTION_NOTIFICATIONS_ENABLED,
     OPTION_SHOW_SIDEBAR,
 )
+from tests.ha_harness import MockConfigEntry
 
 
 async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:

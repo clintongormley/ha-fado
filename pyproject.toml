@@ -24,7 +24,7 @@ testpaths = ["tests"]
 # Run tests in parallel: many fade tests are wall-clock sleep-bound, so they
 # parallelise almost perfectly. Disable for debugging with `-p no:xdist`.
 # timeout is a safety net so a hung test fails fast instead of wedging the run.
-addopts = "-n auto"
+addopts = "-n auto -p no:respx"
 timeout = 60
 
 [tool.ruff]

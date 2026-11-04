@@ -10,11 +10,11 @@ from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_SUPPORTED_COLOR
 from homeassistant.components.light.const import ColorMode
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import DOMAIN
 from custom_components.fado.coordinator import FadeCoordinator
 from custom_components.fado.expected_state import ExpectedState, ExpectedValues
+from tests.ha_harness import MockConfigEntry
 
 
 def _has_brightness(expected_state: ExpectedState, brightness: int) -> bool:

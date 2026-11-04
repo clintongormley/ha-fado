@@ -8,7 +8,6 @@ from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import issue_registry as ir
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado import async_setup_entry
 from custom_components.fado.const import (
@@ -26,6 +25,7 @@ from custom_components.fado.notifications import (
     _issue_learn_more_url,
     _notify_unconfigured_lights,
 )
+from tests.ha_harness import MockConfigEntry
 
 
 def _make_coordinator(hass: HomeAssistant, data: dict | None = None) -> FadeCoordinator:
