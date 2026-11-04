@@ -84,7 +84,7 @@ jobs:
 
       - name: Warn when an unreleased Home Assistant cannot be installed
         if: steps.install.outcome == 'failure'
-        run: echo "::warning::Could not install Home Assistant ${{ matrix.leg }}"
+        run: echo "::warning::Install step failed for Home Assistant ${{ matrix.leg }}"
 
       # The min leg pins HA transitively via the plugin version, so the
       # ha-version label and the phccc pin are two sources of truth that could

@@ -20,9 +20,12 @@ The script installs the latest Home Assistant release and the pytest plugin that
 matches it: `pytest-homeassistant` on Home Assistant 2026.11 and newer, and
 `pytest-homeassistant-custom-component` on older versions. Tests import the
 helpers from `tests/ha_harness.py`, which works with either plugin. CI uses the
-same script for its `stable`, `beta` and `dev` jobs, and the job fails if it does
-not end up on the version it asked for. A test failure on `beta` or `dev` is only
-a warning on a pull request, and a real failure in the nightly run.
+same script for its `stable`, `beta` and `dev` jobs, and the script fails if it
+does not end up on the version it asked for. On `beta` and `dev` in `tests.yml`,
+a failed install or a test failure only gives a warning, so an unreleased Home
+Assistant cannot block a pull request. The exception is a failed install in that
+workflow's scheduled run, which fails the job. In `nightly.yml`, any failure on
+`stable`, `beta` or `dev` fails the run.
 
 !!! note
 
@@ -81,8 +84,7 @@ includes tests for:
 
 ## Continuous integration
 
-Tests run automatically on push and pull requests via GitHub Actions. The
-workflow tests against Python 3.13.
+Tests run automatically on push and pull requests via GitHub Actions.
 
 ## Building the documentation site
 

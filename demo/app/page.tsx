@@ -610,7 +610,7 @@ export default function Home() {
 
       <section className="cta-section">
         <div>
-          <p className="kicker">Available in the Home Assistant Marketplace</p>
+          <p className="kicker">Available in the Home Assistant Marketplace and HACS</p>
           <h2>Make tonight’s fade feel right.</h2>
         </div>
         <div className="cta-actions">

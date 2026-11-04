@@ -21,8 +21,7 @@ concurrency:
 jobs:
   # Run the pytest suite against the newest Home Assistant release (stable leg),
   # the newest beta (beta leg) and the tip of HA core (dev leg). A failure on any
-  # of them fails the run. All legs install the test deps unpinned so we track
-  # upstream rather than the pyproject floors.
+  # of them fails the run.
   test:
     name: HA ${{ matrix.ha-version }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
