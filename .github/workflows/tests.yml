@@ -36,7 +36,8 @@ jobs:
           MIN='{"leg":"min","ha-version":"2025.2.0","python-version":"3.13","phccc":"==0.13.210"}'
           # Latest stable HA release, chosen by scripts/ci_ha_install.py.
           STABLE='{"leg":"stable","ha-version":"stable","python-version":"3.14"}'
-          # Newest HA beta, and the tip of HA core. Their test failures only warn.
+          # Newest HA beta, and the tip of HA core. Their test failures only warn,
+          # and so do their install failures, except on the schedule.
           BETA='{"leg":"beta","ha-version":"beta","python-version":"3.14"}'
           DEV='{"leg":"dev","ha-version":"dev","python-version":"3.14"}'
           if [ "$EVENT" = "schedule" ]; then
@@ -63,6 +64,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
+        id: install
+        # An unreleased HA must not block a PR, even when it will not install. The
+        # later steps need the install, so they check this step's outcome. The
+        # scheduled run stays strict: nothing is waiting on it, and it is how a
+        # channel that has stopped installing gets noticed.
+        continue-on-error: ${{ github.event_name != 'schedule' && (matrix.leg == 'beta' || matrix.leg == 'dev') }}
         run: |
           python -m pip install --upgrade pip
           if [ "${{ matrix.leg }}" = "min" ]; then
@@ -75,12 +82,16 @@ jobs:
           fi
           python -c "from homeassistant.const import __version__; print(__version__)"
 
+      - name: Warn when an unreleased Home Assistant cannot be installed
+        if: steps.install.outcome == 'failure'
+        run: echo "::warning::Could not install Home Assistant ${{ matrix.leg }}"
+
       # The min leg pins HA transitively via the plugin version, so the
       # ha-version label and the phccc pin are two sources of truth that could
       # drift. Assert they agree, failing loudly if a future pin bump forgets
       # to update the label (or vice versa).
       - name: Verify pinned HA version (min leg)
-        if: ${{ matrix.leg == 'min' }}
+        if: ${{ matrix.leg == 'min' && steps.install.outcome == 'success' }}
         env:
           EXPECTED_HA: ${{ matrix.ha-version }}
         run: |
@@ -93,9 +104,8 @@ jobs:
 
       - name: Run tests with coverage
         id: pytest
-        # An unreleased HA must not block a PR. This sits on the step because a
-        # failed install must still fail the leg: a job that ended up on the
-        # wrong HA version would otherwise look like a real test of that version.
+        if: steps.install.outcome == 'success'
+        # An unreleased HA must not block a PR.
         continue-on-error: ${{ matrix.leg == 'beta' || matrix.leg == 'dev' }}
         run: |
           pytest tests/ \
@@ -111,7 +121,9 @@ jobs:
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
-        if: always()
+        # Skips only an install failure that was tolerated: a failed stable or
+        # floor install still reaches this step, as it always has.
+        if: always() && !(steps.install.outcome == 'failure' && steps.install.conclusion == 'success')
         with:
           name: coverage-report-${{ matrix.python-version }}-${{ matrix.ha-version }}
           path: coverage.xml
@@ -120,8 +132,9 @@ jobs:
   # dynamic names (the HA version moves), so requiring them directly would
   # break the rule on every floor bump. This aggregates them into one fixed
   # check that is green only when every blocking leg passed. On the "beta" and
-  # "dev" legs the test step is continue-on-error, so a test failure there does
-  # not flip needs.test.result, but a failed install does.
+  # "dev" legs the install and test steps are continue-on-error, so a failure
+  # there does not flip needs.test.result, except that the scheduled run's
+  # install step stays strict.
   # 90% coverage is enforced inside each leg via --cov-fail-under=90, so a
   # green "tests-passed" also guarantees the coverage floor.
   tests-passed:
