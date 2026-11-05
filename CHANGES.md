@@ -22,6 +22,9 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
   `exclude` block (Home Assistant 2026.11) when a light group in the target
   contains it. This differs from `light.turn_on`, where the group still switches
   on its excluded member.
+- The documentation for `fado.exclude_lights` and `fado.include_lights` no
+  longer says they expand light groups. Targeting a light group leaves its
+  lights as they were.
 
 ## [2.2.0] - 2026-07-29
 

@@ -17,8 +17,12 @@ Specify which lights to include or exclude using any combination of:
 - **`floor_id`**: One or more floor IDs
 - **`label_id`**: One or more label IDs
 
-Light groups are automatically expanded to their individual lights. Duplicate
-entities are automatically deduplicated.
+Light groups from Home Assistant's Group integration are not expanded here.
+Targeting one does not change its member lights: each stays excluded or included
+as it was. To exclude or include its lights, target the lights themselves. An
+old-style group (`group.upstairs`) works differently, because Home Assistant
+expands it into its members before Fado sees it, so each member is treated as if
+you had targeted it directly. Duplicate entities are automatically deduplicated.
 
 ## Examples
 
