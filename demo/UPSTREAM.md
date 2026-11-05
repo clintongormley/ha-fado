@@ -40,7 +40,8 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
    link to his GitHub profile and to the upstream repo, noting the 0BSD
    licence) instead of the old "Unofficial community demo" / no-affiliation
    disclaimer, which no longer applied once the demo became Fado's own
-   landing page.
+   landing page. The footer's "Original Fado project" link reads "Fado on
+   GitHub".
 4. `github-pages/index.html` — `canonical`, `og:url` and the social images point
    at <https://clintongormley.github.io/ha-fado/>; "unofficial" dropped from the
    descriptions; the `<title>` and `og:image:alt` name the product rather than
@@ -68,6 +69,9 @@ vite.pages.config.ts`, whose entry chain is `github-pages/index.html` →
    glyph needed; a full-colour logo stands on its own. `.brand` and
    `.brand-mark` also gained rules in the 760px and 430px media queries: the
    longer product name overflows the nav on a phone at the original 20px.
+7. `app/page.tsx` — the closing call to action names the Home Assistant
+   Marketplace and HACS rather than only the HACS store, and its button reads
+   "Open in Home Assistant", because the link works in both.
 
 ## Re-syncing with upstream
 
@@ -76,7 +80,7 @@ git clone https://github.com/florianhorner/fado-light-fader-demo.git /tmp/fado-d
 git -C /tmp/fado-demo diff 77481986df105472976af02997f11b8c257c96ae..main -- app github-pages public vite.pages.config.ts postcss.config.mjs tsconfig.json package.json
 ```
 
-Apply the relevant hunks by hand, keeping the six changes above intact, then
+Apply the relevant hunks by hand, keeping the seven changes above intact, then
 update the "Vendored at" SHA here and the SHA asserted in
 `tests/frontend/demo-links.test.js`. Run `npm test` and
 `scripts/build_site.sh` before committing.

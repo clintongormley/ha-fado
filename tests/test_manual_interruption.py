@@ -15,7 +15,6 @@ from homeassistant.components.light import (
 from homeassistant.components.light.const import ColorMode
 from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
     ATTR_BRIGHTNESS_PCT,
@@ -25,6 +24,7 @@ from custom_components.fado.const import (
 )
 from custom_components.fado.coordinator import FadeCoordinator
 from custom_components.fado.expected_state import ExpectedState, ExpectedValues
+from tests.ha_harness import MockConfigEntry
 
 
 @pytest.fixture

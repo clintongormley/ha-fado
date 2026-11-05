@@ -1,9 +1,9 @@
 # Fado Light Fader
 
-A Home Assistant custom integration, available in the HACS default store, that
-provides smooth light fading for brightness, colors, and color temperatures,
-with automatic brightness restoration, autoconfiguration via the UI, and
-support for native transitions.
+A Home Assistant custom integration, available from the Home Assistant
+Marketplace and from HACS, that provides smooth light fading for brightness,
+colors, and color temperatures, with automatic brightness restoration,
+autoconfiguration via the UI, and support for native transitions.
 
 !!! tip "See it in action"
 

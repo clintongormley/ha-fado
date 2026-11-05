@@ -10,7 +10,6 @@ from homeassistant.components.light.const import ColorMode
 from homeassistant.const import STATE_ON
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import Unauthorized
-from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 
 from custom_components.fado.const import (
     ATTR_BRIGHTNESS_PCT,
@@ -21,6 +20,7 @@ from custom_components.fado.const import (
     SERVICE_FADE_LIGHTS,
     SERVICE_INCLUDE_LIGHTS,
 )
+from tests.ha_harness import MockConfigEntry, MockUser
 
 
 @pytest.fixture

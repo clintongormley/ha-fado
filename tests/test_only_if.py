@@ -10,11 +10,11 @@ from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light.const import ColorMode
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado import FADE_LIGHTS_SCHEMA, _normalize_only_if
 from custom_components.fado.const import ATTR_ONLY_IF, DOMAIN, SERVICE_FADE_LIGHTS
 from custom_components.fado.fade_params import FadeParams
+from tests.ha_harness import MockConfigEntry
 
 
 class TestNormalizeOnlyIf:

@@ -9,7 +9,6 @@ import voluptuous as vol
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light.const import ColorMode
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
     ATTR_BRIGHTNESS_PCT,
@@ -23,6 +22,7 @@ from custom_components.fado.const import (
 from custom_components.fado.expected_state import ExpectedValues
 from custom_components.fado.fade_change import FadeChange
 from custom_components.fado.fade_params import FadeParams
+from tests.ha_harness import MockConfigEntry
 
 
 class TestNoFadeParameters:

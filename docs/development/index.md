@@ -8,17 +8,29 @@ and brightness restoration.
 
 ### Prerequisites
 
-Install the test dependencies:
+Install Home Assistant and the test dependencies:
 
 ```bash
-pip install pytest pytest-asyncio pytest-cov pytest-homeassistant-custom-component syrupy
+python scripts/ci_ha_install.py stable \
+    --extra pytest --extra pytest-asyncio --extra pytest-cov \
+    --extra pytest-xdist --extra pytest-timeout --extra syrupy
 ```
+
+The script installs the latest Home Assistant release and the pytest plugin that
+matches it: `pytest-homeassistant` on Home Assistant 2026.11 and newer, and
+`pytest-homeassistant-custom-component` on older versions. Tests import the
+helpers from `tests/ha_harness.py`, which works with either plugin. CI uses the
+same script for its `stable`, `beta` and `dev` jobs, and the script fails if it
+does not end up on the version it asked for. On `beta` and `dev` in `tests.yml`,
+a failed install or a test failure only gives a warning, so an unreleased Home
+Assistant cannot block a pull request. The exception is a failed install in that
+workflow's scheduled run, which fails the job. In `nightly.yml`, any failure on
+`stable`, `beta` or `dev` fails the run.
 
 !!! note
 
     Do not use `pip install -e .` (editable install) as it conflicts
-    with `pytest-homeassistant-custom-component`'s custom component discovery
-    mechanism.
+    with the pytest plugin's custom component discovery mechanism.
 
 ### Running Tests
 
@@ -72,8 +84,7 @@ includes tests for:
 
 ## Continuous integration
 
-Tests run automatically on push and pull requests via GitHub Actions. The
-workflow tests against Python 3.13.
+Tests run automatically on push and pull requests via GitHub Actions.
 
 ## Building the documentation site
 

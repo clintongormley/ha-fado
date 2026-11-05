@@ -484,6 +484,45 @@ async def test_get_lights_uses_state_friendly_name_and_icon(
     assert light["icon"] == "mdi:state-icon"
 
 
+async def test_get_lights_prefers_user_name_when_light_has_no_state(
+    hass: HomeAssistant,
+    init_integration,
+) -> None:
+    """A light with no state yet shows the name the user gave it."""
+    from custom_components.fado.websocket_api import async_get_lights
+
+    light_entity = MagicMock()
+    light_entity.entity_id = "light.no_state"
+    light_entity.name = "User Name"
+    light_entity.original_name = "Original Name"
+    light_entity.area_id = None
+    light_entity.device_id = None
+    light_entity.disabled_by = None
+    light_entity.icon = None
+
+    with (
+        patch(
+            "homeassistant.helpers.area_registry.async_get",
+            return_value=MagicMock(areas={}, async_get_area=lambda aid: None),
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(entities=MagicMock(values=lambda: [light_entity])),
+        ),
+        patch(
+            "homeassistant.helpers.device_registry.async_get",
+            return_value=MagicMock(async_get=lambda did: None),
+        ),
+    ):
+        result = await async_get_lights(hass)
+
+    unknown = next((a for a in result["areas"] if a["area_id"] is None), None)
+    assert unknown is not None
+    light = next((lt for lt in unknown["lights"] if lt["entity_id"] == "light.no_state"), None)
+    assert light is not None
+    assert light["name"] == "User Name"
+
+
 async def test_expand_light_groups(hass: HomeAssistant) -> None:
     """Test _expand_light_groups expands groups to individual lights."""
     from custom_components.fado.websocket_api import _expand_light_groups

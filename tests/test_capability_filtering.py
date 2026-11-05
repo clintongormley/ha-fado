@@ -9,7 +9,6 @@ from homeassistant.components.light import ATTR_SUPPORTED_COLOR_MODES
 from homeassistant.components.light.const import ColorMode
 from homeassistant.const import STATE_ON
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.fado.const import (
     ATTR_BRIGHTNESS_PCT,
@@ -21,6 +20,7 @@ from custom_components.fado.const import (
 )
 from custom_components.fado.coordinator import _can_apply_fade_params
 from custom_components.fado.fade_params import FadeParams
+from tests.ha_harness import MockConfigEntry
 
 
 class TestCanFadeColor:

@@ -3,7 +3,7 @@ name: Nightly latest-deps
 # Exercises the suite and HA validation tooling against the LATEST upstream
 # dependencies, kept SEPARATE from PR CI (tests.yml / validate.yml / hassfest.yml)
 # so its inherently flaky "newest of everything" noise can never block a PR.
-# tests.yml already has a nightly stable/dev leg; this complements it by also
+# tests.yml already has nightly stable, beta and dev legs; this complements it by also
 # re-running hassfest + HACS against their latest tooling, catching HA-side
 # drift even when the unit tests are thin.
 on:
@@ -19,9 +19,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Run the pytest suite against the newest published Home Assistant + harness
-  # (stable leg) and against HA dev (non-blocking). Both legs install the test
-  # deps unpinned so we track upstream rather than the pyproject floors.
+  # Run the pytest suite against the newest Home Assistant release (stable leg),
+  # the newest beta (beta leg) and the tip of HA core (dev leg). A failure on any
+  # of them fails the run.
   test:
     name: HA ${{ matrix.ha-version }} (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -32,10 +32,12 @@ jobs:
           - leg: stable
             ha-version: stable
             python-version: "3.14"
+          - leg: beta
+            ha-version: beta
+            python-version: "3.14"
           - leg: dev
             ha-version: dev
             python-version: "3.14"
-    continue-on-error: ${{ matrix.ha-version == 'dev' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -48,14 +50,10 @@ jobs:
       - name: Install latest dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade \
-            pytest pytest-asyncio pytest-cov pytest-xdist pytest-timeout syrupy
-          if [ "${{ matrix.ha-version }}" = "dev" ]; then
-            python -m pip install --upgrade --pre pytest-homeassistant-custom-component
-            python -m pip install --upgrade "homeassistant @ git+https://github.com/home-assistant/core.git"
-          else
-            python -m pip install --upgrade homeassistant pytest-homeassistant-custom-component
-          fi
+          python scripts/ci_ha_install.py "${{ matrix.leg }}" \
+            --extra pytest --extra pytest-asyncio --extra pytest-cov \
+            --extra pytest-xdist --extra pytest-timeout --extra syrupy
+          python -c "from homeassistant.const import __version__; print(__version__)"
 
       - name: Run tests with coverage
         run: |

@@ -1,6 +1,7 @@
 {
   "domain": "fado",
   "name": "Fado Light Fader",
+  "categories": ["lighting"],
   "codeowners": ["@clintongormley"],
   "config_flow": true,
   "dependencies": ["http"],
