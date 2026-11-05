@@ -1,7 +1,9 @@
 # `fado.exclude_lights` / `fado.include_lights`
 
 Excludes one or more lights from Fado. Excluded lights are ignored by fade
-operations and state tracking.
+operations and state tracking. On Home Assistant 2026.11 or newer, you can leave
+a light out of a single fade instead with the target's `exclude` block,
+described in [`fado.fade_lights`](fade-lights.md).
 
 ## Parameters
 

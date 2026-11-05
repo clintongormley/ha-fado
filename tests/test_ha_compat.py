@@ -11,18 +11,28 @@ The tests that call ``_extract_via_service`` directly are skipped once that
 legacy helper is removed (HA 2026.8): there the integration uses the modern
 path, so the fallback is no longer reachable. The min-version CI leg still
 exercises it.
+
+The exclude helper, which only exists in HA >= 2026.11.0, is covered here too.
 """
 
 from __future__ import annotations
+
+import sys
+import types
+from unittest.mock import patch
 
 import pytest
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from custom_components.fado.const import DOMAIN
 from custom_components.fado.ha_compat import (
+    _extract_excluded_via_target,
     _extract_via_service,
     _extract_via_target,
+    _has_exclude_helper,
     _has_target_selection,
+    _no_excluded_entity_ids,
+    extract_excluded_entity_ids,
     extract_referenced_entity_ids,
 )
 
@@ -104,3 +114,64 @@ async def test_public_extractor_resolves_target(
     selected = extract_referenced_entity_ids(hass, call)
 
     assert mock_light_entity in _resolved(selected)
+
+
+def _make_exclude_call(hass: HomeAssistant, target: str, exclude: str) -> ServiceCall:
+    """Build a fade_lights ServiceCall whose target has an exclude block."""
+    return ServiceCall(
+        hass, DOMAIN, "fade_lights", {"entity_id": target, "exclude": {"entity_id": exclude}}
+    )
+
+
+def test_no_exclude_helper_when_the_target_module_does_not_exist() -> None:
+    """The oldest supported HA, 2025.2, has no ``helpers.target`` module."""
+    with patch.dict(sys.modules, {"homeassistant.helpers.target": None}):
+        assert not _has_exclude_helper()
+
+
+def test_no_exclude_helper_when_the_target_module_lacks_it() -> None:
+    """Later versions have the module without the helper, which arrived in 2026.11."""
+    module = types.ModuleType("homeassistant.helpers.target")
+    module.TargetSelection = object  # type: ignore[attr-defined]
+
+    with patch.dict(sys.modules, {"homeassistant.helpers.target": module}):
+        assert not _has_exclude_helper()
+
+
+def test_excluded_ids_use_the_exclude_helper_when_present(hass: HomeAssistant) -> None:
+    """The call's data is what the helper resolves (HA >= 2026.11.0)."""
+    call = _make_exclude_call(hass, "light.test", "light.other")
+    seen = []
+
+    class FakeSelection:
+        def __init__(self, config) -> None:
+            seen.append(config)
+
+    module = types.ModuleType("homeassistant.helpers.target")
+    module.TargetSelection = FakeSelection  # type: ignore[attr-defined]
+    module.async_extract_excluded_entity_ids = lambda _hass, selection: {  # type: ignore[attr-defined]
+        "light.other"
+    }
+
+    with patch.dict(sys.modules, {"homeassistant.helpers.target": module}):
+        assert _has_exclude_helper()
+        assert _extract_excluded_via_target(hass, call) == {"light.other"}
+    assert seen == [call.data]
+
+
+def test_excluded_ids_are_empty_on_older_ha(hass: HomeAssistant) -> None:
+    """The HA < 2026.11.0 fallback resolves nothing, whatever the call holds."""
+    call = _make_exclude_call(hass, "light.test", "light.other")
+
+    assert _no_excluded_entity_ids(hass, call) == set()
+
+
+async def test_public_excluded_extractor_matches_the_running_ha(
+    hass: HomeAssistant, mock_light_entity: str, mock_light_off: str
+) -> None:
+    """The selected public extractor resolves ``exclude`` only where HA supports it."""
+    call = _make_exclude_call(hass, mock_light_entity, mock_light_off)
+
+    expected = {mock_light_off} if _has_exclude_helper() else set()
+
+    assert extract_excluded_entity_ids(hass, call) == expected

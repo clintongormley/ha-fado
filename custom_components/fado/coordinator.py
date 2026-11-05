@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Set as AbstractSet
 from typing import Any
 
 from homeassistant.components.light import (
@@ -50,7 +51,7 @@ from .entity_fade_state import EntityFadeState
 from .expected_state import ExpectedState, ExpectedValues
 from .fade_change import FadeChange, FadeStep
 from .fade_params import FadeParams
-from .ha_compat import extract_referenced_entity_ids
+from .ha_compat import extract_excluded_entity_ids, extract_referenced_entity_ids
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -150,7 +151,9 @@ class FadeCoordinator:
         selected = extract_referenced_entity_ids(self.hass, call)
         all_entity_ids = selected.referenced | selected.indirectly_referenced
 
-        expanded_entities = self._expand_light_groups(list(all_entity_ids))
+        expanded_entities = self._expand_light_groups(
+            list(all_entity_ids), excluded=extract_excluded_entity_ids(self.hass, call)
+        )
 
         result = []
         for entity_id in expanded_entities:
@@ -175,12 +178,19 @@ class FadeCoordinator:
             result.append(entity_id)
         return result
 
-    def _expand_light_groups(self, entity_ids: list[str]) -> list[str]:
+    def _expand_light_groups(
+        self, entity_ids: list[str], excluded: AbstractSet[str] = frozenset()
+    ) -> list[str]:
         """Expand light groups to individual light entities.
 
         Light groups have an entity_id attribute containing member lights.
         Expands iteratively (not recursively) and deduplicates results.
         Lights with exclude=True in their config are filtered out.
+
+        Entities in ``excluded`` are skipped when reached, before checking whether
+        they are groups. Skipping during the walk rather than subtracting afterwards
+        means an excluded light group hides only the lights reachable solely through
+        it.
 
         Example:
             Input: ["light.living_room_group", "light.bedroom"]
@@ -193,6 +203,10 @@ class FadeCoordinator:
 
         while pending:
             entity_id = pending.pop()
+            if entity_id in excluded:
+                _LOGGER.debug("%s: Excluded by the target", entity_id)
+                continue
+
             state = self.hass.states.get(entity_id)
 
             if state is None:
@@ -209,7 +223,7 @@ class FadeCoordinator:
             elif entity_id.startswith(light_prefix):
                 result.add(entity_id)
 
-        # Filter out excluded and autoconfiguring lights
+        # Filter out lights excluded in their config and autoconfiguring lights
         final_result = []
         for eid in result:
             if self.get_light_config(eid).get("exclude", False):
