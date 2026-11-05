@@ -4,13 +4,14 @@ Isolates Home Assistant APIs that differ across the supported version range so
 the rest of the integration can stay version-agnostic.
 
 Imports inside the resolver functions are intentionally deferred to call time,
-not hoisted to module scope: the two helpers have *non-overlapping* lifetimes.
-``helpers.target.TargetSelection`` only exists from HA 2026.1.0 (the
-``helpers.target`` module itself is older, but did not expose that symbol);
-``helpers.service``'s extractor is removed in HA 2026.8. A module-scope import
-of either symbol would crash the integration on the HA versions where it is
-absent. Deferring keeps each import on the branch that is only taken when the
-symbol exists.
+not hoisted to module scope: none of the helpers exists on every supported HA
+version. ``helpers.target.TargetSelection`` only exists from HA 2026.1.0 (the
+``helpers.target`` module itself arrived in HA 2025.8.0, without that symbol);
+``helpers.target.async_extract_excluded_entity_ids`` only exists from HA
+2026.11.0; ``helpers.service``'s extractor is removed in HA 2026.8. A
+module-scope import of any of these symbols would crash the integration on the
+HA versions where it is absent. Deferring keeps each import on the branch that
+is only taken when the symbol exists.
 """
 
 from __future__ import annotations
@@ -49,7 +50,11 @@ else:
                 return result
 
 
-__all__ = ["OptionsFlowWithReload", "extract_referenced_entity_ids"]
+__all__ = [
+    "OptionsFlowWithReload",
+    "extract_excluded_entity_ids",
+    "extract_referenced_entity_ids",
+]
 
 
 def _extract_via_target(hass: HomeAssistant, call: ServiceCall):
@@ -93,3 +98,35 @@ if _has_target_selection():
     extract_referenced_entity_ids = _extract_via_target
 else:  # pragma: no cover - exercised only on HA < 2026.1.0
     extract_referenced_entity_ids = _extract_via_service
+
+
+def _extract_excluded_via_target(hass: HomeAssistant, call: ServiceCall) -> set[str]:
+    """Resolve the target's ``exclude`` block using the target helper (HA >= 2026.11.0)."""
+    from homeassistant.helpers.target import (  # noqa: PLC0415
+        TargetSelection,
+        async_extract_excluded_entity_ids,
+    )
+
+    return async_extract_excluded_entity_ids(hass, TargetSelection(call.data))
+
+
+def _no_excluded_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
+    """Return an empty set: the helper that resolves ``exclude`` needs HA >= 2026.11.0."""
+    return set()
+
+
+def _has_exclude_helper() -> bool:
+    """Return True if HA can resolve a target's ``exclude`` block."""
+    try:
+        from homeassistant.helpers.target import (  # noqa: F401, PLC0415
+            async_extract_excluded_entity_ids,
+        )
+    except ImportError:
+        return False
+    return True
+
+
+if _has_exclude_helper():
+    extract_excluded_entity_ids = _extract_excluded_via_target
+else:  # pragma: no cover - exercised only on HA < 2026.11.0
+    extract_excluded_entity_ids = _no_excluded_entity_ids

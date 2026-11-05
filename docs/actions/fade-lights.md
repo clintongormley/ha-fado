@@ -22,6 +22,25 @@ Specify which lights to fade using any combination of:
 Light groups are automatically expanded to their individual lights. Duplicate
 entities are automatically deduplicated.
 
+Sometimes you want to fade a whole room except for one light. On Home Assistant
+2026.11 or newer, add an `exclude` block to the target, as the example further
+down this page shows.
+
+Fado never fades an excluded light, even when a light group in the target
+contains it. This differs from `light.turn_on`, where the group still switches
+on its excluded member. Home Assistant only removes the excluded light from the
+target, and the group then passes the command to all its members. Fado expands
+groups into individual lights itself, so it can skip the excluded one.
+
+Excluding a light group leaves out the lights you can only reach through that
+group. A light that the target also reaches another way, directly or through its
+area, still fades. An old-style group (`group.upstairs`) works differently,
+because Home Assistant expands it into its members before Fado sees it, so every
+member stays out however the target reaches it.
+
+The `exclude` block applies to that one action. To keep a light out of every
+fade, use [`fado.exclude_lights`](exclude-include.md).
+
 ### **Transition** (optional, default: `3`):
 
 How long the fade should take in seconds (supports decimals, e.g., `0.5` for
@@ -137,6 +156,19 @@ target:
 data:
   brightness_pct: 80
   transition: 10
+```
+
+### **Fade a room except for one light:**
+
+```yaml
+action: fado.fade_lights
+target:
+  area_id: living_room
+  exclude:
+    entity_id: light.reading_lamp
+data:
+  brightness_pct: 40
+  transition: 5
 ```
 
 ### **Fade color temperature (warm to cool white) with specified starting point:**
