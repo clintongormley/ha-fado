@@ -19,12 +19,16 @@ project adheres to [Semantic Versioning](https://semver.org/). Entries marked
 - In the panel, a light with no state yet now shows the name you gave it rather
   than the name its integration gave it.
 - `fado.fade_lights` no longer fades a light left out with the target's
-  `exclude` block (Home Assistant 2026.11) when a light group in the target
+  `exclude` block (Home Assistant 2026.11) when a light group that Fado expands
   contains it. This differs from `light.turn_on`, where the group still switches
   on its excluded member.
 - The documentation for `fado.exclude_lights` and `fado.include_lights` no
   longer says they expand light groups. Targeting a light group leaves its
   lights as they were.
+- The documentation for `fado.fade_lights` no longer says it expands every light
+  group. Groups that list their members in an `entity_id` attribute are
+  expanded, and other groups, such as MQTT or ZHA groups, are faded as a single
+  light.
 
 ## [2.2.0] - 2026-07-29
 
