@@ -65,7 +65,9 @@ to a light.
 ### Exclude
 
 Checking the `Exclude` checkbox next to a light will prevent Fado from fading a
-light and also from autorestoring the original brightness level.
+light and also from autorestoring the original brightness level. A light inside
+a group that Fado fades as a single light, such as an MQTT or ZHA group, still
+changes when that group fades.
 
 ### Global minimum delay
 

@@ -19,18 +19,24 @@ Specify which lights to fade using any combination of:
 
 - **`label_id`**: One or more label IDs
 
-Light groups are automatically expanded to their individual lights. Duplicate
-entities are automatically deduplicated.
+Fado expands a light group into its individual lights when the group's
+`entity_id` state attribute lists its members. Light groups from the Group
+integration do this, and so do Hue rooms and zones using the v2 bridge API.
+Other groups, such as MQTT or ZHA groups, are faded as a single light, even when
+they list their members in a `group_entities` attribute. Duplicate entities are
+automatically deduplicated.
 
 Sometimes you want to fade a whole room except for one light. On Home Assistant
 2026.11 or newer, add an `exclude` block to the target, as the example further
 down this page shows.
 
-Fado never fades an excluded light, even when a light group in the target
-contains it. This differs from `light.turn_on`, where the group still switches
-on its excluded member. Home Assistant only removes the excluded light from the
-target, and the group then passes the command to all its members. Fado expands
-groups into individual lights itself, so it can skip the excluded one.
+When Fado expands a light group, it skips any light you excluded. This differs
+from `light.turn_on`, where the group still switches on its excluded member.
+Home Assistant only removes the excluded light from the target, and the group
+then passes the command to all its members. Fado expands the group into
+individual lights itself, so it can skip the excluded one. A group that Fado
+fades as a single light still changes all of its members, so you can't leave one
+out.
 
 Excluding a light group leaves out the lights you can only reach through that
 group. A light that the target also reaches another way, directly or through its
@@ -39,7 +45,9 @@ because Home Assistant expands it into its members before Fado sees it, so every
 member stays out however the target reaches it.
 
 The `exclude` block applies to that one action. To keep a light out of every
-fade, use [`fado.exclude_lights`](exclude-include.md).
+fade, use [`fado.exclude_lights`](exclude-include.md). A light inside a group
+that Fado fades as a single light still changes when that group fades, whichever
+you use. To stop that, exclude the group as well.
 
 ### **Transition** (optional, default: `3`):
 
